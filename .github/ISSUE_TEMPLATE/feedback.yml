@@ -1,0 +1,44 @@
+name: ゲームへの意見・フィードバック
+description: Fisherman's Horizon への感想・要望・不具合報告。開発側(Claude)が /loop で拾って改良します。
+title: "[意見] "
+labels: ["feedback"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        遊んでいただきありがとうございます。気づいた点を自由に書いてください。
+        できるだけ「どの場面で・何が・どうなってほしいか」を具体的に書いていただけると反映しやすいです。
+  - type: dropdown
+    id: category
+    attributes:
+      label: 種類
+      options:
+        - 不具合(バグ)
+        - バランス調整(難易度・お金・速度など)
+        - 操作感(カメラ・移動・照準など)
+        - 見た目・3Dモデル・UI
+        - 新要素・仕様の要望
+        - その他
+    validations:
+      required: true
+  - type: textarea
+    id: detail
+    attributes:
+      label: 内容
+      description: 具体的に。例「始まりの島で食料が早く減りすぎて漁が間に合わない」「カメラをもっと引きたい」など。
+      placeholder: ここに記入
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: 再現手順(不具合の場合・任意)
+      placeholder: |
+        1. 出港する
+        2. ○○すると
+        3. △△になる
+  - type: input
+    id: version
+    attributes:
+      label: 試したバージョン/コミット(任意)
+      placeholder: 例) 2026-06-27 の最新
