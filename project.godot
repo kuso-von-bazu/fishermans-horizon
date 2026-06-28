@@ -92,6 +92,10 @@ toggle_map={
 ]
 }
 
+[gui]
+
+theme/custom_font="res://assets/fonts/NotoSansJP.ttf"
+
 [rendering]
 
 renderer/rendering_method="gl_compatibility"
