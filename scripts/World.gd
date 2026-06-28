@@ -355,7 +355,8 @@ func _spawn_enemy() -> void:
 	var kind := "mob"
 	var id := ""
 	var isle := GameState.current_island
-	if roll < 0.45:
+	# 海賊の出現頻度を抑える(Issue #1: 45%→22%)。残りは漁獲モブ中心。
+	if roll < 0.22:
 		kind = "pirate"
 		var ps := ["raider", "corsair", "dread"]
 		id = ps[mini(isle, 2)]
