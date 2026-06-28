@@ -5,6 +5,10 @@
 近海の主・海賊を討ち、より強い船と武器を得て島々を進み、最後に人類種の天敵レヴィアタンを討伐して
 伝説の漁場 Fisherman's Horizon を目指す。
 
+## ▶ ブラウザで遊ぶ（インストール不要）
+https://kuso-von-bazu.github.io/fishermans-horizon-play/
+（GitHub Pages公開のWeb版。ビルドリポジトリ: `kuso-von-bazu/fishermans-horizon-play`。`build/web` を更新→そのリポジトリへ push で更新される）
+
 ## 起動
 - `起動.bat` … ゲームをプレイ実行
 - `エディタ起動.bat` … Godot エディタで開く
