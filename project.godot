@@ -13,7 +13,7 @@ config_version=5
 config/name="Fisherman's Horizon"
 config/description="拡大再生産型の漁業・ハンティングゲーム"
 run/main_scene="res://scenes/World.tscn"
-config/features=PackedStringArray("4.6", "Forward Plus")
+config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://icon.svg"
 
 [autoload]
@@ -94,4 +94,6 @@ toggle_map={
 
 [rendering]
 
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
 environment/defaults/default_clear_color=Color(0.18, 0.42, 0.58, 1)
