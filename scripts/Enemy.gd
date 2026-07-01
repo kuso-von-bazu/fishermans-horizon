@@ -158,7 +158,11 @@ func _attack(delta: float, dist: float) -> void:
 	elif id == "hydra":
 		_ranged_attack(true)
 	elif ranged:
-		_ranged_attack(false)
+		# 遠隔敵: 離れていれば射撃、接近されたら近接も行う
+		if dist <= attack_range * 0.6:
+			_damage_player(dmg)
+		else:
+			_ranged_attack(false)
 	elif dist <= attack_range:
 		_damage_player(dmg)
 

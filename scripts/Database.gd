@@ -41,9 +41,9 @@ var lords := {
 # 海賊(首だけ持ち帰る=魚倉を圧迫しない) bounty で換金
 # ---------------------------------------------------------------------------
 var pirates := {
-	"raider":   {"name": "海賊(小)", "hp": 120, "dmg": 8,  "bounty": 200,  "fame": 1, "color": Color(0.4,0.3,0.2)},
-	"corsair":  {"name": "海賊(中)", "hp": 260, "dmg": 12, "bounty": 500,  "fame": 2, "color": Color(0.35,0.25,0.15)},
-	"dread":    {"name": "海賊(大)", "hp": 500, "dmg": 18, "bounty": 1200, "fame": 4, "color": Color(0.25,0.18,0.1)},
+	"raider":   {"name": "海賊(小)", "hp": 120, "dmg": 7,  "bounty": 200,  "fame": 1, "ranged": true, "color": Color(0.4,0.3,0.2)},
+	"corsair":  {"name": "海賊(中)", "hp": 260, "dmg": 10, "bounty": 500,  "fame": 2, "ranged": true, "color": Color(0.35,0.25,0.15)},
+	"dread":    {"name": "海賊(大)", "hp": 500, "dmg": 15, "bounty": 1200, "fame": 4, "ranged": true, "color": Color(0.25,0.18,0.1)},
 }
 
 # ---------------------------------------------------------------------------

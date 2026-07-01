@@ -2,7 +2,8 @@ extends Node3D
 ## Island — 島。中心にメッシュ、周囲に入港判定の Area3D を持つ。
 ## プレイヤーが入港圏に入ると World に通知して帰港(港メニュー)へ。
 
-signal player_docked(island_id: int)
+signal dock_ready(island_id: int)   # プレイヤーが寄港可能圏に入った(名声解放済みの島のみ)
+signal dock_left(island_id: int)
 
 var island_id: int = 0
 var dock_radius: float = 26.0
@@ -82,9 +83,10 @@ func _on_body_entered(body: Node) -> void:
 			GameState.notice.emit("%s に入港するには名声が足りない(必要:%d)" % [Database.island(island_id).name, req])
 		return
 	_player_inside = true
-	player_docked.emit(island_id)
+	dock_ready.emit(island_id)   # 寄港は自動でなく、プレイヤーがEで選択(Issue #7)
 
 func _on_body_exited(body: Node) -> void:
 	if body.is_in_group("player"):
 		_player_inside = false
 		_warned = false
+		dock_left.emit(island_id)

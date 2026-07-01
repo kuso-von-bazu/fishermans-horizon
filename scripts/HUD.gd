@@ -315,6 +315,25 @@ func rebuild_weapons() -> void:
 		p.add_child(l)
 		weapon_box.add_child(p)
 
+func show_big_message(text: String) -> void:
+	var l := _label(text, 42)
+	l.add_theme_font_size_override("font_size", 42)
+	l.add_theme_color_override("font_color", Color(1, 0.55, 0.4))
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.anchor_left = 0.5
+	l.anchor_right = 0.5
+	l.anchor_top = 0.4
+	l.anchor_bottom = 0.4
+	l.offset_left = -420
+	l.offset_right = 420
+	l.offset_top = -40
+	l.offset_bottom = 40
+	_root().add_child(l)
+	var tw := create_tween()
+	tw.tween_interval(1.4)
+	tw.tween_property(l, "modulate:a", 0.0, 1.0)
+	tw.tween_callback(l.queue_free)
+
 func show_notice(text: String) -> void:
 	refresh_money_fame()
 	var l := _label(text, 20)

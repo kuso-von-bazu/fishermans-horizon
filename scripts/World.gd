@@ -31,6 +31,8 @@ var spawn_timer: float = 0.0
 const MAX_FISH := 7
 const MAX_ENEMIES := 4
 var _dock_grace: float = 0.0
+var _dock_target: int = -1   # 寄港可能圏にいる島(なければ-1)。Eで寄港(Issue #7)
+var _returning: bool = false
 
 func _ready() -> void:
 	_build_environment()
@@ -181,7 +183,8 @@ func _build_islands() -> void:
 		isle.setup(i)                       # _ready は add_child で走るため先に設定
 		add_child(isle)
 		isle.global_position = Database.islands[i].pos
-		isle.player_docked.connect(_on_player_docked)
+		isle.dock_ready.connect(_on_dock_ready)
+		isle.dock_left.connect(_on_dock_left)
 		islands.append(isle)
 
 func _build_player() -> void:
@@ -193,6 +196,8 @@ func _build_player() -> void:
 # ---------------- フェーズ遷移 ----------------
 func _enter_dock(island_id: int, do_reset := true) -> void:
 	phase = "dock"
+	_dock_target = -1
+	_returning = false
 	GameState.current_island = island_id
 	if do_reset:
 		GameState.dock_reset()
@@ -218,6 +223,7 @@ func _on_set_sail() -> void:
 	hud.rebuild_weapons()
 	hud.set_location("航海中: %s 近海" % Database.island(GameState.current_island).name)
 	_dock_grace = 2.0
+	_dock_target = -1
 	slot_cooldowns = [0.0, 0.0, 0.0, 0.0]
 
 func _on_fast_travel(island_id: int) -> void:
@@ -226,14 +232,40 @@ func _on_fast_travel(island_id: int) -> void:
 	port_ui.close()
 	_enter_dock(island_id, true)
 
-func _on_player_docked(island_id: int) -> void:
-	if phase != "sea" or _dock_grace > 0.0:
-		return
-	GameState.notice.emit("%s に帰港" % Database.island(island_id).name)
-	_enter_dock(island_id, true)
+func _on_dock_ready(island_id: int) -> void:
+	if phase == "sea":
+		_dock_target = island_id
 
-func _forced_return(reason: String) -> void:
+func _on_dock_left(island_id: int) -> void:
+	if _dock_target == island_id:
+		_dock_target = -1
+
+# 寄港可能圏にいる間、Eで手動寄港(Issue #7)。戻り値=寄港プロンプト表示中か
+func _update_docking() -> bool:
+	if _dock_target < 0 or _dock_grace > 0.0:
+		return false
+	hud.set_prompt("[E] %s に寄港する" % Database.island(_dock_target).name)
+	if Input.is_action_just_pressed("interact"):
+		GameState.notice.emit("%s に帰港" % Database.island(_dock_target).name)
+		_enter_dock(_dock_target, true)
+	return true
+
+func _forced_return(reason: String, wrecked: bool = false) -> void:
+	if _returning:
+		return
+	_returning = true
+	if wrecked:
+		# 大破: 漁獲物をロスト(Issue #14)し、大きく告知(Issue #8)
+		var lost := GameState.used_hold()
+		GameState.cargo.clear()
+		GameState.stats_changed.emit()
+		hud.show_big_message("船が大破! 漁獲物(%d)を失い強制帰還" % lost)
+	else:
+		hud.show_big_message(reason)
 	GameState.notice.emit(reason)
+	if player:
+		player.control_enabled = false
+	await get_tree().create_timer(1.8).timeout
 	_enter_dock(GameState.current_island, true)
 
 # ---------------- メインループ ----------------
@@ -244,7 +276,8 @@ func _physics_process(delta: float) -> void:
 		_dock_grace -= delta
 	GameState.regen_fire(delta)
 	_update_food(delta)
-	_update_fishing(delta)
+	if not _update_docking():
+		_update_fishing(delta)
 	_update_spawns(delta)
 	_update_weapons(delta)
 	_update_sonar()
@@ -253,7 +286,7 @@ func _physics_process(delta: float) -> void:
 		hud.update_bars()
 	# 強制帰還条件
 	if GameState.run_armor <= 0.0:
-		_forced_return("装甲が尽き船が大破! 強制帰還")
+		_forced_return("船が大破!", true)
 	elif _food_forced_threshold() and GameState.run_food <= GameState.max_food() * 0.5 and not _can_voyage_onward():
 		_forced_return("食料が半分を切った。始まりの近海から強制帰還")
 	elif GameState.run_food <= 0.0:
@@ -355,39 +388,58 @@ func _spawn_enemy() -> void:
 	var kind := "mob"
 	var id := ""
 	var isle := GameState.current_island
-	# 海賊は控えめ(Issue #1: 22%)、戦闘モブも頻度減(Issue #3: 63%→26%)、
-	# 残り(約38%)は何も出さず海を穏やかに保つ。
-	if roll < 0.22:
+	# 海賊12%(Issue #1,#10)、戦闘モブ26%(Issue #3)、主12%(同時1体/討伐後非出現・Issue #5)、
+	# 残り約50%は何も出さず海を穏やかに保つ。
+	if roll < 0.12:
 		kind = "pirate"
 		var ps := ["raider", "corsair", "dread"]
 		id = ps[mini(isle, 2)]
 		if isle == 0:
 			id = "raider"
-	elif roll < 0.48:
+	elif roll < 0.38:
 		kind = "mob"
 		var mobs := Database.combat_mobs.keys()
 		id = mobs[randi() % mobs.size()]
-	elif roll < 0.62:
-		# 主は低確率で出現(対応島のみ)
-		var lords: Array = Database.island(isle).get("lords", [])
-		var avail := lords.filter(func(l): return not GameState.claimed_lords.has(l) and not GameState.defeated_lords.has(l))
-		if avail.is_empty():
-			kind = "mob"
-			id = Database.combat_mobs.keys()[0]
-		else:
-			kind = "lord"
-			id = avail[randi() % avail.size()]
+	elif roll < 0.50:
+		# 近海の主: 同時に1体のみ、討伐済みは二度と出さない(Issue #5)
+		if not _lord_alive():
+			var lords: Array = Database.island(isle).get("lords", [])
+			var avail := lords.filter(func(l): return not GameState.claimed_lords.has(l) and not GameState.defeated_lords.has(l))
+			if not avail.is_empty():
+				kind = "lord"
+				id = avail[randi() % avail.size()]
 	if id == "":
-		return  # スキップ帯(約38%): 何も出さず海を穏やかに保つ
+		return  # スキップ帯: 何も出さず海を穏やかに保つ
 	if kind == "lord" and bool(Database.lords.get(id, {}).get("pair", false)):
 		# 番い(ギガントセイウチ): 2体同時出現。両方倒さねば討伐扱いにならない。
-		var base := _ring_pos(70, 150)
+		var base := _lord_spawn_pos()
 		var a := _make_enemy(kind, id, base + Vector3(7, 0, 0))
 		var b := _make_enemy(kind, id, base + Vector3(-7, 0, 0))
 		a.pair_partner = b
 		b.pair_partner = a
+	elif kind == "lord":
+		_make_enemy(kind, id, _lord_spawn_pos())
 	else:
 		_make_enemy(kind, id, _ring_pos(70, 150))
+
+func _lord_alive() -> bool:
+	for e in enemies:
+		if is_instance_valid(e) and e.kind == "lord":
+			return true
+	return false
+
+# 近海の主は島(港)からある程度離れた場所に出現させる(Issue #15)
+func _lord_spawn_pos() -> Vector3:
+	var isle_pos: Vector3 = Database.island(GameState.current_island).pos
+	for i in 8:
+		var p := _ring_pos(130, 210)
+		if p.distance_to(isle_pos) > 280.0:
+			return p
+	var away := (player.global_position - isle_pos)
+	away.y = 0
+	if away.length() < 1.0:
+		away = Vector3(1, 0, 0)
+	return isle_pos + away.normalized() * 320.0
 
 func _spawn_relic() -> void:
 	var r := Area3D.new()
