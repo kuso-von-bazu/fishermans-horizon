@@ -355,18 +355,19 @@ func _spawn_enemy() -> void:
 	var kind := "mob"
 	var id := ""
 	var isle := GameState.current_island
-	# 海賊の出現頻度を抑える(Issue #1: 45%→22%)。残りは漁獲モブ中心。
+	# 海賊は控えめ(Issue #1: 22%)、戦闘モブも頻度減(Issue #3: 63%→26%)、
+	# 残り(約38%)は何も出さず海を穏やかに保つ。
 	if roll < 0.22:
 		kind = "pirate"
 		var ps := ["raider", "corsair", "dread"]
 		id = ps[mini(isle, 2)]
 		if isle == 0:
 			id = "raider"
-	elif roll < 0.85:
+	elif roll < 0.48:
 		kind = "mob"
 		var mobs := Database.combat_mobs.keys()
 		id = mobs[randi() % mobs.size()]
-	else:
+	elif roll < 0.62:
 		# 主は低確率で出現(対応島のみ)
 		var lords: Array = Database.island(isle).get("lords", [])
 		var avail := lords.filter(func(l): return not GameState.claimed_lords.has(l) and not GameState.defeated_lords.has(l))
@@ -376,6 +377,8 @@ func _spawn_enemy() -> void:
 		else:
 			kind = "lord"
 			id = avail[randi() % avail.size()]
+	if id == "":
+		return  # スキップ帯(約38%): 何も出さず海を穏やかに保つ
 	if kind == "lord" and bool(Database.lords.get(id, {}).get("pair", false)):
 		# 番い(ギガントセイウチ): 2体同時出現。両方倒さねば討伐扱いにならない。
 		var base := _ring_pos(70, 150)

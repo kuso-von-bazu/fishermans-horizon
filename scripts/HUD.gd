@@ -8,6 +8,11 @@ var lbl_loc: Label
 var bar_food: ProgressBar
 var bar_hold: ProgressBar
 var bar_armor: ProgressBar
+var lbl_food_val: Label
+var lbl_hold_val: Label
+var lbl_armor_val: Label
+var cargo_panel: PanelContainer
+var cargo_box: HBoxContainer
 var weapon_box: HBoxContainer
 var notice_box: VBoxContainer
 var crosshair: Control
@@ -86,19 +91,45 @@ func _build() -> void:
 	var bl := PanelContainer.new()
 	_style(bl)
 	root.add_child(bl)
-	bl.set_anchor(SIDE_TOP, 1)
-	bl.set_anchor(SIDE_BOTTOM, 1)
-	bl.position = Vector2(16, -150)
-	bl.size = Vector2(300, 134)
+	bl.anchor_left = 0.0
+	bl.anchor_right = 0.0
+	bl.anchor_top = 1.0
+	bl.anchor_bottom = 1.0
+	bl.offset_left = 16
+	bl.offset_right = 430
+	bl.offset_top = -150
+	bl.offset_bottom = -16
 	var bv := VBoxContainer.new()
 	bv.add_theme_constant_override("separation", 6)
 	bl.add_child(bv)
 	bar_food = _bar("食料", Color(0.4, 0.85, 0.4))
 	bar_hold = _bar("魚倉", Color(0.4, 0.6, 0.95))
 	bar_armor = _bar("装甲", Color(0.95, 0.75, 0.3))
-	bv.add_child(_bar_row("食料", bar_food))
-	bv.add_child(_bar_row("魚倉", bar_hold))
-	bv.add_child(_bar_row("装甲", bar_armor))
+	lbl_food_val = _label("", 15)
+	lbl_hold_val = _label("", 15)
+	lbl_armor_val = _label("", 15)
+	bv.add_child(_bar_row("食料", bar_food, lbl_food_val))
+	bv.add_child(_bar_row("魚倉", bar_hold, lbl_hold_val))
+	bv.add_child(_bar_row("装甲", bar_armor, lbl_armor_val))
+
+	# 漁獲物アイコン列(バーの上)
+	cargo_panel = PanelContainer.new()
+	_style(cargo_panel)
+	root.add_child(cargo_panel)
+	cargo_panel.anchor_left = 0.0
+	cargo_panel.anchor_right = 0.0
+	cargo_panel.anchor_top = 1.0
+	cargo_panel.anchor_bottom = 1.0
+	cargo_panel.offset_left = 16
+	cargo_panel.offset_right = 500
+	cargo_panel.offset_top = -246
+	cargo_panel.offset_bottom = -158
+	var cvb := VBoxContainer.new()
+	cargo_panel.add_child(cvb)
+	cvb.add_child(_label("漁獲物", 15))
+	cargo_box = HBoxContainer.new()
+	cargo_box.add_theme_constant_override("separation", 6)
+	cvb.add_child(cargo_box)
 
 	# 下中央: 武器スロット
 	weapon_box = HBoxContainer.new()
@@ -139,7 +170,9 @@ func _build() -> void:
 	root.add_child(notice_box)
 
 	GameState.notice.connect(show_notice)
+	GameState.stats_changed.connect(rebuild_cargo)
 	rebuild_weapons()
+	rebuild_cargo()
 	refresh_money_fame()
 
 func _style(p: PanelContainer) -> void:
@@ -173,19 +206,82 @@ func _bar(name: String, col: Color) -> ProgressBar:
 	b.add_theme_stylebox_override("background", bg)
 	return b
 
-func _bar_row(name: String, bar: ProgressBar) -> HBoxContainer:
+func _bar_row(name: String, bar: ProgressBar, val_label: Label = null) -> HBoxContainer:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 8)
 	var l := _label(name, 18)
-	l.custom_minimum_size = Vector2(56, 0)
+	l.custom_minimum_size = Vector2(48, 0)
 	h.add_child(l)
 	h.add_child(bar)
+	if val_label:
+		val_label.custom_minimum_size = Vector2(96, 0)
+		val_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		h.add_child(val_label)
 	return h
 
 func update_bars() -> void:
 	bar_food.value = clampf(GameState.run_food / maxf(GameState.max_food(), 1.0), 0, 1)
 	bar_hold.value = clampf(float(GameState.used_hold()) / maxf(float(GameState.max_hold()), 1.0), 0, 1)
 	bar_armor.value = clampf(GameState.run_armor / maxf(GameState.max_armor(), 1.0), 0, 1)
+	if lbl_food_val:
+		lbl_food_val.text = "%d%%" % int(bar_food.value * 100)
+	if lbl_hold_val:
+		# 魚倉: 使用/容量 と 残キャパシティ
+		lbl_hold_val.text = "%d/%d 残%d" % [GameState.used_hold(), GameState.max_hold(), GameState.free_hold()]
+	if lbl_armor_val:
+		lbl_armor_val.text = "%d/%d" % [int(GameState.run_armor), int(GameState.max_armor())]
+
+# 漁獲物アイコン列を再構築(cargo変更時=stats_changedで呼ぶ)
+func rebuild_cargo() -> void:
+	if cargo_box == null:
+		return
+	for c in cargo_box.get_children():
+		c.queue_free()
+	if GameState.cargo.is_empty():
+		cargo_box.add_child(_label("(なし)", 14))
+		return
+	for id in GameState.cargo:
+		cargo_box.add_child(_cargo_icon(id, int(GameState.cargo[id])))
+
+func _cargo_icon(id: String, qty: int) -> Control:
+	var holder := PanelContainer.new()
+	holder.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	holder.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.1, 0.14, 0.18, 0.9)
+	sb.set_corner_radius_all(5)
+	sb.set_content_margin_all(2)
+	holder.add_theme_stylebox_override("panel", sb)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 0)
+	holder.add_child(vb)
+	var path := ""
+	if Database.fish.has(id): path = "res://assets/images/fish_%s.png" % id
+	elif Database.combat_mobs.has(id): path = "res://assets/images/mob_%s.png" % id
+	elif Database.lords.has(id): path = "res://assets/images/lord_%s.png" % id
+	if path != "" and ResourceLoader.exists(path):
+		var tr := TextureRect.new()
+		tr.texture = load(path)
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.custom_minimum_size = Vector2(48, 30)
+		tr.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		vb.add_child(tr)
+	else:
+		var n := _label(_cargo_name(id), 12)
+		n.custom_minimum_size = Vector2(48, 30)
+		vb.add_child(n)
+	var cnt := _label("x%d" % qty, 13)
+	cnt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(cnt)
+	return holder
+
+func _cargo_name(id: String) -> String:
+	if Database.fish.has(id): return Database.fish[id].name
+	if Database.combat_mobs.has(id): return Database.combat_mobs[id].name
+	if Database.lords.has(id): return Database.lords[id].name
+	return id
 
 func refresh_money_fame() -> void:
 	if lbl_money:
