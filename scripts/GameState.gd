@@ -134,6 +134,7 @@ func sell_all() -> int:
 		cargo.erase(id)
 	if earned > 0:
 		add_money(earned)
+		Audio.play("sfx_sell")
 		notice.emit("漁獲を売却: +%d" % earned)
 	stats_changed.emit()
 	return earned

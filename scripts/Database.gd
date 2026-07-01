@@ -51,10 +51,10 @@ var pirates := {
 # kind: aim / lock
 # ---------------------------------------------------------------------------
 var weapons := {
-	"gatling": {"name": "ガトリングガン", "kind": "aim",  "dmg": 3,  "cooldown": 0.08, "reload": 1.0, "mag": 40, "range": 120, "price": 500,  "slip": false, "debuff": false, "homing": false, "desc": "単発威力小・連射力大。弾幕で継続ダメージ"},
-	"cannon":  {"name": "大砲",           "kind": "aim",  "dmg": 35, "cooldown": 1.4,  "reload": 1.6, "mag": 4,  "range": 140, "price": 1200, "slip": true,  "debuff": false, "homing": false, "desc": "単発威力大・連射小。海賊船にスリップ(漏水/火災)"},
-	"harpoon": {"name": "銛",             "kind": "aim",  "dmg": 18, "cooldown": 1.0,  "reload": 1.2, "mag": 6,  "range": 100, "price": 900,  "slip": false, "debuff": true,  "homing": false, "desc": "中威力。主にデバフ付与(毒/弱体)"},
-	"torpedo": {"name": "魚雷",           "kind": "lock", "dmg": 22, "cooldown": 0.9,  "reload": 2.0, "mag": 8,  "range": 160, "price": 1500, "slip": false, "debuff": false, "homing": true,  "desc": "ロックオンで追尾。空中の敵には不可"},
+	"gatling": {"name": "ガトリングガン", "kind": "aim",  "dmg": 3,  "cooldown": 0.08, "reload": 1.0, "mag": 40, "range": 120, "price": 500,  "slip": false, "debuff": false, "homing": false, "sfx": "sfx_gun",     "desc": "単発威力小・連射力大。弾幕で継続ダメージ"},
+	"cannon":  {"name": "大砲",           "kind": "aim",  "dmg": 35, "cooldown": 1.4,  "reload": 1.6, "mag": 4,  "range": 140, "price": 1200, "slip": true,  "debuff": false, "homing": false, "sfx": "sfx_cannon",  "desc": "単発威力大・連射小。海賊船にスリップ(漏水/火災)"},
+	"harpoon": {"name": "銛",             "kind": "aim",  "dmg": 18, "cooldown": 1.0,  "reload": 1.2, "mag": 6,  "range": 100, "price": 900,  "slip": false, "debuff": true,  "homing": false, "sfx": "sfx_harpoon", "desc": "中威力。主にデバフ付与(毒/弱体)"},
+	"torpedo": {"name": "魚雷",           "kind": "lock", "dmg": 22, "cooldown": 0.9,  "reload": 2.0, "mag": 8,  "range": 160, "price": 1500, "slip": false, "debuff": false, "homing": true,  "sfx": "sfx_torpedo", "desc": "ロックオンで追尾。空中の敵には不可"},
 }
 
 var rams := {

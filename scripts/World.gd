@@ -26,6 +26,7 @@ var relics_world: Array = []
 
 var slot_cooldowns: Array = [0.0, 0.0, 0.0, 0.0]
 var lock_target: Node3D = null
+var lock_marker: MeshInstance3D
 
 var spawn_timer: float = 0.0
 const MAX_FISH := 7
@@ -168,11 +169,9 @@ func _build_ocean() -> void:
 	pm.subdivide_width = 1
 	pm.subdivide_depth = 1
 	ocean.mesh = pm
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.12, 0.34, 0.48)
-	mat.metallic = 0.3
-	mat.roughness = 0.35
-	ocean.mesh.material = mat
+	var mat := ShaderMaterial.new()
+	mat.shader = load("res://shaders/ocean.gdshader")
+	ocean.material_override = mat
 	ocean.position.y = 0.0
 	add_child(ocean)
 
@@ -192,6 +191,21 @@ func _build_player() -> void:
 	player.set_script(PlayerScript)
 	add_child(player)
 	player.global_position = Database.island(0).pos + Vector3(0, 0, 40)
+	# ロックオン・マーカー(魚雷の対象表示・Issue #16)
+	lock_marker = MeshInstance3D.new()
+	var tm := TorusMesh.new()
+	tm.inner_radius = 1.6
+	tm.outer_radius = 2.1
+	lock_marker.mesh = tm
+	var mm := StandardMaterial3D.new()
+	mm.albedo_color = Color(1, 0.2, 0.15)
+	mm.emission_enabled = true
+	mm.emission = Color(1, 0.2, 0.15)
+	mm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	lock_marker.material_override = mm
+	lock_marker.rotation_degrees.x = 90
+	lock_marker.visible = false
+	add_child(lock_marker)
 
 # ---------------- フェーズ遷移 ----------------
 func _enter_dock(island_id: int, do_reset := true) -> void:
@@ -209,6 +223,7 @@ func _enter_dock(island_id: int, do_reset := true) -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	if hud:
 		hud.visible = false
+	Audio.play_bgm("bgm_port")
 	port_ui.open()
 
 func _on_set_sail() -> void:
@@ -222,6 +237,7 @@ func _on_set_sail() -> void:
 	hud.visible = true
 	hud.rebuild_weapons()
 	hud.set_location("航海中: %s 近海" % Database.island(GameState.current_island).name)
+	Audio.play_bgm("bgm_sea")
 	_dock_grace = 2.0
 	_dock_target = -1
 	slot_cooldowns = [0.0, 0.0, 0.0, 0.0]
@@ -259,6 +275,7 @@ func _forced_return(reason: String, wrecked: bool = false) -> void:
 		var lost := GameState.used_hold()
 		GameState.cargo.clear()
 		GameState.stats_changed.emit()
+		Audio.play("sfx_wreck", -2.0)
 		hud.show_big_message("船が大破! 漁獲物(%d)を失い強制帰還" % lost)
 	else:
 		hud.show_big_message(reason)
@@ -485,6 +502,7 @@ func _update_weapons(delta: float) -> void:
 				slot_cooldowns[i] = float(w.cooldown)
 
 func _fire_aim(w: Dictionary) -> void:
+	Audio.play(w.get("sfx", "sfx_gun"), -4.0, randf_range(0.95, 1.05))
 	var aim: Vector3 = player.get_aim_point()
 	var muzzle: Vector3 = player.global_position + Vector3(0, 1.5, 0)
 	var dir := (aim - muzzle).normalized()
@@ -496,6 +514,7 @@ func _fire_aim(w: Dictionary) -> void:
 	proj.setup(dir, w)
 
 func _fire_torpedo(w: Dictionary) -> void:
+	Audio.play("sfx_torpedo", -4.0)
 	var muzzle: Vector3 = player.global_position + Vector3(0, 1.0, 0)
 	var dir: Vector3 = -player.transform.basis.z
 	if lock_target and is_instance_valid(lock_target):
@@ -524,7 +543,18 @@ func _update_lock_on() -> void:
 		if d < best:
 			best = d
 			t = e
+	# 新規ロック時に効果音(Issue #16)
+	if t != null and t != lock_target:
+		Audio.play("sfx_lock", -6.0)
 	lock_target = t
+	# ロック対象を示すマーカー表示(Issue #16)
+	if lock_marker:
+		if lock_target and is_instance_valid(lock_target):
+			lock_marker.visible = true
+			lock_marker.global_position = lock_target.global_position + Vector3(0, 3.5, 0)
+			lock_marker.rotate_y(get_process_delta_time() * 3.0)
+		else:
+			lock_marker.visible = false
 
 # ---------------- ソナー ----------------
 func _update_sonar() -> void:

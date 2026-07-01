@@ -62,6 +62,7 @@ func _on_hit_body(body: Node) -> void:
 		else:
 			GameState.run_armor = maxf(GameState.run_armor - dmg, 0.0)
 			GameState.stats_changed.emit()
+		Audio.play("sfx_hit", -6.0)
 		queue_free()
 	elif body.is_in_group("island"):
 		queue_free()
@@ -73,4 +74,5 @@ func _on_hit_area(area: Area3D) -> void:
 func _apply(enemy: Node) -> void:
 	if enemy.has_method("take_hit"):
 		enemy.take_hit(dmg, slip, debuff)
+		Audio.play("sfx_enemy_hit", -9.0)
 	queue_free()

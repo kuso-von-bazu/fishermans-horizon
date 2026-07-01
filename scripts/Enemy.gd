@@ -186,6 +186,7 @@ func _leviathan_attack(dist: float) -> void:
 func _damage_player(amount: float) -> void:
 	GameState.run_armor = maxf(GameState.run_armor - amount, 0.0)
 	GameState.stats_changed.emit()
+	Audio.play("sfx_hit", -5.0)
 
 func _die() -> void:
 	died.emit(self)
