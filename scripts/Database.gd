@@ -28,14 +28,25 @@ var combat_mobs := {
 # 近海の主(ボス) 主は対応する島でしか売れない。bounty=賞金, cap=魚倉圧迫
 # ---------------------------------------------------------------------------
 var lords := {
-	"sawshark":  {"name": "電動ノコギリザメ",         "hp": 400,  "dmg": 14, "cap": 8,  "price": 800,  "bounty": 1500,  "island": 0, "ranged": false, "aerial": false, "pair": false},
-	"dumbo":     {"name": "ウミダンボ",               "hp": 550,  "dmg": 12, "cap": 9,  "price": 1000, "bounty": 2000,  "island": 0, "ranged": false, "aerial": false, "pair": false},
-	"whale":     {"name": "ヒゲマッコウナガスクジラ", "hp": 900,  "dmg": 18, "cap": 14, "price": 1800, "bounty": 3500,  "island": 1, "ranged": false, "aerial": false, "pair": false},
-	"walrus":    {"name": "ギガントセイウチ",         "hp": 480,  "dmg": 16, "cap": 7,  "price": 1200, "bounty": 4000,  "island": 1, "ranged": false, "aerial": false, "pair": true},
-	"hydra":     {"name": "ヒュドラ",                 "hp": 1100, "dmg": 20, "cap": 12, "price": 2400, "bounty": 6000,  "island": 2, "ranged": true,  "aerial": false, "pair": false},
-	"quetzal":   {"name": "ケツァルコアトル",         "hp": 1300, "dmg": 22, "cap": 13, "price": 3000, "bounty": 8000,  "island": 2, "ranged": false, "aerial": true,  "pair": false},
-	"leviathan": {"name": "レヴィアタン",             "hp": 4000, "dmg": 35, "cap": 25, "price": 9999, "bounty": 50000, "island": 3, "ranged": true,  "aerial": false, "pair": false},
+	"sawshark":  {"name": "電動ノコギリザメ",         "hp": 400,  "dmg": 14, "cap": 8,  "price": 800,  "bounty": 1500,  "island": 0, "ranged": false, "aerial": false, "pair": false, "dir": 0},
+	"dumbo":     {"name": "ウミダンボ",               "hp": 550,  "dmg": 12, "cap": 9,  "price": 1000, "bounty": 2000,  "island": 0, "ranged": false, "aerial": false, "pair": false, "dir": 135},
+	"whale":     {"name": "ヒゲマッコウナガスクジラ", "hp": 900,  "dmg": 18, "cap": 14, "price": 1800, "bounty": 3500,  "island": 1, "ranged": false, "aerial": false, "pair": false, "dir": 45},
+	"walrus":    {"name": "ギガントセイウチ",         "hp": 480,  "dmg": 16, "cap": 7,  "price": 1200, "bounty": 4000,  "island": 1, "ranged": false, "aerial": false, "pair": true,  "dir": 225},
+	"hydra":     {"name": "ヒュドラ",                 "hp": 1100, "dmg": 20, "cap": 12, "price": 2400, "bounty": 6000,  "island": 2, "ranged": true,  "aerial": false, "pair": false, "dir": 90},
+	"quetzal":   {"name": "ケツァルコアトル",         "hp": 1300, "dmg": 22, "cap": 13, "price": 3000, "bounty": 8000,  "island": 2, "ranged": false, "aerial": true,  "pair": false, "dir": 270},
+	"leviathan": {"name": "レヴィアタン",             "hp": 4000, "dmg": 35, "cap": 25, "price": 9999, "bounty": 50000, "island": 3, "ranged": true,  "aerial": false, "pair": false, "dir": 180},
 }
+
+# 方位(度・北=0=-Z, 時計回り)を八方位の日本語に
+func compass(deg: float) -> String:
+	var names := ["北", "北東", "東", "南東", "南", "南西", "西", "北西"]
+	var i := int(round(fmod(deg, 360.0) / 45.0)) % 8
+	return names[i]
+
+# 方位角(度)→ 単位方向ベクトル(北=-Z)
+func dir_vec(deg: float) -> Vector3:
+	var a := deg_to_rad(deg)
+	return Vector3(sin(a), 0, -cos(a))
 
 # ---------------------------------------------------------------------------
 # 海賊(首だけ持ち帰る=魚倉を圧迫しない) bounty で換金

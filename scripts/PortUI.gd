@@ -148,7 +148,8 @@ func show_tavern() -> void:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 12)
 		row.add_child(_portrait(lid, 72))
-		row.add_child(_p("%s\nHP:%d  賞金:%d  [%s]" % [ld.name, ld.hp, ld.bounty, st]))
+		var compass: String = Database.compass(float(ld.get("dir", 0)))
+		row.add_child(_p("%s\nHP:%d  賞金:%d  [%s]\n情報: 港の【%s】の沖にいるらしい" % [ld.name, ld.hp, ld.bounty, st, compass]))
 		content.add_child(row)
 
 # ---------------- 造船所 ----------------

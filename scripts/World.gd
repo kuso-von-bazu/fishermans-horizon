@@ -34,6 +34,9 @@ const MAX_ENEMIES := 4
 var _dock_grace: float = 0.0
 var _dock_target: int = -1   # 寄港可能圏にいる島(なければ-1)。Eで寄港(Issue #7)
 var _returning: bool = false
+var _food_choice_shown: bool = false   # この航海で食料半減の選択を出したか(Issue #17)
+var _food_dialog_open: bool = false
+var _food_dialog: CanvasLayer
 
 func _ready() -> void:
 	_build_environment()
@@ -240,6 +243,8 @@ func _on_set_sail() -> void:
 	Audio.play_bgm("bgm_sea")
 	_dock_grace = 2.0
 	_dock_target = -1
+	_food_choice_shown = false
+	_food_dialog_open = false
 	slot_cooldowns = [0.0, 0.0, 0.0, 0.0]
 
 func _on_fast_travel(island_id: int) -> void:
@@ -301,20 +306,112 @@ func _physics_process(delta: float) -> void:
 	_update_lock_on()
 	if hud:
 		hud.update_bars()
-	# 強制帰還条件
+	# 強制帰還・食料選択(Issue #17)
 	if GameState.run_armor <= 0.0:
 		_forced_return("船が大破!", true)
-	elif _food_forced_threshold() and GameState.run_food <= GameState.max_food() * 0.5 and not _can_voyage_onward():
-		_forced_return("食料が半分を切った。始まりの近海から強制帰還")
 	elif GameState.run_food <= 0.0:
-		_forced_return("食料が尽きた! 強制帰還")
-
-func _food_forced_threshold() -> bool:
-	# 「始めの島にいるうち」= 船の航続が現在島止まりで次島に行けない
-	return int(GameState.ship().range) <= GameState.current_island
+		_forced_return("食料が尽きた! 直近の島へ強制帰還")
+	elif GameState.run_food <= GameState.max_food() * 0.5:
+		if _can_voyage_onward() and _has_onward_island():
+			# 次の島へ行ける: 一度だけ帰港/続行を選択(Issue #17)
+			if not _food_choice_shown and not _food_dialog_open:
+				_food_choice_shown = true
+				_show_food_choice()
+		else:
+			# 次へ行けない(食料積載不足 or 名声不足): 半分で強制帰還
+			_forced_return("食料が半分を切った。直近の島へ強制帰還")
 
 func _can_voyage_onward() -> bool:
 	return int(GameState.ship().range) > GameState.current_island
+
+# 名声で解放済みの、現在より先の島があるか(Issue #17)
+func _has_onward_island() -> bool:
+	for iid in GameState.unlocked_islands:
+		if iid > GameState.current_island:
+			return true
+	return false
+
+func _onward_island_name() -> String:
+	var best := 999
+	for iid in GameState.unlocked_islands:
+		if iid > GameState.current_island and iid < best:
+			best = iid
+	return Database.island(best).name if best < 999 else "次の島"
+
+# 食料半減時の選択ダイアログ(Issue #17)
+func _show_food_choice() -> void:
+	_food_dialog_open = true
+	if player:
+		player.control_enabled = false
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	if _food_dialog == null:
+		_build_food_dialog()
+	_food_dialog.get_node("Root/Panel/VB/Msg").text = "食料が半分を切りました。\n直近の島(%s)へ帰港するか、%s を目指しますか?\n(目指して食料が尽きた場合は直近の島へ強制帰還します)" % [
+		Database.island(GameState.current_island).name, _onward_island_name()]
+	_food_dialog.visible = true
+
+func _build_food_dialog() -> void:
+	_food_dialog = CanvasLayer.new()
+	_food_dialog.layer = 25
+	add_child(_food_dialog)
+	var root := Control.new()
+	root.name = "Root"
+	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_food_dialog.add_child(root)
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.5)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.add_child(dim)
+	var cc := CenterContainer.new()
+	cc.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.add_child(cc)
+	var panel := PanelContainer.new()
+	panel.name = "Panel"
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.08, 0.12, 0.16, 0.98)
+	sb.set_corner_radius_all(12)
+	sb.set_content_margin_all(20)
+	sb.set_border_width_all(2)
+	sb.border_color = Color(0.3, 0.6, 0.7)
+	panel.add_theme_stylebox_override("panel", sb)
+	cc.add_child(panel)
+	var vb := VBoxContainer.new()
+	vb.name = "VB"
+	vb.add_theme_constant_override("separation", 16)
+	panel.add_child(vb)
+	var msg := Label.new()
+	msg.name = "Msg"
+	msg.add_theme_font_size_override("font_size", 22)
+	msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(msg)
+	var hb := HBoxContainer.new()
+	hb.add_theme_constant_override("separation", 16)
+	hb.alignment = BoxContainer.ALIGNMENT_CENTER
+	vb.add_child(hb)
+	var b1 := Button.new()
+	b1.text = "直近の島へ帰港する"
+	b1.add_theme_font_size_override("font_size", 20)
+	b1.pressed.connect(_food_return)
+	hb.add_child(b1)
+	var b2 := Button.new()
+	b2.text = "次の島を目指す"
+	b2.add_theme_font_size_override("font_size", 20)
+	b2.pressed.connect(_food_continue)
+	hb.add_child(b2)
+
+func _food_return() -> void:
+	_food_dialog.visible = false
+	_food_dialog_open = false
+	GameState.notice.emit("%s へ帰港" % Database.island(GameState.current_island).name)
+	_enter_dock(GameState.current_island, true)
+
+func _food_continue() -> void:
+	_food_dialog.visible = false
+	_food_dialog_open = false
+	if player:
+		player.control_enabled = true
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	GameState.notice.emit("%s を目指す" % _onward_island_name())
 
 func _update_food(delta: float) -> void:
 	GameState.run_food = maxf(GameState.run_food - delta * 1.5, 0.0)
@@ -429,13 +526,13 @@ func _spawn_enemy() -> void:
 		return  # スキップ帯: 何も出さず海を穏やかに保つ
 	if kind == "lord" and bool(Database.lords.get(id, {}).get("pair", false)):
 		# 番い(ギガントセイウチ): 2体同時出現。両方倒さねば討伐扱いにならない。
-		var base := _lord_spawn_pos()
+		var base := _lord_spawn_pos(id)
 		var a := _make_enemy(kind, id, base + Vector3(7, 0, 0))
 		var b := _make_enemy(kind, id, base + Vector3(-7, 0, 0))
 		a.pair_partner = b
 		b.pair_partner = a
 	elif kind == "lord":
-		_make_enemy(kind, id, _lord_spawn_pos())
+		_make_enemy(kind, id, _lord_spawn_pos(id))
 	else:
 		_make_enemy(kind, id, _ring_pos(70, 150))
 
@@ -445,18 +542,16 @@ func _lord_alive() -> bool:
 			return true
 	return false
 
-# 近海の主は島(港)からある程度離れた場所に出現させる(Issue #15)
-func _lord_spawn_pos() -> Vector3:
+# 近海の主は島(港)から一定距離、かつ主ごとの決まった方角の沖に出現(Issue #15,#18)
+func _lord_spawn_pos(id: String) -> Vector3:
 	var isle_pos: Vector3 = Database.island(GameState.current_island).pos
-	for i in 8:
-		var p := _ring_pos(130, 210)
-		if p.distance_to(isle_pos) > 280.0:
-			return p
-	var away := (player.global_position - isle_pos)
-	away.y = 0
-	if away.length() < 1.0:
-		away = Vector3(1, 0, 0)
-	return isle_pos + away.normalized() * 320.0
+	var deg: float = float(Database.lords.get(id, {}).get("dir", 0))
+	var dirv := Database.dir_vec(deg)
+	var dist := randf_range(320.0, 430.0)
+	# 方角に少し揺らぎを加える
+	var jitter := deg_to_rad(randf_range(-15.0, 15.0))
+	dirv = dirv.rotated(Vector3.UP, jitter)
+	return isle_pos + dirv * dist
 
 func _spawn_relic() -> void:
 	var r := Area3D.new()

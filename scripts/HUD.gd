@@ -364,6 +364,16 @@ func _draw_sonar() -> void:
 	var range_m := 220.0
 	var pp := _player_node.global_position
 	var yaw := _player_node.rotation.y
+	# 東西南北(Issue #18)。自機の向きが上になるよう回転して表示
+	var font := ThemeDB.fallback_font
+	var compass := [["北", 0.0, -1.0], ["東", 1.0, 0.0], ["南", 0.0, 1.0], ["西", -1.0, 0.0]]
+	for c in compass:
+		var wx: float = c[1]
+		var wz: float = c[2]
+		var sx := wx * cos(yaw) - wz * sin(yaw)
+		var sy := wx * sin(yaw) + wz * cos(yaw)
+		var pos := center + Vector2(sx, sy) * (r - 12) - Vector2(6, -5)
+		sonar.draw_string(font, pos, c[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.85, 0.97, 1.0))
 	for b in _sonar_blips:
 		var rel: Vector3 = b.pos - pp
 		# プレイヤーの向きを上にする回転
