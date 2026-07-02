@@ -216,6 +216,8 @@ func _enter_dock(island_id: int, do_reset := true) -> void:
 	_dock_target = -1
 	_returning = false
 	GameState.current_island = island_id
+	if not GameState.visited_islands.has(island_id):
+		GameState.visited_islands.append(island_id)   # 到達記録(Issue #19)
 	if do_reset:
 		GameState.dock_reset()
 	var isle_pos: Vector3 = Database.island(island_id).pos

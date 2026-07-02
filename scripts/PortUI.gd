@@ -223,14 +223,17 @@ func show_travel() -> void:
 	content.add_child(_h("航路 — 既知の島へファストトラベル", 22))
 	content.add_child(_p("食料が足りる既知の島へ移動できます(帰りのモブ襲撃なし)。"))
 	for isle in Database.islands:
-		if not GameState.unlocked_islands.has(isle.id):
-			content.add_child(_p("・%s  [未開放 / 必要名声 %d]" % [isle.name, isle.fame_req]))
-			continue
 		if isle.id == GameState.current_island:
 			content.add_child(_p("・%s  [現在地]" % isle.name))
 			continue
-		content.add_child(_btn("%s へ移動" % isle.name, func():
-			emit_signal("fast_travel_requested", isle.id)))
+		if GameState.visited_islands.has(isle.id):
+			# 実際に到達済みの島のみファストトラベル可(Issue #19)
+			content.add_child(_btn("%s へ移動" % isle.name, func():
+				emit_signal("fast_travel_requested", isle.id)))
+		elif GameState.unlocked_islands.has(isle.id):
+			content.add_child(_p("・%s  [未到達 / 自力で航行して到達すればFT可]" % isle.name))
+		else:
+			content.add_child(_p("・%s  [未開放 / 必要名声 %d]" % [isle.name, isle.fame_req]))
 
 # ---------------- helpers ----------------
 func _item_name(id: String) -> String:

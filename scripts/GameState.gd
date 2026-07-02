@@ -21,7 +21,8 @@ var heads: Dictionary = {}
 var relics: int = 0   # 旧文明の遺産(換金待ち)の総額
 
 var current_island: int = 0
-var unlocked_islands: Array[int] = [0]
+var unlocked_islands: Array[int] = [0]   # 名声で入港可能になった島
+var visited_islands: Array[int] = [0]    # 実際に寄港して到達した島(ファストトラベル可・Issue #19)
 var defeated_lords: Array[String] = []   # 討伐済みで賞金未受領
 var claimed_lords: Array[String] = []    # 賞金受領済み
 
