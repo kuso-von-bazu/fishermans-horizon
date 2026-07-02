@@ -221,19 +221,24 @@ func show_travel() -> void:
 	_refresh_header()
 	_clear()
 	content.add_child(_h("航路 — 既知の島へファストトラベル", 22))
-	content.add_child(_p("食料が足りる既知の島へ移動できます(帰りのモブ襲撃なし)。"))
+	content.add_child(_p("到達済みの島へ移動できます(帰りのモブ襲撃なし)。未到達の島へは方角を頼りに自力で航行してください。"))
+	var here: Vector3 = Database.island(GameState.current_island).pos
 	for isle in Database.islands:
 		if isle.id == GameState.current_island:
 			content.add_child(_p("・%s  [現在地]" % isle.name))
 			continue
+		# 現在地から見た島の方角(Issue #22)
+		var d: Vector3 = isle.pos - here
+		var deg: float = rad_to_deg(atan2(d.x, -d.z))
+		var compass: String = Database.compass(deg)
+		var dist: int = int(d.length())
 		if GameState.visited_islands.has(isle.id):
-			# 実際に到達済みの島のみファストトラベル可(Issue #19)
-			content.add_child(_btn("%s へ移動" % isle.name, func():
+			content.add_child(_btn("%s へ移動  (方角:%s)" % [isle.name, compass], func():
 				emit_signal("fast_travel_requested", isle.id)))
 		elif GameState.unlocked_islands.has(isle.id):
-			content.add_child(_p("・%s  [未到達 / 自力で航行して到達すればFT可]" % isle.name))
+			content.add_child(_p("・%s  [未到達]  方角:【%s】 約%dの距離 — 自力航行で到達可" % [isle.name, compass, dist]))
 		else:
-			content.add_child(_p("・%s  [未開放 / 必要名声 %d]" % [isle.name, isle.fame_req]))
+			content.add_child(_p("・%s  [未開放 / 必要名声 %d]  方角:【%s】" % [isle.name, isle.fame_req, compass]))
 
 # ---------------- helpers ----------------
 func _item_name(id: String) -> String:

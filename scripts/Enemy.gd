@@ -23,6 +23,7 @@ var _debuff_t: float = 0.0
 var _scale: float = 1.0
 var _rig: Node3D
 var _name_label: Label3D
+var _hp_gauge: MeshInstance3D
 var player: Node3D
 var pair_partner: Node = null
 var _bob_phase: float = 0.0
@@ -83,6 +84,18 @@ func _ready() -> void:
 	_name_label.no_depth_test = true
 	_name_label.modulate = Color(1, 0.7, 0.7) if kind != "mob" else Color(0.8, 1, 0.8)
 	add_child(_name_label)
+	# 円形HPゲージ(Issue #21): カメラを向く板+放射状シェーダ
+	_hp_gauge = MeshInstance3D.new()
+	var q := QuadMesh.new()
+	var gsz: float = clampf(1.4 * _scale, 1.4, 4.0)
+	q.size = Vector2(gsz, gsz)
+	_hp_gauge.mesh = q
+	var gm := ShaderMaterial.new()
+	gm.shader = load("res://shaders/hpgauge.gdshader")
+	gm.set_shader_parameter("fill", 1.0)
+	_hp_gauge.material_override = gm
+	_hp_gauge.position.y = 3.0 * _scale + fly_height + 0.3
+	add_child(_hp_gauge)
 	_bob_phase = randf() * TAU
 	var ps := get_tree().get_first_node_in_group("player")
 	if ps:
@@ -119,8 +132,8 @@ func _physics_process(delta: float) -> void:
 			return
 	if _debuff_t > 0.0:
 		_debuff_t -= delta
-	if _name_label:
-		_name_label.text = "%s  %d/%d" % [def.name, maxi(int(hp), 0), int(max_hp)]
+	if _hp_gauge:
+		_hp_gauge.material_override.set_shader_parameter("fill", clampf(hp / maxf(max_hp, 1.0), 0.0, 1.0))
 	# 揺れ(水面/飛行のバウンド)
 	if _rig:
 		_bob_phase += delta * 1.6
