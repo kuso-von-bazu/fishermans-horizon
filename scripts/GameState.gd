@@ -32,6 +32,24 @@ var run_armor: float = 0.0
 var fire_burn: float = 0.0   # ヒュドラの炎=時間経過で回復するスリップ被害
 var at_sea: bool = false
 
+# ゲーム全体を初期状態へ(勝利後のリスタート用。オートロードはシーンreloadで消えないため)
+func reset_all() -> void:
+	money = 200
+	fame = 0
+	ship_id = "raft"
+	weapons = ["gatling"]
+	ram_id = "none"
+	cargo = {}
+	heads = {}
+	relics = 0
+	current_island = 0
+	unlocked_islands = [0]
+	visited_islands = [0]
+	defeated_lords = []
+	claimed_lords = []
+	fire_burn = 0.0
+	dock_reset()
+
 func ship() -> Dictionary:
 	return Database.ships[ship_id]
 

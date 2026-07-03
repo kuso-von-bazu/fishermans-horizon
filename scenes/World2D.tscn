@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://bfh2dworld01"]
+
+[ext_resource type="Script" path="res://scripts2d/World2D.gd" id="1_world2d"]
+
+[node name="World2D" type="Node2D"]
+script = ExtResource("1_world2d")
