@@ -37,6 +37,7 @@ var _returning: bool = false
 var _food_choice_shown: bool = false   # この航海で食料半減の選択を出したか(Issue #17)
 var _food_dialog_open: bool = false
 var _food_dialog: CanvasLayer
+var _food_msg: Label
 
 func _ready() -> void:
 	_build_environment()
@@ -71,6 +72,7 @@ func _maybe_screenshot() -> void:
 	var want_port := false
 	var want_sea := false
 	var want_boss := false
+	var want_food := false
 	for a in args:
 		if a.begins_with("--shot"):
 			want_shot = true
@@ -80,12 +82,20 @@ func _maybe_screenshot() -> void:
 				want_sea = true
 			if a.find("boss") != -1:
 				want_boss = true
+			if a.find("food") != -1:
+				want_food = true
 	if not want_shot:
 		return
 	await get_tree().create_timer(0.6).timeout
 	if want_sea:
 		title.visible = false
 		_on_set_sail()
+		if want_food:
+			# 検証: 食料半減の選択ダイアログを直接表示(Issue #23の修正確認)
+			GameState.unlocked_islands = [0, 1]
+			GameState.visited_islands = [0]
+			_show_food_choice()
+			await get_tree().create_timer(0.5).timeout
 		if want_boss:
 			# 検証用ショーケース: 開けた海で各3Dモデルを近距離一列に並べて確認
 			player.control_enabled = false
@@ -348,7 +358,7 @@ func _show_food_choice() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	if _food_dialog == null:
 		_build_food_dialog()
-	_food_dialog.get_node("Root/Panel/VB/Msg").text = "食料が半分を切りました。\n直近の島(%s)へ帰港するか、%s を目指しますか?\n(目指して食料が尽きた場合は直近の島へ強制帰還します)" % [
+	_food_msg.text = "食料が半分を切りました。\n直近の島(%s)へ帰港するか、%s を目指しますか?\n(目指して食料が尽きた場合は直近の島へ強制帰還します)" % [
 		Database.island(GameState.current_island).name, _onward_island_name()]
 	_food_dialog.visible = true
 
@@ -386,6 +396,7 @@ func _build_food_dialog() -> void:
 	msg.add_theme_font_size_override("font_size", 22)
 	msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(msg)
+	_food_msg = msg
 	var hb := HBoxContainer.new()
 	hb.add_theme_constant_override("separation", 16)
 	hb.alignment = BoxContainer.ALIGNMENT_CENTER
