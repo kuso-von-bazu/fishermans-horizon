@@ -18,10 +18,10 @@ var fish := {
 # 戦闘モブ(倒せば漁獲可能) hp/dmg/cap/price + flags
 # ---------------------------------------------------------------------------
 var combat_mobs := {
-	"narwhal":       {"name": "ユニコーン",     "hp": 110, "dmg": 4,  "cap": 3, "price": 150, "ranged": false, "aerial": false, "speed": 8.0,  "color": Color(0.85,0.85,0.9)},
-	"seahunter":     {"name": "シーハンター",   "hp": 250, "dmg": 8,  "cap": 4, "price": 320, "ranged": false, "aerial": false, "speed": 9.0,  "color": Color(0.2,0.2,0.25)},
-	"ornithocheirus":{"name": "オルニケイトス", "hp": 160, "dmg": 7,  "cap": 3, "price": 280, "ranged": false, "aerial": true,  "speed": 14.0, "color": Color(0.7,0.6,0.4)},
-	"wyrm":          {"name": "ワイアーム",     "hp": 400, "dmg": 12, "cap": 4, "price": 500, "ranged": true,  "aerial": false, "speed": 7.0,  "color": Color(0.6,0.2,0.2)},
+	"narwhal":       {"name": "ユニコーン",     "hp": 110, "dmg": 6,  "cap": 3, "price": 150, "ranged": false, "aerial": false, "speed": 8.0,  "color": Color(0.85,0.85,0.9)},
+	"seahunter":     {"name": "シーハンター",   "hp": 250, "dmg": 12,  "cap": 4, "price": 320, "ranged": false, "aerial": false, "speed": 9.0,  "color": Color(0.2,0.2,0.25)},
+	"ornithocheirus":{"name": "オルニケイトス", "hp": 160, "dmg": 11, "cap": 3, "price": 280, "ranged": false, "aerial": true,  "speed": 21.0, "color": Color(0.7,0.6,0.4)},
+	"wyrm":          {"name": "ワイアーム",     "hp": 400, "dmg": 18, "cap": 4, "price": 500, "ranged": true,  "aerial": false, "speed": 7.0,  "color": Color(0.6,0.2,0.2)},
 }
 
 # 島tierごとの戦闘モブ出現重み(#38)。序盤=ユニコーン中心→終盤=ワイアーム中心。
@@ -54,13 +54,13 @@ var harpoon_debuffs := {
 # 近海の主(ボス) 主は対応する島でしか売れない。bounty=賞金, cap=魚倉圧迫
 # ---------------------------------------------------------------------------
 var lords := {
-	"sawshark":  {"name": "電動ノコギリザメ",         "hp": 560,  "dmg": 14, "cap": 8,  "price": 800,  "bounty": 1500,  "island": 0, "ranged": false, "aerial": false, "pair": false, "dir": 0},
-	"dumbo":     {"name": "ウミダンボ",               "hp": 770,  "dmg": 12, "cap": 9,  "price": 1000, "bounty": 2000,  "island": 0, "ranged": false, "aerial": false, "pair": false, "dir": 135},
-	"whale":     {"name": "ヒゲマッコウナガスクジラ", "hp": 1260,  "dmg": 18, "cap": 14, "price": 1800, "bounty": 3500,  "island": 1, "ranged": false, "aerial": false, "pair": false, "dir": 45},
-	"walrus":    {"name": "ギガントセイウチ",         "hp": 670,  "dmg": 16, "cap": 7,  "price": 1200, "bounty": 4000,  "island": 1, "ranged": false, "aerial": false, "pair": true,  "dir": 225},
-	"hydra":     {"name": "ヒュドラ",                 "hp": 1540, "dmg": 20, "cap": 12, "price": 2400, "bounty": 6000,  "island": 2, "ranged": true,  "aerial": false, "pair": false, "dir": 90},
-	"quetzal":   {"name": "ケツァルコアトル",         "hp": 1820, "dmg": 22, "cap": 13, "price": 3000, "bounty": 8000,  "island": 2, "ranged": false, "aerial": true,  "pair": false, "dir": 270},
-	"leviathan": {"name": "レヴィアタン",             "hp": 5200, "dmg": 35, "cap": 25, "price": 9999, "bounty": 50000, "island": 3, "ranged": true,  "aerial": false, "pair": false, "dir": 180},
+	"sawshark":  {"name": "電動ノコギリザメ",         "hp": 730,  "dmg": 21, "cap": 8,  "price": 800,  "bounty": 1500,  "fame": 8,  "island": 0, "ranged": false, "aerial": false, "pair": false, "dir": 0},
+	"dumbo":     {"name": "ウミダンボ",               "hp": 1000, "dmg": 18, "cap": 9,  "price": 1000, "bounty": 2000,  "fame": 10, "island": 0, "ranged": false, "aerial": false, "pair": false, "dir": 135},
+	"whale":     {"name": "ヒゲマッコウナガスクジラ", "hp": 1640, "dmg": 27, "cap": 14, "price": 1800, "bounty": 3500,  "fame": 16, "island": 1, "ranged": false, "aerial": false, "pair": false, "dir": 45},
+	"walrus":    {"name": "ギガントセイウチ",         "hp": 870,  "dmg": 24, "cap": 7,  "price": 1200, "bounty": 4000,  "fame": 18, "island": 1, "ranged": false, "aerial": false, "pair": true,  "dir": 225},
+	"hydra":     {"name": "ヒュドラ",                 "hp": 2000, "dmg": 30, "cap": 12, "price": 2400, "bounty": 6000,  "fame": 25, "island": 2, "ranged": true,  "aerial": false, "pair": false, "dir": 90},
+	"quetzal":   {"name": "ケツァルコアトル",         "hp": 2370, "dmg": 33, "cap": 13, "price": 3000, "bounty": 8000,  "fame": 30, "island": 2, "ranged": false, "aerial": true,  "pair": false, "dir": 270},
+	"leviathan": {"name": "レヴィアタン",             "hp": 6800, "dmg": 50, "cap": 25, "price": 9999, "bounty": 50000, "fame": 60, "island": 3, "ranged": true,  "aerial": false, "pair": false, "dir": 180},
 }
 
 # 方位(度・北=0=-Z, 時計回り)を八方位の日本語に
@@ -78,9 +78,9 @@ func dir_vec(deg: float) -> Vector3:
 # 海賊(首だけ持ち帰る=魚倉を圧迫しない) bounty で換金
 # ---------------------------------------------------------------------------
 var pirates := {
-	"raider":   {"name": "海賊(小)", "hp": 220, "dmg": 7,  "bounty": 90,  "fame": 1, "ranged": true, "color": Color(0.4,0.3,0.2)},
-	"corsair":  {"name": "海賊(中)", "hp": 450, "dmg": 10, "bounty": 220, "fame": 2, "ranged": true, "color": Color(0.35,0.25,0.15)},
-	"dread":    {"name": "海賊(大)", "hp": 900, "dmg": 15, "bounty": 500, "fame": 4, "ranged": true, "color": Color(0.25,0.18,0.1)},
+	"raider":   {"name": "海賊(小)", "hp": 220, "dmg": 11,  "bounty": 90,  "fame": 1, "ranged": true, "color": Color(0.4,0.3,0.2)},
+	"corsair":  {"name": "海賊(中)", "hp": 450, "dmg": 16, "bounty": 220, "fame": 2, "ranged": true, "color": Color(0.35,0.25,0.15)},
+	"dread":    {"name": "海賊(大)", "hp": 900, "dmg": 24, "bounty": 500, "fame": 4, "ranged": true, "color": Color(0.25,0.18,0.1)},
 }
 
 # ---------------------------------------------------------------------------
@@ -118,9 +118,9 @@ var ships := {
 # ---------------------------------------------------------------------------
 var islands := [
 	{"id": 0, "name": "始まりの島",   "fame_req": 0,   "price_mult": 1.0, "pos": Vector3(0, 0, 0),       "spawn": ["sardine","mackerel"], "lords": ["sawshark","dumbo"]},
-	{"id": 1, "name": "潮鳴りの島",   "fame_req": 5,   "price_mult": 1.6, "pos": Vector3(900, 0, -300),  "spawn": ["bonito","squid","mackerel"], "lords": ["whale","walrus"]},
-	{"id": 2, "name": "嵐越えの島",   "fame_req": 20,  "price_mult": 2.4, "pos": Vector3(1500, 0, 600),  "spawn": ["octopus","squid","bonito"], "lords": ["hydra","quetzal"]},
-	{"id": 3, "name": "果ての島",     "fame_req": 60,  "price_mult": 3.6, "pos": Vector3(2400, 0, -200), "spawn": ["octopus","bonito"], "lords": ["leviathan"]},
+	{"id": 1, "name": "潮鳴りの島",   "fame_req": 12,   "price_mult": 1.6, "pos": Vector3(900, 0, -300),  "spawn": ["bonito","squid","mackerel"], "lords": ["whale","walrus"]},
+	{"id": 2, "name": "嵐越えの島",   "fame_req": 45,  "price_mult": 2.4, "pos": Vector3(1500, 0, 600),  "spawn": ["octopus","squid","bonito"], "lords": ["hydra","quetzal"]},
+	{"id": 3, "name": "果ての島",     "fame_req": 120,  "price_mult": 3.6, "pos": Vector3(2400, 0, -200), "spawn": ["octopus","bonito"], "lords": ["leviathan"]},
 ]
 
 func island(idx: int) -> Dictionary:

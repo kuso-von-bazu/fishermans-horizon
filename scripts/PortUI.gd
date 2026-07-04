@@ -155,6 +155,9 @@ func show_tavern() -> void:
 				row.add_child(_btn("→%s" % GameState.jobs[jid].name, func():
 					GameState.jobchange(m, jid)
 					show_tavern()))
+		row.add_child(_btn("解雇", func():
+			GameState.fire_crew(m)
+			show_tavern()))
 		content.add_child(row)
 	var hire_row := HBoxContainer.new()
 	hire_row.add_theme_constant_override("separation", 8)
@@ -183,7 +186,7 @@ func show_tavern() -> void:
 func show_shipyard() -> void:
 	_refresh_header()
 	_clear()
-	content.add_child(_h("造船所 — 船・武器の購入(下取りあり)", 22))
+	content.add_child(_h("造船所 — 船・武器の購入(船の下取りは定価の20%)", 22))
 	var tier := GameState.current_island
 	content.add_child(_h("船", 18))
 	for sid in Database.ships:
@@ -191,7 +194,8 @@ func show_shipyard() -> void:
 		if int(s.range) > tier:
 			continue  # 先の島でしか売らない
 		var owned: bool = sid == GameState.ship_id
-		var cost := maxi(int(s.price) - int(GameState.ship().trade), 0)
+		var trade := int(float(GameState.ship().price) * 0.2)   # #51: 定価の20%下取り
+		var cost := maxi(int(s.price) - trade, 0)
 		var line := "%s  燃料%d 魚倉%d 装甲%d 武器枠%d 速%.0f" % [s.name, s.food, s.hold, s.armor, s.slots, s.speed]
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 10)

@@ -303,11 +303,25 @@ func _spawn_fish() -> void:
 	if randf() < 0.08:
 		pool.append("grouper")
 	var id: String = pool[randi() % pool.size()]
+	# #53: 島の領域内(入港圏+余白)には魚群を出さない
+	var pos := _ring_pos(40, 160)
+	for attempt in 6:
+		var ok := true
+		for isle_node in islands:
+			if pos.distance_to(isle_node.global_position) < 340.0:
+				ok = false
+				break
+		if ok:
+			break
+		pos = _ring_pos(40, 160)
+	for isle_node in islands:
+		if pos.distance_to(isle_node.global_position) < 340.0:
+			return   # 6回試して島の上なら今回は見送り
 	var fs := Node2D.new()
 	fs.set_script(FishSchoolScript)
 	fs.setup(id, randi_range(3, 7))
 	add_child(fs)
-	fs.global_position = _ring_pos(40, 160)
+	fs.global_position = pos
 	fish_schools.append(fs)
 
 func _spawn_enemy() -> void:
@@ -510,8 +524,27 @@ func _update_sonar() -> void:
 	hud.set_sonar_data(player, blips)
 
 # ---------------- 食料半減の選択(#17/#23) ----------------
+# #24: 船の隠しrange値でなく、仕様どおり「燃料積載で次の島に到達できるか」で判定。
+# 半燃料時点の残燃料で、現在位置から最寄りの先の島まで届くかを見積もる。
 func _can_voyage_onward() -> bool:
-	return int(GameState.ship().range) > GameState.current_island
+	var next := _nearest_onward_island()
+	if next < 0:
+		return false
+	var dist: float = player.global_position.distance_to(island_pos(next))
+	var travel_time: float = dist / maxf(player.max_speed, 1.0)
+	var fuel_needed: float = travel_time * 1.5 * GameState.food_drain_mult()
+	return GameState.max_food() * 0.5 >= fuel_needed * 0.85
+
+func _nearest_onward_island() -> int:
+	var best := -1
+	var best_d := 1e18
+	for iid in GameState.unlocked_islands:
+		if iid > GameState.current_island:
+			var d: float = player.global_position.distance_to(island_pos(iid))
+			if d < best_d:
+				best_d = d
+				best = iid
+	return best
 
 func _has_onward_island() -> bool:
 	for iid in GameState.unlocked_islands:

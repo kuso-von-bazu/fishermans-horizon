@@ -40,7 +40,7 @@ func hire_crew(job_id: String) -> bool:
 	add_money(-int(j.hire))
 	var base := 3 if job_id != "sailor" else 1
 	var m := {
-		"name": CREW_NAMES[randi() % CREW_NAMES.size()],
+		"name": _unique_crew_name(),
 		"job": job_id,
 		"hp": base + randi_range(0, 2), "agi": base + randi_range(0, 2),
 		"sht": base + randi_range(0, 2), "int_": base + randi_range(0, 2),
@@ -51,10 +51,32 @@ func hire_crew(job_id: String) -> bool:
 	stats_changed.emit()
 	return true
 
+# 使われていない名前を選ぶ(#52)。尽きたら「二代目〜」。
+func _unique_crew_name() -> String:
+	var used := []
+	for c in crew:
+		used.append(c.name)
+	var avail := CREW_NAMES.filter(func(n): return not used.has(n))
+	if not avail.is_empty():
+		return avail[randi() % avail.size()]
+	var base: String = CREW_NAMES[randi() % CREW_NAMES.size()]
+	var i := 2
+	while used.has("%s(%d)" % [base, i]):
+		i += 1
+	return "%s(%d)" % [base, i]
+
+# 解雇(#48)
+func fire_crew(m: Dictionary) -> void:
+	crew.erase(m)
+	notice.emit("%s を解雇した" % m.name)
+	stats_changed.emit()
+
 func can_jobchange(m: Dictionary, job_id: String) -> bool:
 	var j: Dictionary = jobs[job_id]
 	if not j.has("req") or m.job == job_id:
 		return false
+	if m.get("changed", false):
+		return false   # #49: クラスチェンジは1度だけ
 	var req: Array = j.req
 	if req[0] == "total":
 		return int(m.hp) + int(m.agi) + int(m.sht) + int(m.int_) + int(m.vis) >= int(req[1])
@@ -62,6 +84,7 @@ func can_jobchange(m: Dictionary, job_id: String) -> bool:
 
 func jobchange(m: Dictionary, job_id: String) -> void:
 	m.job = job_id
+	m.changed = true   # #49
 	notice.emit("%s は %s にジョブチェンジ!" % [m.name, jobs[job_id].name])
 	stats_changed.emit()
 
@@ -307,7 +330,9 @@ func equip_weapon(slot: int, wid: String) -> void:
 		stats_changed.emit()
 
 func buy_ship(new_id: String) -> bool:
-	var cost := int(Database.ships[new_id].price) - int(ship().trade)
+	# 下取りは現在の船の定価の20%(#51)
+	var trade_in := int(float(ship().price) * 0.2)
+	var cost := int(Database.ships[new_id].price) - trade_in
 	cost = maxi(cost, 0)
 	if money < cost:
 		notice.emit("資金が足りません")

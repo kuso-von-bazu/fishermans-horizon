@@ -58,16 +58,17 @@ const PIX := {
 func _build_ship_texture(with_ram: bool, ram_steel: bool) -> ImageTexture:
 	var w := SHIP_MAP[0].length()
 	var h := SHIP_MAP.size()
-	var ram_rows := 4 if with_ram else 0
+	var ram_rows := 6 if with_ram else 0
 	var img := Image.create(w, h + ram_rows, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
-	# 衝角(#36): 船首(上)に金属スパイク
+	# 衝角(#36/#43): 船首(進行方向)に尖った二等辺三角形
 	if with_ram:
-		var rc := Color(0.75, 0.78, 0.82) if ram_steel else Color(0.45, 0.42, 0.38)
+		var rc := Color(0.78, 0.82, 0.88) if ram_steel else Color(0.5, 0.46, 0.4)
 		var cx := w / 2
 		for ry in ram_rows:
-			var half := ram_rows - ry   # 上ほど細い
-			for x in range(cx - half / 2 - 1, cx + half / 2 + 1):
+			# ry=0(先端)は幅1、下へ行くほど広がる二等辺三角形
+			var half: int = int(round(float(ry) / float(ram_rows - 1) * 3.0))
+			for x in range(cx - half - 1, cx + half + 1):
 				if x >= 0 and x < w:
 					img.set_pixel(x, ry, rc)
 	for y in h:
@@ -106,19 +107,32 @@ func _build_visual() -> void:
 	smoke.scale_amount_max = 6.0
 	smoke.color = Color(0.85, 0.85, 0.88, 0.35)
 	add_child(smoke)
-	# 航跡パーティクル
+	# 航跡パーティクル(#46: 長く残る白い引き波+舷側のしぶき)
 	_wake = CPUParticles2D.new()
-	_wake.amount = 24
-	_wake.lifetime = 1.2
+	_wake.amount = 48
+	_wake.lifetime = 2.4
 	_wake.position = Vector2(0, 42 * sc)
 	_wake.direction = Vector2(0, 1)
-	_wake.spread = 20.0
-	_wake.initial_velocity_min = 10.0
-	_wake.initial_velocity_max = 30.0
-	_wake.scale_amount_min = 2.0
-	_wake.scale_amount_max = 5.0
-	_wake.color = Color(0.85, 0.95, 1.0, 0.5)
+	_wake.spread = 26.0
+	_wake.initial_velocity_min = 14.0
+	_wake.initial_velocity_max = 40.0
+	_wake.scale_amount_min = 2.5
+	_wake.scale_amount_max = 7.0
+	_wake.color = Color(0.9, 0.97, 1.0, 0.55)
 	add_child(_wake)
+	for side in [-1.0, 1.0]:
+		var spray := CPUParticles2D.new()
+		spray.amount = 16
+		spray.lifetime = 0.8
+		spray.position = Vector2(side * 12 * sc, -20 * sc)
+		spray.direction = Vector2(side, 0.4)
+		spray.spread = 30.0
+		spray.initial_velocity_min = 20.0
+		spray.initial_velocity_max = 46.0
+		spray.scale_amount_min = 1.5
+		spray.scale_amount_max = 3.5
+		spray.color = Color(0.95, 1.0, 1.0, 0.4)
+		add_child(spray)
 
 func _ship_scale() -> float:
 	return clampf(0.9 + float(GameState.ship().armor) / 1500.0, 0.9, 1.8)
@@ -167,7 +181,12 @@ func _handle_ram() -> void:
 	for i in get_slide_collision_count():
 		var col = get_slide_collision(i).get_collider()
 		if col and col.is_in_group("enemy") and col.has_method("take_hit"):
-			col.take_hit(rd * (0.5 + velocity.length() / maxf(max_speed, 1.0)), false, false)
-			Audio.play("sfx_enemy_hit", -6.0)
+			var ram_dmg := rd * (0.5 + velocity.length() / maxf(max_speed, 1.0))
+			col.take_hit(ram_dmg, false, false)
+			# #54: 突撃の手応え(通知+ノックバック+強い音)
+			GameState.notice.emit("衝角の一撃! %d ダメージ" % int(ram_dmg))
+			if col is CharacterBody2D:
+				col.velocity += velocity.normalized() * 220.0
+			Audio.play("sfx_cannon", -6.0, 1.3)
 			_ram_cd = 0.8
 			return

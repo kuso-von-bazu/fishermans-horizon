@@ -271,5 +271,8 @@ func _die() -> void:
 			else:
 				if not GameState.defeated_lords.has(id) and not GameState.claimed_lords.has(id):
 					GameState.defeated_lords.append(id)
-				GameState.notice.emit("近海の主 %s を討伐! 賞金は酒場で受領" % def.name)
+				var lord_fame := int(def.get("fame", 0))   # #50: 主討伐で名声
+				if lord_fame > 0:
+					GameState.add_fame(lord_fame)
+				GameState.notice.emit("近海の主 %s を討伐! 名声+%d 賞金は酒場で受領" % [def.name, lord_fame])
 	queue_free()

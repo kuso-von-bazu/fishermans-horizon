@@ -66,18 +66,22 @@ def lowpass(sig, a=0.15):
 # ---------------- 効果音 ----------------
 
 def sfx_gun():
-    n = int(0.09 * SR)
-    s = noise(n) * env(n, 0.001, 0.02, r=0.05) * 0.5
-    s += tone(700, n) * env(n, 0.001, 0.03, r=0.03) * 0.2
-    return lowpass(s, 0.5)
+    # 迫力UP(#47): 低音の砲身の重み + 鋭いクラック + 軽い歪み
+    n = int(0.11 * SR)
+    s = noise(n) * env(n, 0.001, 0.02, r=0.05) * 0.7
+    s += tone(90, n) * env(n, 0.001, 0.05, r=0.05) * 0.8
+    s += tone(650, n) * env(n, 0.001, 0.02, r=0.02) * 0.25
+    return np.tanh(s * 2.2) * 0.8
 
 def sfx_cannon():
-    n = int(0.6 * SR)
+    # 迫力UP(#47): サブベースの轟き + 長い残響 + 歪み
+    n = int(1.0 * SR)
     t = np.arange(n) / SR
-    sweep = np.sin(2 * np.pi * (180 - 120 * t / 0.6) * t)
-    s = sweep * env(n, 0.002, 0.15, sl=0.4, r=0.4) * 0.7
-    s += lowpass(noise(n), 0.08) * env(n, 0.001, 0.1, r=0.4) * 0.5
-    return s
+    sweep = np.sin(2 * np.pi * (150 - 110 * np.minimum(t / 0.8, 1.0)) * t)
+    s = sweep * env(n, 0.002, 0.25, sl=0.35, r=0.6) * 1.0
+    s += np.sin(2 * np.pi * (55 - 25 * np.minimum(t / 0.9, 1.0)) * t) * env(n, 0.002, 0.3, sl=0.4, r=0.65) * 0.9
+    s += lowpass(noise(n), 0.10) * env(n, 0.001, 0.15, sl=0.25, r=0.6) * 0.8
+    return np.tanh(s * 2.0) * 0.9
 
 def sfx_harpoon():
     n = int(0.25 * SR)
@@ -92,17 +96,19 @@ def sfx_torpedo():
     s += tone(140, n) * env(n, 0.02, 0.2, sl=0.5, r=0.2) * 0.3
     return s
 
-def sfx_hit():  # 被弾(自船)
-    n = int(0.3 * SR)
-    s = tone(110, n) * env(n, 0.001, 0.12, r=0.15) * 0.6
-    s += lowpass(noise(n), 0.2) * env(n, 0.001, 0.06, r=0.1) * 0.4
-    return s
+def sfx_hit():  # 被弾(自船) 迫力UP(#47): 重い衝撃+軋み
+    n = int(0.42 * SR)
+    s = tone(70, n) * env(n, 0.001, 0.16, r=0.2) * 1.0
+    s += tone(140, n) * env(n, 0.001, 0.10, r=0.1) * 0.5
+    s += lowpass(noise(n), 0.25) * env(n, 0.001, 0.08, r=0.15) * 0.7
+    return np.tanh(s * 2.0) * 0.85
 
-def sfx_enemy_hit():
-    n = int(0.12 * SR)
-    s = tone(500, n) * env(n, 0.001, 0.04, r=0.06) * 0.3
-    s += noise(n) * env(n, 0.001, 0.02, r=0.05) * 0.25
-    return lowpass(s, 0.4)
+def sfx_enemy_hit():  # 与ダメ 迫力UP(#47): 肉厚なインパクト
+    n = int(0.16 * SR)
+    s = tone(220, n) * env(n, 0.001, 0.05, r=0.07) * 0.6
+    s += tone(430, n) * env(n, 0.001, 0.03, r=0.05) * 0.35
+    s += noise(n) * env(n, 0.001, 0.025, r=0.05) * 0.45
+    return np.tanh(s * 1.8) * 0.7
 
 def sfx_lock():  # ロックオン確定
     n = int(0.18 * SR)

@@ -27,5 +27,16 @@ void fragment() {
 	// うっすら大きなうねり(遠景の濃淡)
 	float swell = sin(world.x * 0.0015 + t * 0.2) * sin(world.y * 0.0013 - t * 0.15);
 	col *= 1.0 + swell * 0.05;
+	// 太陽のきらめき(#46): 波間に走る鋭い光点
+	float sparkle = sin(p.x * 7.3 + t * 3.1) * sin(p.y * 6.7 - t * 2.3) * sin((p.x - p.y) * 9.1 + t * 1.7);
+	sparkle = pow(max(sparkle, 0.0), 12.0);
+	col += vec3(1.0, 0.95, 0.8) * sparkle * 0.5;
+	// 流れる雲の影(#46)
+	float cloud = sin(world.x * 0.0009 + t * 0.05) * sin(world.y * 0.0011 + t * 0.04)
+				+ sin((world.x + world.y) * 0.0006 - t * 0.03) * 0.5;
+	col *= 1.0 - smoothstep(0.5, 1.3, cloud) * 0.16;
+	// 画面右上からの太陽光(暖色のグラデーション)
+	float sun = max(0.0, 1.0 - length(SCREEN_UV - vec2(0.82, 0.12)) * 1.4);
+	col += vec3(0.95, 0.85, 0.6) * sun * sun * 0.10;
 	COLOR = vec4(col, 1.0);
 }
