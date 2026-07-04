@@ -24,6 +24,7 @@ func _ready() -> void:
 		target_w = 60.0
 	for i in n:
 		var f := Sprite2D.new()
+		f.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		if tex:
 			f.texture = tex
 			f.scale = Vector2.ONE * (target_w / maxf(float(tex.get_width()), 1.0))
@@ -46,6 +47,10 @@ func _ready() -> void:
 	add_child(label)
 
 func _load_tex() -> Texture2D:
+	# ドット絵版(#26)優先
+	var pixel := "res://assets/images/pixel/fish_%s.png" % fish_id
+	if ResourceLoader.exists(pixel):
+		return load(pixel)
 	var path := "res://assets/images/fish_%s.png" % fish_id
 	if ResourceLoader.exists(path):
 		return load(path)

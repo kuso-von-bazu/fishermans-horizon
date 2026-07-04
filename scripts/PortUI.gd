@@ -140,6 +140,33 @@ func show_tavern() -> void:
 	content.add_child(_btn("賞金・換金を受け取る", func():
 		GameState.claim_bounties()
 		show_tavern()))
+	# クルー(#39): 雇用・一覧・ジョブチェンジ
+	content.add_child(_p(""))
+	content.add_child(_h("クルー(%d/%d) — 出港ごとに賃金・帰港で成長・大破で失う恐れ" % [GameState.crew.size(), GameState.CREW_MAX], 18))
+	for m in GameState.crew:
+		var j: Dictionary = GameState.jobs[m.job]
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		var info := _p("%s [%s] 体%d 敏%d 射%d 知%d 視%d" % [m.name, j.name, m.hp, m.agi, m.sht, m.int_, m.vis])
+		info.custom_minimum_size = Vector2(330, 0)
+		row.add_child(info)
+		for jid in GameState.jobs:
+			if GameState.can_jobchange(m, jid):
+				row.add_child(_btn("→%s" % GameState.jobs[jid].name, func():
+					GameState.jobchange(m, jid)
+					show_tavern()))
+		content.add_child(row)
+	var hire_row := HBoxContainer.new()
+	hire_row.add_theme_constant_override("separation", 8)
+	hire_row.add_child(_p("雇用:"))
+	for jid in GameState.jobs:
+		var j2: Dictionary = GameState.jobs[jid]
+		hire_row.add_child(_btn("%s(%d)" % [j2.name, j2.hire], func():
+			GameState.hire_crew(jid)
+			show_tavern()))
+	content.add_child(hire_row)
+	content.add_child(_p("効果: 体力=燃料減少↓ 敏捷=被ダメ減 射撃=威力↑ 知力=デバフ強化 視力=ロック距離↑"))
+
 	content.add_child(_p(""))
 	content.add_child(_h("この近海の主", 18))
 	for lid in Database.island(isle).get("lords", []):
@@ -165,7 +192,7 @@ func show_shipyard() -> void:
 			continue  # 先の島でしか売らない
 		var owned: bool = sid == GameState.ship_id
 		var cost := maxi(int(s.price) - int(GameState.ship().trade), 0)
-		var line := "%s  食料%d 魚倉%d 装甲%d 武器枠%d 速%.0f" % [s.name, s.food, s.hold, s.armor, s.slots, s.speed]
+		var line := "%s  燃料%d 魚倉%d 装甲%d 武器枠%d 速%.0f" % [s.name, s.food, s.hold, s.armor, s.slots, s.speed]
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 10)
 		var lab := _p(line)
@@ -180,23 +207,47 @@ func show_shipyard() -> void:
 		content.add_child(row)
 
 	content.add_child(_p(""))
-	content.add_child(_h("武器スロット(クリックで装備変更)", 18))
+	content.add_child(_h("武器スロット — 付替は差額制・現装備は8割下取り(#34)", 18))
 	var slots := int(GameState.ship().slots)
 	for i in slots:
 		var cur: String = GameState.weapons[i] if i < GameState.weapons.size() else ""
 		var nm: String = Database.weapons[cur].name if (cur != "" and Database.weapons.has(cur)) else "空"
+		var trade_in := int(float(Database.weapons[cur].price) * 0.8) if (cur != "" and Database.weapons.has(cur)) else 0
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 8)
 		row.add_child(_p("スロット%d: %s" % [i + 1, nm]))
 		for wid in Database.weapons:
+			if wid == cur:
+				continue
 			var w: Dictionary = Database.weapons[wid]
-			row.add_child(_btn(w.name, func():
-				GameState.equip_weapon(i, wid)
+			var cost := maxi(int(w.price) - trade_in, 0)
+			row.add_child(_btn("%s(%d)" % [w.name, cost], func():
+				if GameState.money < cost:
+					GameState.notice.emit("資金が足りません(必要%d)" % cost)
+				else:
+					GameState.add_money(-cost)
+					GameState.equip_weapon(i, wid)
 				show_shipyard()))
-		row.add_child(_btn("外す", func():
-			GameState.equip_weapon(i, "")
-			show_shipyard()))
+		if cur != "":
+			row.add_child(_btn("外す(+%d)" % trade_in, func():
+				GameState.add_money(trade_in)
+				GameState.equip_weapon(i, "")
+				show_shipyard()))
 		content.add_child(row)
+
+	# 銛のデバフ設定(#37): 主にのみ適用
+	content.add_child(_p(""))
+	content.add_child(_h("銛のデバフ設定(近海の主にのみ有効)", 18))
+	var drow := HBoxContainer.new()
+	drow.add_theme_constant_override("separation", 8)
+	drow.add_child(_p("現在: %s" % Database.harpoon_debuffs[GameState.harpoon_debuff].name))
+	for did in Database.harpoon_debuffs:
+		var d: Dictionary = Database.harpoon_debuffs[did]
+		drow.add_child(_btn(d.name, func():
+			GameState.harpoon_debuff = did
+			GameState.notice.emit("銛のデバフ: %s(%s)" % [d.name, d.desc])
+			show_shipyard()))
+	content.add_child(drow)
 
 	content.add_child(_p(""))
 	content.add_child(_h("衝角", 18))

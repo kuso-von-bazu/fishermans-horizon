@@ -55,7 +55,7 @@ func _build() -> void:
 	vb.add_child(_title)
 
 	_body = Label.new()
-	_body.text = "海面上昇に沈んだ世界。粗末な漁船から始め、漁と狩りで身を立て、\n近海の主を討ち、海賊を狩り、名声を轟かせて未踏の漁場を目指せ。\n人類種の天敵レヴィアタンを討ち、伝説の漁場へ至るのだ。\n\n[W/S]前進・後進   [A/D]旋回   [マウス]照準   [左クリック]射撃\n[右クリック]魚雷(ロックオン)   [E]漁・寄港   港では各施設で売買・賞金受取"
+	_body.text = "海面上昇に沈んだ世界。粗末な蒸気漁船から始め、漁と狩りで身を立て、\n近海の主を討ち、海賊を狩り、名声を轟かせて未踏の漁場を目指せ。\n人類種の天敵レヴィアタンを討ち、伝説の漁場へ至るのだ。\n\n[W/S]前進・後進   [A/D]旋回   [マウス]照準   [左クリック]射撃\n[右クリック]魚雷(ロックオン)   [E]漁・寄港   燃料が尽きる前に帰港せよ"
 	_body.add_theme_font_size_override("font_size", 20)
 	_body.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
 	_body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

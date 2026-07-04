@@ -26,6 +26,7 @@ var fish_schools: Array = []
 var enemies: Array = []
 var relics_world: Array = []
 var slot_cooldowns: Array = [0.0, 0.0, 0.0, 0.0]
+var slot_ammo: Array = [0, 0, 0, 0]        # #27: 残弾。0でリロード(reload秒)
 var lock_target: Node2D = null
 var spawn_timer: float = 0.0
 const MAX_FISH := 7
@@ -118,6 +119,8 @@ func _on_title_start() -> void:
 	port_ui.open()
 
 func _enter_dock(island_id: int, do_reset := true) -> void:
+	if GameState.at_sea and not GameState.crew.is_empty():
+		GameState.grow_crew()   # 航海を終えたクルーが成長(#39)
 	phase = "dock"
 	_dock_target = -1
 	_returning = false
@@ -138,6 +141,11 @@ func _enter_dock(island_id: int, do_reset := true) -> void:
 func _on_set_sail() -> void:
 	port_ui.close()
 	phase = "sea"
+	# クルーの賃金(#39): 出港ごとに支払い
+	var wages := GameState.crew_wages()
+	if wages > 0:
+		GameState.add_money(-mini(wages, GameState.money))
+		GameState.notice.emit("クルーへ賃金 %d を支払った" % wages)
 	GameState.set_sail()
 	player.control_enabled = true
 	player.rebuild_visual()
@@ -152,6 +160,7 @@ func _on_set_sail() -> void:
 	_food_choice_shown = false
 	_food_dialog_open = false
 	slot_cooldowns = [0.0, 0.0, 0.0, 0.0]
+	_reset_ammo()
 
 func _on_fast_travel(island_id: int) -> void:
 	port_ui.close()
@@ -183,7 +192,11 @@ func _forced_return(reason: String, wrecked: bool = false) -> void:
 		GameState.cargo.clear()
 		GameState.stats_changed.emit()
 		Audio.play("sfx_wreck", -2.0)
-		hud.show_big_message("船が大破! 漁獲物(%d)を失い強制帰還" % lost)
+		var msg := "船が大破! 漁獲物(%d)を失い強制帰還" % lost
+		var gone := GameState.wreck_lose_crew()   # #39: 0〜1人ロスト
+		if gone != "":
+			msg += "\n%s が海に消えた…" % gone
+		hud.show_big_message(msg)
 	else:
 		hud.show_big_message(reason)
 	GameState.notice.emit(reason)
@@ -199,7 +212,7 @@ func _physics_process(delta: float) -> void:
 	if _dock_grace > 0.0:
 		_dock_grace -= delta
 	GameState.regen_fire(delta)
-	GameState.run_food = maxf(GameState.run_food - delta * 1.5, 0.0)
+	GameState.run_food = maxf(GameState.run_food - delta * 1.5 * GameState.food_drain_mult(), 0.0)
 	if not _update_docking():
 		_update_fishing(delta)
 	_update_spawns(delta)
@@ -212,14 +225,14 @@ func _physics_process(delta: float) -> void:
 	if GameState.run_armor <= 0.0:
 		_forced_return("船が大破!", true)
 	elif GameState.run_food <= 0.0:
-		_forced_return("食料が尽きた! 直近の島へ強制帰還")
+		_forced_return("燃料が尽きた! 直近の島へ強制帰還")
 	elif GameState.run_food <= GameState.max_food() * 0.5:
 		if _can_voyage_onward() and _has_onward_island():
 			if not _food_choice_shown and not _food_dialog_open:
 				_food_choice_shown = true
 				_show_food_choice()
 		else:
-			_forced_return("食料が半分を切った。直近の島へ強制帰還")
+			_forced_return("燃料が半分を切った。直近の島へ強制帰還")
 
 func _on_stats_changed() -> void:
 	if hud and hud.visible:
@@ -298,6 +311,14 @@ func _spawn_fish() -> void:
 	fish_schools.append(fs)
 
 func _spawn_enemy() -> void:
+	# #25: 島の近く(入港圏の外側まで)は戦闘系の出現を大幅に抑え、漁メインの安全圏にする
+	var near_island := false
+	for isle_node in islands:
+		if player.global_position.distance_to(isle_node.global_position) < 1500.0:
+			near_island = true
+			break
+	if near_island and randf() < 0.75:
+		return
 	var roll := randf()
 	var kind := "mob"
 	var id := ""
@@ -311,8 +332,7 @@ func _spawn_enemy() -> void:
 			id = "raider"
 	elif roll < 0.38:
 		kind = "mob"
-		var mobs := Database.combat_mobs.keys()
-		id = mobs[randi() % mobs.size()]
+		id = Database.pick_mob(isle)   # #38: 島tierごとの出現割合
 	elif roll < 0.50:
 		if not _lord_alive():
 			var lords: Array = Database.island(isle).get("lords", [])
@@ -364,6 +384,23 @@ func _spawn_relic() -> void:
 	relics_world.append(r)
 
 # ---------------- 武器 ----------------
+func _reset_ammo() -> void:
+	slot_ammo = [0, 0, 0, 0]
+	for i in mini(4, GameState.weapons.size()):
+		var wid: String = GameState.weapons[i]
+		if wid != "" and Database.weapons.has(wid):
+			slot_ammo[i] = int(Database.weapons[wid].mag)
+
+# 発射後の弾倉消費(#27)。弾切れでリロード時間をクールダウンに載せ、弾を補充。
+func _consume_ammo(i: int, w: Dictionary) -> void:
+	slot_ammo[i] = int(slot_ammo[i]) - 1
+	if slot_ammo[i] <= 0:
+		slot_cooldowns[i] = float(w.reload)
+		slot_ammo[i] = int(w.mag)
+		GameState.notice.emit("%s リロード中…" % w.name)
+	else:
+		slot_cooldowns[i] = float(w.cooldown)
+
 func _update_weapons(delta: float) -> void:
 	for i in slot_cooldowns.size():
 		if slot_cooldowns[i] > 0:
@@ -377,7 +414,7 @@ func _update_weapons(delta: float) -> void:
 			var w: Dictionary = Database.weapons[wid]
 			if w.kind == "aim" and slot_cooldowns[i] <= 0:
 				_fire_aim(w)
-				slot_cooldowns[i] = float(w.cooldown)
+				_consume_ammo(i, w)
 	if Input.is_action_just_pressed("fire_torpedo"):
 		for i in slots:
 			var wid: String = GameState.weapons[i] if i < GameState.weapons.size() else ""
@@ -386,7 +423,28 @@ func _update_weapons(delta: float) -> void:
 			var w: Dictionary = Database.weapons[wid]
 			if w.kind == "lock" and slot_cooldowns[i] <= 0:
 				_fire_torpedo(w)
-				slot_cooldowns[i] = float(w.cooldown)
+				_consume_ammo(i, w)
+	# HUDに残弾を表示(#27)
+	var texts: Array = []
+	for i in slots:
+		var wid2: String = GameState.weapons[i] if i < GameState.weapons.size() else ""
+		if wid2 == "" or not Database.weapons.has(wid2):
+			texts.append("")
+		elif slot_cooldowns[i] > float(Database.weapons[wid2].cooldown) + 0.01:
+			texts.append("リロード")
+		else:
+			texts.append("弾%d" % int(slot_ammo[i]))
+	hud.update_ammo(texts)
+
+# クルー効果(#39)を武器威力に反映した複製を返す
+func _crewed(w: Dictionary) -> Dictionary:
+	var w2 := w.duplicate()
+	var dmg: float = float(w.dmg) * GameState.attack_mult()
+	if randf() < GameState.crit_chance():
+		dmg *= 2.0   # 水兵のクリティカル
+		GameState.notice.emit("クリティカル!")
+	w2.dmg = dmg
+	return w2
 
 func _fire_aim(w: Dictionary) -> void:
 	Audio.play(w.get("sfx", "sfx_gun"), -4.0, randf_range(0.95, 1.05))
@@ -396,7 +454,7 @@ func _fire_aim(w: Dictionary) -> void:
 	add_child(proj)
 	proj.global_position = player.global_position + dir * 40.0
 	proj.from_player = true
-	proj.setup(dir, w)
+	proj.setup(dir, _crewed(w))
 
 func _fire_torpedo(w: Dictionary) -> void:
 	Audio.play("sfx_torpedo", -4.0)
@@ -408,7 +466,7 @@ func _fire_torpedo(w: Dictionary) -> void:
 	add_child(proj)
 	proj.global_position = player.global_position + dir * 40.0
 	proj.from_player = true
-	proj.setup(dir, w, lock_target)
+	proj.setup(dir, _crewed(w), lock_target)
 
 func _update_lock_on() -> void:
 	# マウスに近い非空中の敵をロック(#16)。新規ロックで効果音。
@@ -418,8 +476,8 @@ func _update_lock_on() -> void:
 	for e in enemies:
 		if not is_instance_valid(e) or e.aerial:
 			continue
-		if e.global_position.distance_to(player.global_position) > 160.0 * K:
-			continue
+		if e.global_position.distance_to(player.global_position) > 160.0 * K * GameState.lock_range_mult():
+			continue   # 視力/航海士でロック距離延長(#39)
 		var d: float = e.global_position.distance_to(mouse)
 		if d < best:
 			best = d
@@ -474,7 +532,7 @@ func _show_food_choice() -> void:
 		player.control_enabled = false
 	if _food_dialog == null:
 		_build_food_dialog()
-	_food_msg.text = "食料が半分を切りました。\n直近の島(%s)へ帰港するか、%s を目指しますか?\n(目指して食料が尽きた場合は直近の島へ強制帰還します)" % [
+	_food_msg.text = "燃料が半分を切りました。\n直近の島(%s)へ帰港するか、%s を目指しますか?\n(目指して燃料が尽きた場合は直近の島へ強制帰還します)" % [
 		Database.island(GameState.current_island).name, _onward_island_name()]
 	_food_dialog.visible = true
 

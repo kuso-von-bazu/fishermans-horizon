@@ -13,6 +13,7 @@ var fire: bool = false
 var target: Node2D = null
 var dir: Vector2 = Vector2.UP
 var from_player: bool = true
+var _t: float = 0.0
 
 func setup(p_dir: Vector2, w: Dictionary, p_target: Node2D = null) -> void:
 	dmg = float(w.get("dmg", 5))
@@ -42,12 +43,32 @@ func _ready() -> void:
 	col.shape = sh
 	add_child(col)
 	body_entered.connect(_on_hit)
+	if homing:
+		# 泡のトレイル(#30)
+		var trail := CPUParticles2D.new()
+		trail.amount = 20
+		trail.lifetime = 0.6
+		trail.initial_velocity_min = 4.0
+		trail.initial_velocity_max = 14.0
+		trail.scale_amount_min = 1.5
+		trail.scale_amount_max = 3.0
+		trail.color = Color(0.8, 0.95, 1.0, 0.6)
+		add_child(trail)
+		life = 4.0
 
 func _physics_process(delta: float) -> void:
-	if homing and is_instance_valid(target):
-		var want := (target.global_position - global_position).normalized()
-		dir = dir.lerp(want, 5.0 * delta).normalized()
-	global_position += dir * speed * delta
+	_t += delta
+	if homing:
+		if is_instance_valid(target):
+			# 旋回力が徐々に立ち上がり弧を描いて追う(#30)
+			var steer: float = lerpf(1.2, 7.0, minf(_t / 0.9, 1.0))
+			var want := (target.global_position - global_position).normalized()
+			dir = dir.lerp(want, steer * delta).normalized()
+		# 蛇行(ホーミングらしい揺れ)
+		var wob := dir.rotated(PI / 2) * sin(_t * 9.0) * 0.35
+		global_position += (dir + wob).normalized() * speed * delta
+	else:
+		global_position += dir * speed * delta
 	life -= delta
 	if life <= 0:
 		queue_free()
@@ -62,8 +83,7 @@ func _on_hit(body: Node) -> void:
 		if fire:
 			GameState.apply_fire(dmg)
 		else:
-			GameState.run_armor = maxf(GameState.run_armor - dmg, 0.0)
-			GameState.stats_changed.emit()
+			GameState.damage_player(dmg)   # 敏捷カット込み
 		Audio.play("sfx_hit", -6.0)
 		queue_free()
 	elif body.is_in_group("island_body"):

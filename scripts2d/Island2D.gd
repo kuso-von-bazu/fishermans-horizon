@@ -45,15 +45,41 @@ func _ready() -> void:
 	area.body_entered.connect(_on_enter)
 	area.body_exited.connect(_on_exit)
 
+# 島idを種にした不規則な海岸線ポリゴン(#41)
+func _coast(base_r: float, wobble: float, seed_off: int, points: int = 28) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	var s1 := float(island_id * 7 + seed_off)
+	for i in points:
+		var a := TAU * i / points
+		var r := base_r * (1.0 + wobble * sin(3.0 * a + s1) + wobble * 0.6 * sin(7.0 * a + s1 * 2.3))
+		pts.append(Vector2(cos(a), sin(a)) * r)
+	return pts
+
 func _draw() -> void:
-	# 浅瀬→砂浜→緑地→山
-	draw_circle(Vector2.ZERO, 130, Color(0.55, 0.8, 0.85, 0.55))
-	draw_circle(Vector2.ZERO, 105, Color(0.89, 0.82, 0.6))
-	draw_circle(Vector2.ZERO, 78, Color(0.42, 0.62, 0.35))
-	draw_circle(Vector2(-14, -10), 36, Color(0.32, 0.5, 0.3))
-	draw_circle(Vector2(-14, -10), 16, Color(0.55, 0.52, 0.48))
-	# 港(桟橋)
-	draw_rect(Rect2(70, -10, 55, 20), Color(0.5, 0.36, 0.22))
+	# 浅瀬(にじみ)→砂浜→緑地→深緑→山 …すべて不規則な海岸線(#41)
+	draw_colored_polygon(_coast(132, 0.16, 1), Color(0.55, 0.82, 0.87, 0.45))
+	draw_colored_polygon(_coast(112, 0.15, 1), Color(0.90, 0.83, 0.62))
+	draw_colored_polygon(_coast(86, 0.17, 3), Color(0.44, 0.64, 0.36))
+	draw_colored_polygon(_coast(52, 0.22, 5), Color(0.33, 0.52, 0.30))
+	# 山(頂と影)
+	draw_circle(Vector2(-12, -12), 22, Color(0.52, 0.48, 0.44))
+	draw_circle(Vector2(-16, -16), 10, Color(0.72, 0.70, 0.66))
+	# ヤシの木(海岸ぞいに数本)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = island_id * 31 + 7
+	for t in 5:
+		var a := rng.randf() * TAU
+		var p := Vector2(cos(a), sin(a)) * rng.randf_range(58.0, 88.0)
+		draw_line(p, p + Vector2(2, -9), Color(0.45, 0.32, 0.18), 3.0)
+		for f in 5:
+			var fa := TAU * f / 5.0 + rng.randf() * 0.5
+			draw_line(p + Vector2(2, -9), p + Vector2(2, -9) + Vector2(cos(fa), sin(fa) * 0.6) * 9.0, Color(0.25, 0.55, 0.25), 2.0)
+	# 港町(桟橋+家々)
+	draw_rect(Rect2(78, -8, 52, 16), Color(0.5, 0.36, 0.22))
+	for h in 3:
+		var hx := 46 + h * 16
+		draw_rect(Rect2(hx, -24, 12, 12), Color(0.78, 0.42, 0.32))
+		draw_rect(Rect2(hx + 1, -28, 10, 5), Color(0.55, 0.30, 0.22))
 	# 入港圏の破線円
 	var seg := 40
 	for i in seg:

@@ -13,6 +13,7 @@ var lbl_hold_val: Label
 var lbl_armor_val: Label
 var cargo_box: HBoxContainer
 var weapon_box: HBoxContainer
+var _weapon_labels: Array = []
 var notice_box: VBoxContainer
 var sonar: Control
 var prompt: Label
@@ -112,7 +113,7 @@ func _build() -> void:
 	lbl_food_val = _label("", 15)
 	lbl_hold_val = _label("", 15)
 	lbl_armor_val = _label("", 15)
-	bv.add_child(_bar_row("食料", bar_food, lbl_food_val))
+	bv.add_child(_bar_row("燃料", bar_food, lbl_food_val))
 	bv.add_child(_bar_row("魚倉", bar_hold, lbl_hold_val))
 	bv.add_child(_bar_row("装甲", bar_armor, lbl_armor_val))
 
@@ -271,17 +272,31 @@ func rebuild_weapons() -> void:
 		return
 	for c in weapon_box.get_children():
 		c.queue_free()
+	_weapon_labels.clear()
 	var slots := int(GameState.ship().slots)
 	for i in slots:
 		var wid: String = GameState.weapons[i] if i < GameState.weapons.size() else ""
 		var p := PanelContainer.new()
 		_style(p)
-		p.custom_minimum_size = Vector2(90, 44)
+		p.custom_minimum_size = Vector2(104, 48)
 		var nm := "空"
 		if wid != "" and Database.weapons.has(wid):
 			nm = Database.weapons[wid].name
-		p.add_child(_label("%d:%s" % [i + 1, nm], 16))
+		var vbx := VBoxContainer.new()
+		vbx.add_theme_constant_override("separation", 0)
+		vbx.add_child(_label("%d:%s" % [i + 1, nm], 15))
+		var ammo := _label("", 13)
+		ammo.add_theme_color_override("font_color", Color(0.8, 0.9, 1.0))
+		vbx.add_child(ammo)
+		_weapon_labels.append(ammo)
+		p.add_child(vbx)
 		weapon_box.add_child(p)
+
+# 残弾/リロード表示(#27)
+func update_ammo(texts: Array) -> void:
+	for i in _weapon_labels.size():
+		if i < texts.size() and is_instance_valid(_weapon_labels[i]):
+			_weapon_labels[i].text = str(texts[i])
 
 func show_notice(text: String) -> void:
 	refresh_money_fame()
@@ -341,4 +356,6 @@ func _draw_sonar() -> void:
 		if rel.length() > r - 4:
 			continue
 		sonar.draw_circle(center + rel, 4.0, b.color)
-	sonar.draw_circle(center, 3.0, Color.WHITE)
+	var tri := PackedVector2Array([
+		center + Vector2(0, -9), center + Vector2(-5, 5), center + Vector2(5, 5)])
+	sonar.draw_colored_polygon(tri, Color.WHITE)

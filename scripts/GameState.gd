@@ -13,6 +13,123 @@ var fame: int = 0
 var ship_id: String = "raft"
 var weapons: Array[String] = ["gatling"]   # 装備中の武器id(最大slots)
 var ram_id: String = "none"
+var harpoon_debuff: String = "slip"        # 銛のデバフ種(造船所で設定・#37)
+
+# --- クルー(#39): キャプテン含め5人まで=雇用は4人まで ---
+# 各員: {name, job, hp, agi, sht, int_, vis}
+var crew: Array = []
+const CREW_MAX := 4
+var jobs := {
+	"sailor":    {"name": "水夫",     "hire": 100,  "wage": 15, "growth": {"hp": 1, "agi": 1, "sht": 1, "int_": 1, "vis": 1}},
+	"veteran":   {"name": "熟練水夫", "hire": 700,  "wage": 40, "growth": {"hp": 3, "agi": 1, "sht": 1, "int_": 1, "vis": 1}, "req": ["hp", 8]},
+	"marine":    {"name": "水兵",     "hire": 700,  "wage": 40, "growth": {"hp": 1, "agi": 2, "sht": 3, "int_": 0, "vis": 1}, "req": ["sht", 8]},
+	"navigator": {"name": "航海士",   "hire": 700,  "wage": 40, "growth": {"hp": 0, "agi": 1, "sht": 0, "int_": 3, "vis": 3}, "req": ["vis", 8]},
+	"cook":      {"name": "料理人",   "hire": 700,  "wage": 40, "growth": {"hp": 0, "agi": 1, "sht": 1, "int_": 2, "vis": 1}, "req": ["int_", 6]},
+	"firstmate": {"name": "副船長",   "hire": 1500, "wage": 80, "growth": {"hp": 2, "agi": 2, "sht": 2, "int_": 2, "vis": 2}, "req": ["total", 40]},
+}
+const CREW_NAMES := ["ジン", "ハル", "カイ", "レン", "ソラ", "ウミ", "リク", "ナギ", "イサナ", "タツ", "シオン", "マキ"]
+
+func hire_crew(job_id: String) -> bool:
+	if crew.size() >= CREW_MAX:
+		notice.emit("船室が満員です(雇用は%d人まで)" % CREW_MAX)
+		return false
+	var j: Dictionary = jobs[job_id]
+	if money < int(j.hire):
+		notice.emit("資金が足りません(契約金%d)" % int(j.hire))
+		return false
+	add_money(-int(j.hire))
+	var base := 3 if job_id != "sailor" else 1
+	var m := {
+		"name": CREW_NAMES[randi() % CREW_NAMES.size()],
+		"job": job_id,
+		"hp": base + randi_range(0, 2), "agi": base + randi_range(0, 2),
+		"sht": base + randi_range(0, 2), "int_": base + randi_range(0, 2),
+		"vis": base + randi_range(0, 2),
+	}
+	crew.append(m)
+	notice.emit("%s(%s)を雇用" % [m.name, j.name])
+	stats_changed.emit()
+	return true
+
+func can_jobchange(m: Dictionary, job_id: String) -> bool:
+	var j: Dictionary = jobs[job_id]
+	if not j.has("req") or m.job == job_id:
+		return false
+	var req: Array = j.req
+	if req[0] == "total":
+		return int(m.hp) + int(m.agi) + int(m.sht) + int(m.int_) + int(m.vis) >= int(req[1])
+	return int(m.get(req[0], 0)) >= int(req[1])
+
+func jobchange(m: Dictionary, job_id: String) -> void:
+	m.job = job_id
+	notice.emit("%s は %s にジョブチェンジ!" % [m.name, jobs[job_id].name])
+	stats_changed.emit()
+
+# 帰港ごとの成長(ジョブの伸びに沿って+)
+func grow_crew() -> void:
+	for m in crew:
+		var g: Dictionary = jobs[m.job].growth
+		for k in g:
+			if randf() < 0.5 + float(g[k]) * 0.18:
+				m[k] = int(m[k]) + maxi(int(g[k]), 0)
+
+func crew_wages() -> int:
+	var total := 0
+	for m in crew:
+		total += int(jobs[m.job].wage)
+	return total
+
+func _crew_sum(stat: String) -> int:
+	var s := 0
+	for m in crew:
+		s += int(m.get(stat, 0))
+	return s
+
+# --- クルー効果 ---
+func food_drain_mult() -> float:   # 体力+料理人: 燃料(食料)減少を低下
+	var m := 1.0 / (1.0 + 0.02 * _crew_sum("hp"))
+	for c in crew:
+		if c.job == "cook":
+			m *= 0.85
+	return m
+
+func damage_cut() -> float:        # 敏捷: 被ダメカット(最大40%)
+	return minf(0.015 * _crew_sum("agi"), 0.40)
+
+func attack_mult() -> float:       # 射撃力: 攻撃威力バフ
+	return 1.0 + 0.02 * _crew_sum("sht")
+
+func crit_chance() -> float:       # 水兵: クリティカル
+	var c := 0.0
+	for m in crew:
+		if m.job == "marine":
+			c += 0.08
+	return minf(c, 0.4)
+
+func debuff_dur_mult() -> float:   # 知力: デバフ強化(持続延長)
+	return 1.0 + 0.05 * _crew_sum("int_")
+
+func lock_range_mult() -> float:   # 視力+航海士: ロック距離延長
+	var m := 1.0 + 0.03 * _crew_sum("vis")
+	for c in crew:
+		if c.job == "navigator":
+			m *= 1.2
+	return m
+
+# 被ダメの集約(敏捷カット適用)
+func damage_player(amount: float) -> void:
+	run_armor = maxf(run_armor - amount * (1.0 - damage_cut()), 0.0)
+	stats_changed.emit()
+
+# 大破時: ランダムで0〜1人ロスト(#39)
+func wreck_lose_crew() -> String:
+	if crew.is_empty() or randf() < 0.5:
+		return ""
+	var i := randi() % crew.size()
+	var m: Dictionary = crew[i]
+	crew.remove_at(i)
+	stats_changed.emit()
+	return "%s(%s)" % [m.name, jobs[m.job].name]
 
 # 積荷: item_id -> 個数(魚倉キャパは Database の cap で計算)
 var cargo: Dictionary = {}
@@ -48,6 +165,8 @@ func reset_all() -> void:
 	defeated_lords = []
 	claimed_lords = []
 	fire_burn = 0.0
+	crew = []
+	harpoon_debuff = "slip"
 	dock_reset()
 
 func ship() -> Dictionary:

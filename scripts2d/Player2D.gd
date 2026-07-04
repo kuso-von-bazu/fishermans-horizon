@@ -18,38 +18,74 @@ func _ready() -> void:
 	max_speed = float(GameState.ship().speed) * K
 	_build_visual()
 
+# 蒸気船のドット絵(#28)。真上から見た16x30。文字→色のピクセルマップ。
+# H=鉄殻 h=鉄殻明 D=甲板 F=煙突 R=赤帯 W=白トリム B=橋 .=透明
+const SHIP_MAP := [
+	"......HHHH......",
+	".....HhhhhH.....",
+	"....HhDDDDhH....",
+	"...HhDDDDDDhH...",
+	"..HhDDWWWWDDhH..",
+	"..HhDWDDDDWDhH..",
+	".HhDDWDBBDWDDhH.",
+	".HhDDWDBBDWDDhH.",
+	".HhDDWDDDDWDDhH.",
+	".HhDDDFFFFDDDhH.",
+	".HhDDFFRRFFDDhH.",
+	".HhDDFFRRFFDDhH.",
+	".HhDDDFFFFDDDhH.",
+	".HhDDDDDDDDDDhH.",
+	".HhDDWWWWWWDDhH.",
+	".HhDDWDDDDWDDhH.",
+	".HhDDWDDDDWDDhH.",
+	".HhDDWWWWWWDDhH.",
+	".HhDDDDDDDDDDhH.",
+	".HhDDDDDDDDDDhH.",
+	".HhhDDDDDDDDhhH.",
+	"..HhDDDDDDDDhH..",
+	"..HhhDDDDDDhhH..",
+	"...HhhDDDDhhH...",
+	"....HhhhhhhH....",
+	".....HHHHHH.....",
+]
+const PIX := {
+	"H": Color(0.16, 0.18, 0.22), "h": Color(0.32, 0.35, 0.40),
+	"D": Color(0.58, 0.46, 0.32), "F": Color(0.10, 0.10, 0.12),
+	"R": Color(0.75, 0.20, 0.15), "W": Color(0.85, 0.85, 0.80),
+	"B": Color(0.35, 0.55, 0.62),
+}
+
+func _build_ship_texture(with_ram: bool, ram_steel: bool) -> ImageTexture:
+	var w := SHIP_MAP[0].length()
+	var h := SHIP_MAP.size()
+	var ram_rows := 4 if with_ram else 0
+	var img := Image.create(w, h + ram_rows, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	# 衝角(#36): 船首(上)に金属スパイク
+	if with_ram:
+		var rc := Color(0.75, 0.78, 0.82) if ram_steel else Color(0.45, 0.42, 0.38)
+		var cx := w / 2
+		for ry in ram_rows:
+			var half := ram_rows - ry   # 上ほど細い
+			for x in range(cx - half / 2 - 1, cx + half / 2 + 1):
+				if x >= 0 and x < w:
+					img.set_pixel(x, ry, rc)
+	for y in h:
+		var row: String = SHIP_MAP[y]
+		for x in w:
+			var ch := row[x]
+			if PIX.has(ch):
+				img.set_pixel(x, y + ram_rows, PIX[ch])
+	return ImageTexture.create_from_image(img)
+
 func _build_visual() -> void:
 	var sc := _ship_scale()
-	# 船体(上向きの流線形ポリゴン)
-	var hull := Polygon2D.new()
-	_body_pts = PackedVector2Array([
-		Vector2(0, -34), Vector2(10, -18), Vector2(13, 6), Vector2(10, 26),
-		Vector2(-10, 26), Vector2(-13, 6), Vector2(-10, -18),
-	])
-	hull.polygon = _body_pts
-	hull.color = Color(0.48, 0.34, 0.20)
-	hull.scale = Vector2.ONE * sc
-	add_child(hull)
-	# 甲板
-	var deck := Polygon2D.new()
-	deck.polygon = PackedVector2Array([
-		Vector2(0, -26), Vector2(7, -14), Vector2(9, 6), Vector2(7, 20),
-		Vector2(-7, 20), Vector2(-9, 6), Vector2(-7, -14),
-	])
-	deck.color = Color(0.72, 0.58, 0.38)
-	deck.scale = Vector2.ONE * sc
-	add_child(deck)
-	# 帆(横桁+布)
-	var yard := Polygon2D.new()
-	yard.polygon = PackedVector2Array([Vector2(-16, -4), Vector2(16, -4), Vector2(16, -1), Vector2(-16, -1)])
-	yard.color = Color(0.35, 0.24, 0.13)
-	yard.scale = Vector2.ONE * sc
-	add_child(yard)
-	var sail := Polygon2D.new()
-	sail.polygon = PackedVector2Array([Vector2(-14, -2), Vector2(14, -2), Vector2(10, 14), Vector2(-10, 14)])
-	sail.color = Color(0.92, 0.90, 0.82)
-	sail.scale = Vector2.ONE * sc
-	add_child(sail)
+	var with_ram: bool = GameState.ram_id != "none"
+	var sprite := Sprite2D.new()
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	sprite.texture = _build_ship_texture(with_ram, GameState.ram_id == "steel")
+	sprite.scale = Vector2.ONE * 3.4 * sc
+	add_child(sprite)
 	# 衝突形状
 	var col := CollisionShape2D.new()
 	var cap := CapsuleShape2D.new()
@@ -57,11 +93,24 @@ func _build_visual() -> void:
 	cap.height = 60.0 * sc
 	col.shape = cap
 	add_child(col)
+	# 煙突の煙(蒸気船らしさ・#28)
+	var smoke := CPUParticles2D.new()
+	smoke.amount = 14
+	smoke.lifetime = 1.6
+	smoke.position = Vector2(0, -6 * sc)
+	smoke.direction = Vector2(0, 1)
+	smoke.spread = 25.0
+	smoke.initial_velocity_min = 8.0
+	smoke.initial_velocity_max = 20.0
+	smoke.scale_amount_min = 2.0
+	smoke.scale_amount_max = 6.0
+	smoke.color = Color(0.85, 0.85, 0.88, 0.35)
+	add_child(smoke)
 	# 航跡パーティクル
 	_wake = CPUParticles2D.new()
 	_wake.amount = 24
 	_wake.lifetime = 1.2
-	_wake.position = Vector2(0, 28 * sc)
+	_wake.position = Vector2(0, 42 * sc)
 	_wake.direction = Vector2(0, 1)
 	_wake.spread = 20.0
 	_wake.initial_velocity_min = 10.0

@@ -18,23 +18,49 @@ var fish := {
 # 戦闘モブ(倒せば漁獲可能) hp/dmg/cap/price + flags
 # ---------------------------------------------------------------------------
 var combat_mobs := {
-	"narwhal":       {"name": "ユニコーン",     "hp": 60,  "dmg": 4,  "cap": 3, "price": 150, "ranged": false, "aerial": false, "color": Color(0.85,0.85,0.9)},
-	"seahunter":     {"name": "シーハンター",   "hp": 140, "dmg": 8,  "cap": 4, "price": 320, "ranged": false, "aerial": false, "color": Color(0.2,0.2,0.25)},
-	"ornithocheirus":{"name": "オルニケイトス", "hp": 90,  "dmg": 7,  "cap": 3, "price": 280, "ranged": false, "aerial": true,  "color": Color(0.7,0.6,0.4)},
-	"wyrm":          {"name": "ワイアーム",     "hp": 220, "dmg": 12, "cap": 4, "price": 500, "ranged": true,  "aerial": false, "color": Color(0.6,0.2,0.2)},
+	"narwhal":       {"name": "ユニコーン",     "hp": 110, "dmg": 4,  "cap": 3, "price": 150, "ranged": false, "aerial": false, "speed": 8.0,  "color": Color(0.85,0.85,0.9)},
+	"seahunter":     {"name": "シーハンター",   "hp": 250, "dmg": 8,  "cap": 4, "price": 320, "ranged": false, "aerial": false, "speed": 9.0,  "color": Color(0.2,0.2,0.25)},
+	"ornithocheirus":{"name": "オルニケイトス", "hp": 160, "dmg": 7,  "cap": 3, "price": 280, "ranged": false, "aerial": true,  "speed": 14.0, "color": Color(0.7,0.6,0.4)},
+	"wyrm":          {"name": "ワイアーム",     "hp": 400, "dmg": 12, "cap": 4, "price": 500, "ranged": true,  "aerial": false, "speed": 7.0,  "color": Color(0.6,0.2,0.2)},
+}
+
+# 島tierごとの戦闘モブ出現重み(#38)。序盤=ユニコーン中心→終盤=ワイアーム中心。
+var mob_weights := [
+	{"narwhal": 0.55, "seahunter": 0.25, "ornithocheirus": 0.15, "wyrm": 0.05},
+	{"narwhal": 0.30, "seahunter": 0.35, "ornithocheirus": 0.25, "wyrm": 0.10},
+	{"narwhal": 0.10, "seahunter": 0.30, "ornithocheirus": 0.35, "wyrm": 0.25},
+	{"narwhal": 0.05, "seahunter": 0.15, "ornithocheirus": 0.30, "wyrm": 0.50},
+]
+
+func pick_mob(tier: int) -> String:
+	var w: Dictionary = mob_weights[clampi(tier, 0, mob_weights.size() - 1)]
+	var r := randf()
+	var acc := 0.0
+	for id in w:
+		acc += w[id]
+		if r <= acc:
+			return id
+	return "narwhal"
+
+# 銛のデバフ効果(#37)。造船所で選択して主にのみ付与。
+var harpoon_debuffs := {
+	"slip":  {"name": "毒(スリップ)",   "desc": "継続ダメージ"},
+	"atkfreq": {"name": "麻痺(攻撃頻度減)", "desc": "攻撃間隔1.7倍"},
+	"atk":   {"name": "衰弱(攻撃力減)", "desc": "与ダメージ40%減"},
+	"speed": {"name": "鈍化(移動速度減)", "desc": "移動45%減"},
 }
 
 # ---------------------------------------------------------------------------
 # 近海の主(ボス) 主は対応する島でしか売れない。bounty=賞金, cap=魚倉圧迫
 # ---------------------------------------------------------------------------
 var lords := {
-	"sawshark":  {"name": "電動ノコギリザメ",         "hp": 400,  "dmg": 14, "cap": 8,  "price": 800,  "bounty": 1500,  "island": 0, "ranged": false, "aerial": false, "pair": false, "dir": 0},
-	"dumbo":     {"name": "ウミダンボ",               "hp": 550,  "dmg": 12, "cap": 9,  "price": 1000, "bounty": 2000,  "island": 0, "ranged": false, "aerial": false, "pair": false, "dir": 135},
-	"whale":     {"name": "ヒゲマッコウナガスクジラ", "hp": 900,  "dmg": 18, "cap": 14, "price": 1800, "bounty": 3500,  "island": 1, "ranged": false, "aerial": false, "pair": false, "dir": 45},
-	"walrus":    {"name": "ギガントセイウチ",         "hp": 480,  "dmg": 16, "cap": 7,  "price": 1200, "bounty": 4000,  "island": 1, "ranged": false, "aerial": false, "pair": true,  "dir": 225},
-	"hydra":     {"name": "ヒュドラ",                 "hp": 1100, "dmg": 20, "cap": 12, "price": 2400, "bounty": 6000,  "island": 2, "ranged": true,  "aerial": false, "pair": false, "dir": 90},
-	"quetzal":   {"name": "ケツァルコアトル",         "hp": 1300, "dmg": 22, "cap": 13, "price": 3000, "bounty": 8000,  "island": 2, "ranged": false, "aerial": true,  "pair": false, "dir": 270},
-	"leviathan": {"name": "レヴィアタン",             "hp": 4000, "dmg": 35, "cap": 25, "price": 9999, "bounty": 50000, "island": 3, "ranged": true,  "aerial": false, "pair": false, "dir": 180},
+	"sawshark":  {"name": "電動ノコギリザメ",         "hp": 560,  "dmg": 14, "cap": 8,  "price": 800,  "bounty": 1500,  "island": 0, "ranged": false, "aerial": false, "pair": false, "dir": 0},
+	"dumbo":     {"name": "ウミダンボ",               "hp": 770,  "dmg": 12, "cap": 9,  "price": 1000, "bounty": 2000,  "island": 0, "ranged": false, "aerial": false, "pair": false, "dir": 135},
+	"whale":     {"name": "ヒゲマッコウナガスクジラ", "hp": 1260,  "dmg": 18, "cap": 14, "price": 1800, "bounty": 3500,  "island": 1, "ranged": false, "aerial": false, "pair": false, "dir": 45},
+	"walrus":    {"name": "ギガントセイウチ",         "hp": 670,  "dmg": 16, "cap": 7,  "price": 1200, "bounty": 4000,  "island": 1, "ranged": false, "aerial": false, "pair": true,  "dir": 225},
+	"hydra":     {"name": "ヒュドラ",                 "hp": 1540, "dmg": 20, "cap": 12, "price": 2400, "bounty": 6000,  "island": 2, "ranged": true,  "aerial": false, "pair": false, "dir": 90},
+	"quetzal":   {"name": "ケツァルコアトル",         "hp": 1820, "dmg": 22, "cap": 13, "price": 3000, "bounty": 8000,  "island": 2, "ranged": false, "aerial": true,  "pair": false, "dir": 270},
+	"leviathan": {"name": "レヴィアタン",             "hp": 5200, "dmg": 35, "cap": 25, "price": 9999, "bounty": 50000, "island": 3, "ranged": true,  "aerial": false, "pair": false, "dir": 180},
 }
 
 # 方位(度・北=0=-Z, 時計回り)を八方位の日本語に
@@ -52,9 +78,9 @@ func dir_vec(deg: float) -> Vector3:
 # 海賊(首だけ持ち帰る=魚倉を圧迫しない) bounty で換金
 # ---------------------------------------------------------------------------
 var pirates := {
-	"raider":   {"name": "海賊(小)", "hp": 120, "dmg": 7,  "bounty": 90,  "fame": 1, "ranged": true, "color": Color(0.4,0.3,0.2)},
-	"corsair":  {"name": "海賊(中)", "hp": 260, "dmg": 10, "bounty": 220, "fame": 2, "ranged": true, "color": Color(0.35,0.25,0.15)},
-	"dread":    {"name": "海賊(大)", "hp": 500, "dmg": 15, "bounty": 500, "fame": 4, "ranged": true, "color": Color(0.25,0.18,0.1)},
+	"raider":   {"name": "海賊(小)", "hp": 220, "dmg": 7,  "bounty": 90,  "fame": 1, "ranged": true, "color": Color(0.4,0.3,0.2)},
+	"corsair":  {"name": "海賊(中)", "hp": 450, "dmg": 10, "bounty": 220, "fame": 2, "ranged": true, "color": Color(0.35,0.25,0.15)},
+	"dread":    {"name": "海賊(大)", "hp": 900, "dmg": 15, "bounty": 500, "fame": 4, "ranged": true, "color": Color(0.25,0.18,0.1)},
 }
 
 # ---------------------------------------------------------------------------

@@ -19,6 +19,10 @@ var attack_cd: float = 1.4
 var _atk_timer: float = 0.0
 var _slip: float = 0.0
 var _debuff_t: float = 0.0
+var _debuff_kind: String = ""
+var _aggro: bool = false        # #32: 発見で加速
+var _wander_dir: Vector2 = Vector2.RIGHT
+var _wander_t: float = 0.0
 var sprite: Sprite2D
 var _shadow: Sprite2D
 var player: Node2D
@@ -39,7 +43,8 @@ func setup(p_kind: String, p_id: String) -> void:
 	dmg = float(def.dmg)
 	ranged = bool(def.get("ranged", false))
 	aerial = bool(def.get("aerial", false))
-	speed = (5.0 if kind == "lord" else 7.0) * K
+	var base_speed: float = float(def.get("speed", 5.0 if kind == "lord" else 7.0))
+	speed = base_speed * K
 	attack_range = (12.0 if kind == "lord" else 9.0) * K
 
 func _ready() -> void:
@@ -48,13 +53,14 @@ func _ready() -> void:
 	# 目標サイズ(px): 強いほど大きい
 	var target_w := 90.0
 	match kind:
-		"pirate": target_w = clampf(90.0 + max_hp * 0.12, 100.0, 170.0)
-		"mob": target_w = clampf(70.0 + max_hp * 0.25, 80.0, 150.0)
-		"lord": target_w = clampf(120.0 + max_hp * 0.06, 150.0, 380.0)
-	_radius = target_w * 0.45
+		"pirate": target_w = clampf(85.0 + max_hp * 0.05, 95.0, 160.0)
+		"mob": target_w = clampf(52.0 + max_hp * 0.06, 55.0, 90.0)   # #33: 小さめ
+		"lord": target_w = clampf(110.0 + max_hp * 0.05, 140.0, 380.0)
+	_radius = target_w * 0.40
 	attack_range += _radius
 	# 本体スプライト(生成画像。なければ色付き楕円)
 	sprite = Sprite2D.new()
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST   # ドット絵をくっきり
 	var tex := _load_tex()
 	if tex:
 		sprite.texture = tex
@@ -95,6 +101,10 @@ func _ready() -> void:
 		player = ps
 
 func _load_tex() -> Texture2D:
+	# ドット絵版(#26)優先。なければ元画像。
+	var pixel := "res://assets/images/pixel/%s_%s.png" % [kind, id]
+	if ResourceLoader.exists(pixel):
+		return load(pixel)
 	var path := "res://assets/images/%s_%s.png" % [kind, id]
 	if ResourceLoader.exists(path):
 		return load(path)
@@ -116,7 +126,10 @@ func take_hit(amount: float, slip: bool, debuff: bool) -> void:
 	if slip and kind == "pirate":
 		_slip += amount * 0.6
 	if debuff and kind == "lord":
-		_debuff_t = 6.0
+		_debuff_kind = GameState.harpoon_debuff
+		_debuff_t = 6.0 * GameState.debuff_dur_mult()
+		if _debuff_kind == "slip":
+			_slip += amount * 0.8
 	# 被弾フラッシュ
 	if sprite:
 		sprite.modulate = Color(2.2, 1.2, 1.2)
@@ -137,23 +150,47 @@ func _physics_process(delta: float) -> void:
 			return
 	if _debuff_t > 0.0:
 		_debuff_t -= delta
-	# 揺れ
-	_bob += delta * 1.8
+		if _debuff_t <= 0.0:
+			_debuff_kind = ""
+	# 泳ぎアニメ(#26): 揺れ+伸縮でドット絵を動かす
+	_bob += delta * (2.6 if _aggro else 1.4)
 	if sprite:
-		sprite.rotation = sin(_bob * 0.7) * 0.05
+		sprite.rotation = sin(_bob * 0.7) * 0.06
+		var squash := 1.0 + sin(_bob * 2.0) * 0.05
+		var base_s: float = sprite.scale.x
+		sprite.scale.y = absf(base_s) * squash
 	if not is_instance_valid(player):
 		return
 	var to: Vector2 = player.global_position - global_position
 	var dist := to.length()
-	# スプライトの向き(左右反転のみ。海図イラスト風)
-	if sprite and absf(to.x) > 4.0:
-		sprite.flip_h = to.x < 0.0
+	# #32: 普段はゆっくり徘徊、発見(索敵圏内)で加速して追跡
+	var aggro_range := 900.0 if kind == "lord" else 640.0
+	if not _aggro and dist < aggro_range:
+		_aggro = true
+	var eff_speed := speed
+	if _debuff_kind == "speed":
+		eff_speed *= 0.55   # #37 鈍化
+	var move_dir: Vector2
+	if _aggro:
+		move_dir = to.normalized()
+	else:
+		_wander_t -= delta
+		if _wander_t <= 0.0:
+			_wander_t = randf_range(2.0, 4.5)
+			_wander_dir = Vector2.RIGHT.rotated(randf() * TAU)
+		move_dir = _wander_dir
+		eff_speed *= 0.3
+	# スプライトの向き(移動方向に左右反転・#26)
+	if sprite and absf(move_dir.x) > 0.1:
+		sprite.flip_h = move_dir.x < 0.0
 		if _shadow:
 			_shadow.flip_h = sprite.flip_h
-	if dist > attack_range:
-		velocity = to.normalized() * speed
+	if not _aggro:
+		velocity = move_dir * eff_speed
+	elif dist > attack_range:
+		velocity = move_dir * eff_speed
 	else:
-		velocity = velocity.move_toward(Vector2.ZERO, speed)
+		velocity = velocity.move_toward(Vector2.ZERO, eff_speed)
 		_attack(delta, dist)
 	move_and_slide()
 
@@ -162,35 +199,42 @@ func _attack(delta: float, dist: float) -> void:
 	if _atk_timer > 0:
 		return
 	_atk_timer = attack_cd
+	if _debuff_kind == "atkfreq":
+		_atk_timer *= 1.7   # #37 麻痺: 攻撃間隔増
+	var eff_dmg := dmg
+	if _debuff_kind == "atk":
+		eff_dmg *= 0.6      # #37 衰弱: 与ダメ減
 	if id == "leviathan":
 		if dist <= attack_range * 1.4:
-			_damage_player(dmg * 1.3)
+			_damage_player(eff_dmg * 1.3)
 			GameState.notice.emit("レヴィアタンの薙ぎ払い!")
 		else:
-			_damage_player(dmg)
+			_damage_player(eff_dmg)
 			GameState.notice.emit("レヴィアタンの津波!")
 	elif id == "hydra":
 		_ranged_attack(true)
 	elif ranged:
 		if dist <= attack_range * 0.6:
-			_damage_player(dmg)
+			_damage_player(eff_dmg)
 		else:
 			_ranged_attack(false)
 	elif dist <= attack_range:
-		_damage_player(dmg)
+		_damage_player(eff_dmg)
 
 func _ranged_attack(is_fire: bool) -> void:
+	var eff_dmg := dmg
+	if _debuff_kind == "atk":
+		eff_dmg *= 0.6
 	var proj := Area2D.new()
 	proj.set_script(preload("res://scripts2d/Projectile2D.gd"))
 	get_parent().add_child(proj)
 	proj.global_position = global_position
 	proj.from_player = false
 	proj.fire = is_fire
-	proj.setup((player.global_position - global_position).normalized(), {"dmg": dmg})
+	proj.setup((player.global_position - global_position).normalized(), {"dmg": eff_dmg})
 
 func _damage_player(amount: float) -> void:
-	GameState.run_armor = maxf(GameState.run_armor - amount, 0.0)
-	GameState.stats_changed.emit()
+	GameState.damage_player(amount)   # 敏捷カット込み(クルー#39)
 	Audio.play("sfx_hit", -5.0)
 
 func _draw() -> void:
