@@ -46,6 +46,8 @@ func setup(p_kind: String, p_id: String) -> void:
 	var base_speed: float = float(def.get("speed", 5.0 if kind == "lord" else 7.0))
 	speed = base_speed * K
 	attack_range = (12.0 if kind == "lord" else 9.0) * K
+	if kind == "pirate":
+		attack_cd = 0.85   # #55: 海賊の遠隔攻撃は高頻度
 
 func _ready() -> void:
 	add_to_group("enemy")

@@ -118,9 +118,9 @@ var ships := {
 # ---------------------------------------------------------------------------
 var islands := [
 	{"id": 0, "name": "始まりの島",   "fame_req": 0,   "price_mult": 1.0, "pos": Vector3(0, 0, 0),       "spawn": ["sardine","mackerel"], "lords": ["sawshark","dumbo"]},
-	{"id": 1, "name": "潮鳴りの島",   "fame_req": 12,   "price_mult": 1.6, "pos": Vector3(900, 0, -300),  "spawn": ["bonito","squid","mackerel"], "lords": ["whale","walrus"]},
-	{"id": 2, "name": "嵐越えの島",   "fame_req": 45,  "price_mult": 2.4, "pos": Vector3(1500, 0, 600),  "spawn": ["octopus","squid","bonito"], "lords": ["hydra","quetzal"]},
-	{"id": 3, "name": "果ての島",     "fame_req": 120,  "price_mult": 3.6, "pos": Vector3(2400, 0, -200), "spawn": ["octopus","bonito"], "lords": ["leviathan"]},
+	{"id": 1, "name": "潮鳴りの島",   "fame_req": 12,   "price_mult": 1.6, "pos": Vector3(600, 0, -200),  "spawn": ["bonito","squid","mackerel"], "lords": ["whale","walrus"]},   # #57: 島間距離2/3
+	{"id": 2, "name": "嵐越えの島",   "fame_req": 45,  "price_mult": 2.4, "pos": Vector3(1000, 0, 400),  "spawn": ["octopus","squid","bonito"], "lords": ["hydra","quetzal"]},
+	{"id": 3, "name": "果ての島",     "fame_req": 120,  "price_mult": 3.6, "pos": Vector3(1600, 0, -135), "spawn": ["octopus","bonito"], "lords": ["leviathan"]},
 ]
 
 func island(idx: int) -> Dictionary:

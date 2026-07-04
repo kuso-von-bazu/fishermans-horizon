@@ -181,6 +181,8 @@ func _handle_ram() -> void:
 	for i in get_slide_collision_count():
 		var col = get_slide_collision(i).get_collider()
 		if col and col.is_in_group("enemy") and col.has_method("take_hit"):
+			if col.get("aerial") == true:
+				continue   # #56: 空中の敵(オルニケイトス等)に衝角は届かない
 			var ram_dmg := rd * (0.5 + velocity.length() / maxf(max_speed, 1.0))
 			col.take_hit(ram_dmg, false, false)
 			# #54: 突撃の手応え(通知+ノックバック+強い音)
