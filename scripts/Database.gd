@@ -54,13 +54,13 @@ var harpoon_debuffs := {
 # 近海の主(ボス) 主は対応する島でしか売れない。bounty=賞金, cap=魚倉圧迫
 # ---------------------------------------------------------------------------
 var lords := {
-	"sawshark":  {"name": "電動ノコギリザメ",         "hp": 730,  "dmg": 21, "cap": 8,  "price": 800,  "bounty": 1500,  "fame": 8,  "island": 0, "ranged": false, "aerial": false, "pair": false, "dir": 0},
-	"dumbo":     {"name": "ウミダンボ",               "hp": 1000, "dmg": 18, "cap": 9,  "price": 1000, "bounty": 2000,  "fame": 10, "island": 0, "ranged": false, "aerial": false, "pair": false, "dir": 135},
-	"whale":     {"name": "ヒゲマッコウナガスクジラ", "hp": 1640, "dmg": 27, "cap": 14, "price": 1800, "bounty": 3500,  "fame": 16, "island": 1, "ranged": false, "aerial": false, "pair": false, "dir": 45},
-	"walrus":    {"name": "ギガントセイウチ",         "hp": 870,  "dmg": 24, "cap": 7,  "price": 1200, "bounty": 4000,  "fame": 18, "island": 1, "ranged": false, "aerial": false, "pair": true,  "dir": 225},
-	"hydra":     {"name": "ヒュドラ",                 "hp": 2000, "dmg": 30, "cap": 12, "price": 2400, "bounty": 6000,  "fame": 25, "island": 2, "ranged": true,  "aerial": false, "pair": false, "dir": 90},
-	"quetzal":   {"name": "ケツァルコアトル",         "hp": 2370, "dmg": 33, "cap": 13, "price": 3000, "bounty": 8000,  "fame": 30, "island": 2, "ranged": false, "aerial": true,  "pair": false, "dir": 270},
-	"leviathan": {"name": "レヴィアタン",             "hp": 6800, "dmg": 50, "cap": 25, "price": 9999, "bounty": 50000, "fame": 60, "island": 3, "ranged": true,  "aerial": false, "pair": false, "dir": 180},
+	"sawshark":  {"name": "電動ノコギリザメ",         "hp": 730,  "dmg": 21, "cap": 8,  "price": 800,  "bounty": 1500,  "fame": 8,  "island": 0, "ranged": false, "aerial": false, "pair": false, "speed": 9.5, "dir": 0},
+	"dumbo":     {"name": "ウミダンボ",               "hp": 1000, "dmg": 18, "cap": 9,  "price": 1000, "bounty": 2000,  "fame": 10, "island": 0, "ranged": false, "aerial": false, "pair": false, "speed": 7.5, "dir": 135},
+	"whale":     {"name": "ヒゲマッコウナガスクジラ", "hp": 1640, "dmg": 27, "cap": 14, "price": 1800, "bounty": 3500,  "fame": 16, "island": 1, "ranged": false, "aerial": false, "pair": false, "speed": 8.5, "dir": 45},
+	"walrus":    {"name": "ギガントセイウチ",         "hp": 870,  "dmg": 24, "cap": 7,  "price": 1200, "bounty": 4000,  "fame": 18, "island": 1, "ranged": false, "aerial": false, "pair": true, "speed": 8.5,  "dir": 225},
+	"hydra":     {"name": "ヒュドラ",                 "hp": 2000, "dmg": 30, "cap": 12, "price": 2400, "bounty": 6000,  "fame": 25, "island": 2, "ranged": true,  "aerial": false, "pair": false, "speed": 8.0, "dir": 90},
+	"quetzal":   {"name": "ケツァルコアトル",         "hp": 2370, "dmg": 33, "cap": 13, "price": 3000, "bounty": 8000,  "fame": 30, "island": 2, "ranged": false, "aerial": true,  "pair": false, "speed": 12.0, "dir": 270},
+	"leviathan": {"name": "レヴィアタン",             "hp": 6800, "dmg": 50, "cap": 25, "price": 9999, "bounty": 50000, "fame": 60, "island": 3, "ranged": true,  "aerial": false, "pair": false, "speed": 9.0, "dir": 180},
 }
 
 # 方位(度・北=0=-Z, 時計回り)を八方位の日本語に

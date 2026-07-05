@@ -29,9 +29,19 @@ var jobs := {
 }
 const CREW_NAMES := ["ジン", "ハル", "カイ", "レン", "ソラ", "ウミ", "リク", "ナギ", "イサナ", "タツ", "シオン", "マキ"]
 
+# #58: 副船長は同時に1名まで(雇用/ジョブチェンジ共通)
+func has_firstmate() -> bool:
+	for c in crew:
+		if c.job == "firstmate":
+			return true
+	return false
+
 func hire_crew(job_id: String) -> bool:
 	if crew.size() >= CREW_MAX:
 		notice.emit("船室が満員です(雇用は%d人まで)" % CREW_MAX)
+		return false
+	if job_id == "firstmate" and has_firstmate():
+		notice.emit("副船長は同時に1名までです")
 		return false
 	var j: Dictionary = jobs[job_id]
 	if money < int(j.hire):
@@ -75,8 +85,10 @@ func can_jobchange(m: Dictionary, job_id: String) -> bool:
 	var j: Dictionary = jobs[job_id]
 	if not j.has("req") or m.job == job_id:
 		return false
-	if m.get("changed", false):
-		return false   # #49: クラスチェンジは1度だけ
+	if job_id == "firstmate" and has_firstmate():
+		return false   # #58: 副船長は同時に1名まで
+	if m.get("changed", false) and job_id != "firstmate":
+		return false   # #49: 1度だけ。ただし副船長へは2度目も可(#58)
 	var req: Array = j.req
 	if req[0] == "total":
 		return int(m.hp) + int(m.agi) + int(m.sht) + int(m.int_) + int(m.vis) >= int(req[1])
