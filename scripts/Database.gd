@@ -21,15 +21,24 @@ var combat_mobs := {
 	"narwhal":       {"name": "ユニコーン",     "hp": 110, "dmg": 6,  "cap": 3, "price": 150, "ranged": false, "aerial": false, "speed": 8.0,  "color": Color(0.85,0.85,0.9)},
 	"seahunter":     {"name": "シーハンター",   "hp": 250, "dmg": 12,  "cap": 4, "price": 320, "ranged": false, "aerial": false, "speed": 9.0,  "color": Color(0.2,0.2,0.25)},
 	"ornithocheirus":{"name": "オルニケイトス", "hp": 160, "dmg": 11, "cap": 3, "price": 280, "ranged": false, "aerial": true,  "speed": 21.0, "color": Color(0.7,0.6,0.4)},
-	"wyrm":          {"name": "ワイアーム",     "hp": 400, "dmg": 18, "cap": 4, "price": 500, "ranged": true,  "aerial": false, "speed": 7.0,  "color": Color(0.6,0.2,0.2)},
+	"wyrm":          {"name": "ワイアーム",     "hp": 400, "dmg": 18, "cap": 4, "price": 500, "ranged": true,  "aerial": false, "speed": 7.0,  "atk_cd": 0.8, "color": Color(0.6,0.2,0.2)},
+	# #69: 潮鳴り以降の強モブ。reach=触腕の射程倍率, entangle=被弾で討伐まで鈍足
+	"kraken":        {"name": "クラーケン",     "hp": 700, "dmg": 24, "cap": 6, "price": 900,  "ranged": false, "aerial": false, "speed": 8.5,  "reach": 2.2, "entangle": true, "color": Color(0.5,0.2,0.45)},
+	"wyvern":        {"name": "ワイバーン",     "hp": 800, "dmg": 26, "cap": 6, "price": 1000, "ranged": true,  "aerial": false, "speed": 9.5,  "atk_cd": 1.1, "color": Color(0.7,0.15,0.15)},
+	# #71: 嵐越え以降。merman=群れ+俊敏+好戦的, charybdis=渦潮+確率回避
+	"merman":        {"name": "マーマン",       "hp": 260, "dmg": 16, "cap": 2, "price": 380,  "ranged": false, "aerial": false, "speed": 13.0, "group": 3, "aggro": 1400.0, "color": Color(0.25,0.55,0.4)},
+	"charybdis":     {"name": "カリュブディス", "hp": 900, "dmg": 28, "cap": 8, "price": 1200, "ranged": true,  "aerial": false, "speed": 6.0,  "dodge": 0.25, "color": Color(0.15,0.3,0.45)},
+	# #72: 果ての島。tiamat=空中(魚雷ロック不可)+俊敏+高火力, dagon=触腕+絡め+毒
+	"tiamat":        {"name": "ティアマット",   "hp": 1200, "dmg": 34, "cap": 10, "price": 1800, "ranged": true, "aerial": true, "speed": 16.0, "atk_cd": 1.0, "color": Color(0.15,0.12,0.2)},
+	"dagon":         {"name": "ダゴン",         "hp": 1100, "dmg": 30, "cap": 9,  "price": 1600, "ranged": false, "aerial": false, "speed": 7.5, "reach": 2.5, "entangle": true, "poison": true, "color": Color(0.3,0.5,0.35)},
 }
 
-# 島tierごとの戦闘モブ出現重み(#38)。序盤=ユニコーン中心→終盤=ワイアーム中心。
+# 島tierごとの戦闘モブ出現重み(#38/#69/#71/#72)。先の海域ほど強モブ中心。
 var mob_weights := [
 	{"narwhal": 0.55, "seahunter": 0.25, "ornithocheirus": 0.15, "wyrm": 0.05},
-	{"narwhal": 0.30, "seahunter": 0.35, "ornithocheirus": 0.25, "wyrm": 0.10},
-	{"narwhal": 0.10, "seahunter": 0.30, "ornithocheirus": 0.35, "wyrm": 0.25},
-	{"narwhal": 0.05, "seahunter": 0.15, "ornithocheirus": 0.30, "wyrm": 0.50},
+	{"narwhal": 0.20, "seahunter": 0.28, "ornithocheirus": 0.20, "wyrm": 0.12, "kraken": 0.12, "wyvern": 0.08},
+	{"narwhal": 0.05, "seahunter": 0.15, "ornithocheirus": 0.18, "wyrm": 0.14, "kraken": 0.14, "wyvern": 0.12, "merman": 0.12, "charybdis": 0.10},
+	{"seahunter": 0.06, "ornithocheirus": 0.12, "wyrm": 0.16, "kraken": 0.12, "wyvern": 0.12, "merman": 0.12, "charybdis": 0.10, "tiamat": 0.10, "dagon": 0.10},
 ]
 
 func pick_mob(tier: int) -> String:
@@ -53,14 +62,15 @@ var harpoon_debuffs := {
 # ---------------------------------------------------------------------------
 # 近海の主(ボス) 主は対応する島でしか売れない。bounty=賞金, cap=魚倉圧迫
 # ---------------------------------------------------------------------------
+# #65: 全主が遠隔攻撃を持つ。way=同時弾数(扇状), homing=追跡弾を追加で撃つ
 var lords := {
-	"sawshark":  {"name": "電動ノコギリザメ",         "hp": 730,  "dmg": 21, "cap": 8,  "price": 800,  "bounty": 1500,  "fame": 8,  "island": 0, "ranged": false, "aerial": false, "pair": false, "speed": 9.5, "dir": 0},
-	"dumbo":     {"name": "ウミダンボ",               "hp": 1000, "dmg": 18, "cap": 9,  "price": 1000, "bounty": 2000,  "fame": 10, "island": 0, "ranged": false, "aerial": false, "pair": false, "speed": 7.5, "dir": 135},
-	"whale":     {"name": "ヒゲマッコウナガスクジラ", "hp": 1640, "dmg": 27, "cap": 14, "price": 1800, "bounty": 3500,  "fame": 16, "island": 1, "ranged": false, "aerial": false, "pair": false, "speed": 8.5, "dir": 45},
-	"walrus":    {"name": "ギガントセイウチ",         "hp": 870,  "dmg": 24, "cap": 7,  "price": 1200, "bounty": 4000,  "fame": 18, "island": 1, "ranged": false, "aerial": false, "pair": true, "speed": 8.5,  "dir": 225},
-	"hydra":     {"name": "ヒュドラ",                 "hp": 2000, "dmg": 30, "cap": 12, "price": 2400, "bounty": 6000,  "fame": 25, "island": 2, "ranged": true,  "aerial": false, "pair": false, "speed": 8.0, "dir": 90},
-	"quetzal":   {"name": "ケツァルコアトル",         "hp": 2370, "dmg": 33, "cap": 13, "price": 3000, "bounty": 8000,  "fame": 30, "island": 2, "ranged": false, "aerial": true,  "pair": false, "speed": 12.0, "dir": 270},
-	"leviathan": {"name": "レヴィアタン",             "hp": 6800, "dmg": 50, "cap": 25, "price": 9999, "bounty": 50000, "fame": 60, "island": 3, "ranged": true,  "aerial": false, "pair": false, "speed": 9.0, "dir": 180},
+	"sawshark":  {"name": "電動ノコギリザメ",         "hp": 730,  "dmg": 21, "cap": 8,  "price": 800,  "bounty": 1500,  "fame": 8,  "island": 0, "ranged": true, "aerial": false, "pair": false, "speed": 9.5, "dir": 0},
+	"dumbo":     {"name": "ウミダンボ",               "hp": 1000, "dmg": 18, "cap": 9,  "price": 1000, "bounty": 2000,  "fame": 10, "island": 0, "ranged": true, "aerial": false, "pair": false, "speed": 7.5, "dir": 135},
+	"whale":     {"name": "ヒゲマッコウナガスクジラ", "hp": 1640, "dmg": 27, "cap": 14, "price": 1800, "bounty": 3500,  "fame": 16, "island": 1, "ranged": true, "aerial": false, "pair": false, "speed": 8.5, "dir": 45},
+	"walrus":    {"name": "ギガントセイウチ",         "hp": 870,  "dmg": 24, "cap": 7,  "price": 1200, "bounty": 4000,  "fame": 18, "island": 1, "ranged": true, "aerial": false, "pair": true, "speed": 8.5,  "dir": 225},
+	"hydra":     {"name": "ヒュドラ",                 "hp": 2000, "dmg": 30, "cap": 12, "price": 2400, "bounty": 6000,  "fame": 25, "island": 2, "ranged": true,  "aerial": false, "pair": false, "speed": 8.0, "way": 3, "homing": true, "dir": 90},
+	"quetzal":   {"name": "ケツァルコアトル",         "hp": 2370, "dmg": 33, "cap": 13, "price": 3000, "bounty": 8000,  "fame": 30, "island": 2, "ranged": true, "aerial": true,  "pair": false, "speed": 12.0, "dir": 270},
+	"leviathan": {"name": "レヴィアタン",             "hp": 6800, "dmg": 50, "cap": 25, "price": 9999, "bounty": 50000, "fame": 60, "island": 3, "ranged": true,  "aerial": false, "pair": false, "speed": 9.0, "way": 5, "homing": true, "dir": 180},
 }
 
 # 方位(度・北=0=-Z, 時計回り)を八方位の日本語に
@@ -78,9 +88,12 @@ func dir_vec(deg: float) -> Vector3:
 # 海賊(首だけ持ち帰る=魚倉を圧迫しない) bounty で換金
 # ---------------------------------------------------------------------------
 var pirates := {
-	"raider":   {"name": "海賊(小)", "hp": 220, "dmg": 11,  "bounty": 90,  "fame": 1, "ranged": true, "color": Color(0.4,0.3,0.2)},
-	"corsair":  {"name": "海賊(中)", "hp": 450, "dmg": 16, "bounty": 220, "fame": 2, "ranged": true, "color": Color(0.35,0.25,0.15)},
-	"dread":    {"name": "海賊(大)", "hp": 900, "dmg": 24, "bounty": 500, "fame": 4, "ranged": true, "color": Color(0.25,0.18,0.1)},
+	# #66: wpn=遠隔攻撃の種類(gatling=連射弾/cannon=砲弾/torpedo=追尾魚雷/all=全部+衝角)
+	"raider":   {"name": "海賊(小)", "hp": 220, "dmg": 11,  "bounty": 90,  "fame": 1, "ranged": true, "wpn": "gatling", "color": Color(0.4,0.3,0.2)},
+	"corsair":  {"name": "海賊(中)", "hp": 450, "dmg": 16, "bounty": 220, "fame": 2, "ranged": true, "wpn": "cannon",  "color": Color(0.35,0.25,0.15)},
+	"dread":    {"name": "海賊(大)", "hp": 900, "dmg": 24, "bounty": 500, "fame": 4, "ranged": true, "wpn": "torpedo", "color": Color(0.25,0.18,0.1)},
+	# #73: レアスポーンの強敵。かつてFisherman's Horizonを目指し、心折れて海賊に落ちた男
+	"king":     {"name": "海賊王",   "hp": 2600, "dmg": 30, "bounty": 4000, "fame": 30, "ranged": true, "wpn": "all", "speed": 12.0, "atk_cd": 0.9, "color": Color(0.1,0.08,0.1)},
 }
 
 # ---------------------------------------------------------------------------
@@ -88,7 +101,7 @@ var pirates := {
 # kind: aim / lock
 # ---------------------------------------------------------------------------
 var weapons := {
-	"gatling": {"name": "ガトリングガン", "kind": "aim",  "dmg": 3,  "cooldown": 0.08, "reload": 1.0, "mag": 40, "range": 120, "price": 500,  "slip": false, "debuff": false, "homing": false, "sfx": "sfx_gun",     "desc": "単発威力小・連射力大。弾幕で継続ダメージ"},
+	"gatling": {"name": "ガトリングガン", "kind": "aim",  "dmg": 3,  "cooldown": 0.08, "reload": 1.0, "mag": 40, "range": 120, "price": 500,  "slip": false, "debuff": false, "homing": false, "falloff": true, "sfx": "sfx_gun",     "desc": "単発威力小・連射力大。遠距離では威力減衰(#63)"},
 	"cannon":  {"name": "大砲",           "kind": "aim",  "dmg": 35, "cooldown": 1.4,  "reload": 1.6, "mag": 4,  "range": 140, "price": 1200, "slip": true,  "debuff": false, "homing": false, "sfx": "sfx_cannon",  "desc": "単発威力大・連射小。海賊船にスリップ(漏水/火災)"},
 	"harpoon": {"name": "銛",             "kind": "aim",  "dmg": 18, "cooldown": 1.0,  "reload": 1.2, "mag": 6,  "range": 100, "price": 900,  "slip": false, "debuff": true,  "homing": false, "sfx": "sfx_harpoon", "desc": "中威力。主にデバフ付与(毒/弱体)"},
 	"torpedo": {"name": "魚雷",           "kind": "lock", "dmg": 22, "cooldown": 0.9,  "reload": 2.0, "mag": 8,  "range": 160, "price": 1500, "slip": false, "debuff": false, "homing": true,  "sfx": "sfx_torpedo", "desc": "ロックオンで追尾。空中の敵には不可"},

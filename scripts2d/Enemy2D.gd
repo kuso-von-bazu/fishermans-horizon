@@ -45,9 +45,11 @@ func setup(p_kind: String, p_id: String) -> void:
 	aerial = bool(def.get("aerial", false))
 	var base_speed: float = float(def.get("speed", 5.0 if kind == "lord" else 7.0))
 	speed = base_speed * K
-	attack_range = (12.0 if kind == "lord" else 9.0) * K
-	if kind == "pirate":
-		attack_cd = 0.85   # #55: 海賊の遠隔攻撃は高頻度
+	# #69/#72: reach=触腕などで攻撃射程が伸びる
+	attack_range = (12.0 if kind == "lord" else 9.0) * K * float(def.get("reach", 1.0))
+	# #55: 海賊は高頻度射撃。#70: ワイアーム等は def の atk_cd を優先
+	var cd_default := 0.55 if kind == "pirate" else 1.4
+	attack_cd = float(def.get("atk_cd", cd_default))
 
 func _ready() -> void:
 	add_to_group("enemy")
@@ -56,7 +58,7 @@ func _ready() -> void:
 	var target_w := 90.0
 	match kind:
 		"pirate": target_w = clampf(85.0 + max_hp * 0.05, 95.0, 160.0)
-		"mob": target_w = clampf(52.0 + max_hp * 0.06, 55.0, 90.0)   # #33: 小さめ
+		"mob": target_w = clampf(52.0 + max_hp * 0.06, 55.0, 120.0)   # #33: 小さめ(#69以降の強モブは大きめ)
 		"lord": target_w = clampf(110.0 + max_hp * 0.05, 140.0, 380.0)
 	_radius = target_w * 0.40
 	attack_range += _radius
@@ -123,6 +125,13 @@ func _placeholder(c: Color) -> Texture2D:
 	return ImageTexture.create_from_image(img)
 
 func take_hit(amount: float, slip: bool, debuff: bool) -> void:
+	# #71: カリュブディス等は一定確率で攻撃をかわす(渦に潜る)
+	if float(def.get("dodge", 0.0)) > 0.0 and randf() < float(def.get("dodge", 0.0)):
+		if sprite:
+			sprite.modulate = Color(0.5, 0.7, 1.6)
+			var tw0 := create_tween()
+			tw0.tween_property(sprite, "modulate", Color.WHITE, 0.25)
+		return
 	var mult := 1.25 if _debuff_t > 0.0 else 1.0
 	hp -= amount * mult
 	if slip and kind == "pirate":
@@ -165,8 +174,8 @@ func _physics_process(delta: float) -> void:
 		return
 	var to: Vector2 = player.global_position - global_position
 	var dist := to.length()
-	# #32: 普段はゆっくり徘徊、発見(索敵圏内)で加速して追跡
-	var aggro_range := 900.0 if kind == "lord" else 640.0
+	# #32: 普段はゆっくり徘徊、発見(索敵圏内)で加速して追跡。#71: マーマンは索敵が広く好戦的
+	var aggro_range: float = float(def.get("aggro", 900.0 if kind == "lord" else 640.0))
 	if not _aggro and dist < aggro_range:
 		_aggro = true
 	var eff_speed := speed
@@ -206,15 +215,24 @@ func _attack(delta: float, dist: float) -> void:
 	var eff_dmg := dmg
 	if _debuff_kind == "atk":
 		eff_dmg *= 0.6      # #37 衰弱: 与ダメ減
-	if id == "leviathan":
-		if dist <= attack_range * 1.4:
+	if kind == "lord":
+		# #65: 全主が遠隔攻撃。近距離では従来の近接/固有技
+		if id == "leviathan" and dist <= attack_range * 1.4:
 			_damage_player(eff_dmg * 1.3)
 			GameState.notice.emit("レヴィアタンの薙ぎ払い!")
-		else:
+		elif dist <= attack_range * 0.6:
 			_damage_player(eff_dmg)
-			GameState.notice.emit("レヴィアタンの津波!")
-	elif id == "hydra":
-		_ranged_attack(true)
+		else:
+			_ranged_attack(id == "hydra")
+	elif kind == "pirate":
+		if dist <= attack_range * 0.6:
+			if str(def.get("wpn", "")) == "all":
+				_damage_player(eff_dmg * 1.6)   # #73: 海賊王の衝角突撃
+				GameState.notice.emit("海賊王の衝角突撃!")
+			else:
+				_damage_player(eff_dmg)
+		else:
+			_ranged_attack(false)
 	elif ranged:
 		if dist <= attack_range * 0.6:
 			_damage_player(eff_dmg)
@@ -223,20 +241,45 @@ func _attack(delta: float, dist: float) -> void:
 	elif dist <= attack_range:
 		_damage_player(eff_dmg)
 
+# #65/#66: way=扇状同時弾, homing=追跡弾を追加, wpn=gatling(3連小弾)/torpedo(追尾)/cannon
 func _ranged_attack(is_fire: bool) -> void:
 	var eff_dmg := dmg
 	if _debuff_kind == "atk":
 		eff_dmg *= 0.6
+	var base_dir := (player.global_position - global_position).normalized()
+	var wpn := str(def.get("wpn", ""))
+	if wpn == "all":
+		wpn = ["cannon", "gatling", "torpedo"][randi() % 3]   # #73: 海賊王は全武装
+	match wpn:
+		"gatling":
+			for i in 3:
+				_shoot(base_dir.rotated(randf_range(-0.07, 0.07)), {"dmg": eff_dmg * 0.35, "falloff": true}, false)
+		"torpedo":
+			_shoot(base_dir, {"dmg": eff_dmg, "homing": true}, false, player)
+		_:
+			var way := int(def.get("way", 1))
+			for i in way:
+				var off: float = (float(i) - float(way - 1) / 2.0) * 0.22
+				_shoot(base_dir.rotated(off), {"dmg": eff_dmg}, is_fire)
+			if bool(def.get("homing", false)):
+				_shoot(base_dir, {"dmg": eff_dmg * 0.8, "homing": true}, is_fire, player)
+
+func _shoot(d: Vector2, w: Dictionary, is_fire: bool, tgt: Node2D = null) -> void:
 	var proj := Area2D.new()
 	proj.set_script(preload("res://scripts2d/Projectile2D.gd"))
 	get_parent().add_child(proj)
 	proj.global_position = global_position
 	proj.from_player = false
 	proj.fire = is_fire
-	proj.setup((player.global_position - global_position).normalized(), {"dmg": eff_dmg})
+	proj.setup(d, w, tgt)
 
 func _damage_player(amount: float) -> void:
 	GameState.damage_player(amount)   # 敏捷カット込み(クルー#39)
+	# #69/#72: 触腕に絡めとられる(討伐まで鈍足) / 毒液スリップ
+	if bool(def.get("entangle", false)) and is_instance_valid(player) and player.has_method("add_entangler"):
+		player.add_entangler(self)
+	if bool(def.get("poison", false)):
+		GameState.apply_poison(6.0, 4.0)
 	Audio.play("sfx_hit", -5.0)
 
 func _draw() -> void:

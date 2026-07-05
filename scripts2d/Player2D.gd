@@ -9,6 +9,7 @@ var max_speed: float = 66.0
 var accel: float = 40.0
 var turn_speed: float = 1.2
 var control_enabled: bool = true
+var entanglers: Array = []   # #69/#72: 絡めてきた敵。討伐(無効化)まで鈍足
 var _ram_cd: float = 0.0
 var _wake: CPUParticles2D
 var _body_pts: PackedVector2Array
@@ -146,6 +147,12 @@ func rebuild_visual() -> void:
 func forward() -> Vector2:
 	return Vector2.UP.rotated(rotation)
 
+# #69/#72: 触腕持ちの敵に絡めとられた(討伐まで鈍足)
+func add_entangler(e: Node) -> void:
+	if not entanglers.has(e):
+		entanglers.append(e)
+		GameState.notice.emit("触腕に絡めとられた! 討伐するまで速度低下")
+
 func _physics_process(delta: float) -> void:
 	if _ram_cd > 0.0:
 		_ram_cd -= delta
@@ -163,10 +170,13 @@ func _physics_process(delta: float) -> void:
 		steer -= 1.0
 	if Input.is_action_pressed("turn_right"):
 		steer += 1.0
+	# #69/#72: 触腕に絡めとられている間は最高速度が下がる(相手の討伐で解除)
+	entanglers = entanglers.filter(func(e): return is_instance_valid(e))
+	var eff_max: float = max_speed * (0.55 if not entanglers.is_empty() else 1.0)
 	var spd := velocity.length()
-	var steer_factor: float = clampf(spd / maxf(max_speed, 1.0), 0.2, 1.0)
+	var steer_factor: float = clampf(spd / maxf(eff_max, 1.0), 0.2, 1.0)
 	rotation += steer * turn_speed * steer_factor * delta
-	velocity = velocity.move_toward(forward() * throttle * max_speed, accel * delta)
+	velocity = velocity.move_toward(forward() * throttle * eff_max, accel * delta)
 	move_and_slide()
 	if _wake:
 		_wake.emitting = spd > max_speed * 0.25

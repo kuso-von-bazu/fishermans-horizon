@@ -212,7 +212,13 @@ func _physics_process(delta: float) -> void:
 	if _dock_grace > 0.0:
 		_dock_grace -= delta
 	GameState.regen_fire(delta)
+	GameState.tick_slips(delta)   # #64/#72: 炎上・毒のスリップ
 	GameState.run_food = maxf(GameState.run_food - delta * 1.5 * GameState.food_drain_mult(), 0.0)
+	# #68: 航海中いつでも直近に寄港した島へファストトラベル
+	if Input.is_action_just_pressed("fast_return") and not _returning and not _food_dialog_open:
+		GameState.notice.emit("%s へ帰還" % Database.island(GameState.current_island).name)
+		_enter_dock(GameState.current_island, true)
+		return
 	if not _update_docking():
 		_update_fishing(delta)
 	_update_spawns(delta)
@@ -290,6 +296,8 @@ func _update_spawns(delta: float) -> void:
 	if spawn_timer > 0:
 		return
 	spawn_timer = 1.5
+	if not _lord_alive():
+		_try_spawn_lord()   # #67: 未討伐の主は必ず海域に出現している
 	if fish_schools.size() < MAX_FISH:
 		_spawn_fish()
 	if enemies.size() < MAX_ENEMIES:
@@ -337,7 +345,7 @@ func _spawn_enemy() -> void:
 	var kind := "mob"
 	var id := ""
 	var isle := GameState.current_island
-	# 海賊12%(#1,#10)、戦闘モブ26%(#3)、主12%(同時1体/討伐後非出現#5)、残りは静かな海
+	# 海賊12%(#1,#10)、戦闘モブ26%(#3)、海賊王レア(#73)、残りは静かな海
 	if roll < 0.12:
 		kind = "pirate"
 		var ps := ["raider", "corsair", "dread"]
@@ -348,27 +356,45 @@ func _spawn_enemy() -> void:
 		kind = "mob"
 		id = Database.pick_mob(isle)   # #38: 島tierごとの出現割合
 	elif roll < 0.50:
-		if not _lord_alive():
-			var lords: Array = Database.island(isle).get("lords", [])
-			var avail := lords.filter(func(l): return not GameState.claimed_lords.has(l) and not GameState.defeated_lords.has(l))
-			if not avail.is_empty():
-				kind = "lord"
-				id = avail[randi() % avail.size()]
+		# #73: 海賊王。島の周り以外の全海域で出現しうる。先の島ほど出やすい
+		if not near_island and not _king_alive() and randf() < 0.06 + 0.05 * float(isle):
+			kind = "pirate"
+			id = "king"
 	if id == "":
 		return
-	if kind == "lord" and bool(Database.lords.get(id, {}).get("pair", false)):
+	# #71: マーマン等は必ず群れで出現
+	var grp := int(Database.combat_mobs.get(id, {}).get("group", 1)) if kind == "mob" else 1
+	var pos := _ring_pos(70, 150)
+	for gi in grp:
+		_make_enemy(kind, id, pos + Vector2.RIGHT.rotated(randf() * TAU) * (0.0 if gi == 0 else randf_range(70.0, 160.0)))
+	if id == "king":
+		GameState.notice.emit("海賊王の旗艦が現れた!")
+
+# #67: 未討伐の主がいれば必ず定位置の沖に出現させる
+func _try_spawn_lord() -> void:
+	var isle := GameState.current_island
+	var lords: Array = Database.island(isle).get("lords", [])
+	var avail := lords.filter(func(l): return not GameState.claimed_lords.has(l) and not GameState.defeated_lords.has(l))
+	if avail.is_empty():
+		return
+	var id: String = avail[randi() % avail.size()]
+	if bool(Database.lords.get(id, {}).get("pair", false)):
 		var base := _lord_spawn_pos(id)
-		var a := _make_enemy(kind, id, base + Vector2(50, 0))
-		var b := _make_enemy(kind, id, base + Vector2(-50, 0))
+		var a := _make_enemy("lord", id, base + Vector2(50, 0))
+		var b := _make_enemy("lord", id, base + Vector2(-50, 0))
 		a.pair_partner = b
 		b.pair_partner = a
 		_spawn_escorts(base)
-	elif kind == "lord":
-		var lpos := _lord_spawn_pos(id)
-		_make_enemy(kind, id, lpos)
-		_spawn_escorts(lpos)
 	else:
-		_make_enemy(kind, id, _ring_pos(70, 150))
+		var lpos := _lord_spawn_pos(id)
+		_make_enemy("lord", id, lpos)
+		_spawn_escorts(lpos)
+
+func _king_alive() -> bool:
+	for e in enemies:
+		if is_instance_valid(e) and e.kind == "pirate" and e.id == "king":
+			return true
+	return false
 
 # #62: 主の取り巻き。戦闘モブ2体を主の周囲に出現させる
 func _spawn_escorts(center: Vector2) -> void:
@@ -708,12 +734,11 @@ func _maybe_screenshot() -> void:
 			player.control_enabled = false
 			player.global_position = Vector2(0, 24000)
 			var lineup := [
-				["pirate", "corsair"], ["mob", "narwhal"], ["mob", "seahunter"],
-				["lord", "sawshark"], ["lord", "walrus"], ["lord", "whale"],
-				["lord", "hydra"], ["lord", "quetzal"],
+				["pirate", "king"], ["mob", "kraken"], ["mob", "wyvern"],
+				["mob", "merman"], ["mob", "charybdis"], ["mob", "tiamat"], ["mob", "dagon"],
 			]
 			for i in lineup.size():
-				var x := (float(i) - (lineup.size() - 1) / 2.0) * 430.0
+				var x := (float(i) - (lineup.size() - 1) / 2.0) * 260.0
 				_make_enemy(lineup[i][0], lineup[i][1], player.global_position + Vector2(x, -330))
 			await get_tree().create_timer(0.25).timeout
 		else:

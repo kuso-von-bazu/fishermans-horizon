@@ -151,10 +151,30 @@ func lock_range_mult() -> float:   # 視力+航海士: ロック距離延長
 			m *= 1.2
 	return m
 
-# 被ダメの集約(敏捷カット適用)
+# 被ダメの集約(敏捷カット適用)。#64: 確率で炎上(時間制スリップ)
 func damage_player(amount: float) -> void:
 	run_armor = maxf(run_armor - amount * (1.0 - damage_cut()), 0.0)
+	if at_sea and amount >= 3.0 and burn_t <= 0.0 and randf() < 0.12:
+		burn_t = 5.0
+		burn_dps = 2.5 + amount * 0.12
+		notice.emit("船が炎上! しばらくスリップダメージ")
 	stats_changed.emit()
+
+# #72: ダゴンの毒液。一定時間スリップダメージ
+func apply_poison(dur: float, dps: float) -> void:
+	if poison_t <= 0.0:
+		notice.emit("毒液を浴びた! しばらくスリップダメージ")
+	poison_t = maxf(poison_t, dur)
+	poison_dps = dps
+
+# 炎上/毒の時間経過処理(Worldの航海ループから毎フレーム)
+func tick_slips(delta: float) -> void:
+	if burn_t > 0.0:
+		burn_t -= delta
+		run_armor = maxf(run_armor - burn_dps * delta, 0.0)
+	if poison_t > 0.0:
+		poison_t -= delta
+		run_armor = maxf(run_armor - poison_dps * delta, 0.0)
 
 # 大破時: ランダムで0〜1人ロスト(#39)
 func wreck_lose_crew() -> String:
@@ -183,6 +203,10 @@ var guide_target: Dictionary = {}        # #60/#61: ソナーガイド {"kind":"
 var run_food: float = 0.0
 var run_armor: float = 0.0
 var fire_burn: float = 0.0   # ヒュドラの炎=時間経過で回復するスリップ被害
+var burn_t: float = 0.0      # #64: 炎上の残り秒数
+var burn_dps: float = 0.0
+var poison_t: float = 0.0    # #72: 毒の残り秒数
+var poison_dps: float = 0.0
 var at_sea: bool = false
 
 # ゲーム全体を初期状態へ(勝利後のリスタート用。オートロードはシーンreloadで消えないため)
@@ -249,6 +273,8 @@ func set_sail() -> void:
 	run_food = max_food()
 	run_armor = max_armor()
 	fire_burn = 0.0
+	burn_t = 0.0
+	poison_t = 0.0
 	stats_changed.emit()
 
 # ヒュドラの炎: 装甲を削るが fire_burn に蓄積し、World 側で時間回復する

@@ -73,6 +73,17 @@ func _build() -> void:
 	sonar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	sonar.draw.connect(_draw_sonar)
 	root.add_child(sonar)
+	# #68: 帰還キーのヒント(ソナー下)
+	var hint := _label("[R] 直近の島へ帰還", 14)
+	hint.anchor_left = 1.0
+	hint.anchor_right = 1.0
+	hint.offset_left = -226
+	hint.offset_right = -16
+	hint.offset_top = 288
+	hint.offset_bottom = 310
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.add_theme_color_override("font_color", Color(0.8, 0.92, 1.0, 0.85))
+	root.add_child(hint)
 
 	# 左下: 漁獲物パネル(#2)
 	var cargo_panel := PanelContainer.new()

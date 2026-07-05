@@ -10,10 +10,12 @@ var slip: bool = false
 var debuff: bool = false
 var homing: bool = false
 var fire: bool = false
+var falloff: bool = false   # #63: ガトリング系は距離で威力減衰
 var target: Node2D = null
 var dir: Vector2 = Vector2.UP
 var from_player: bool = true
 var _t: float = 0.0
+var _travel: float = 0.0
 
 func setup(p_dir: Vector2, w: Dictionary, p_target: Node2D = null) -> void:
 	dmg = float(w.get("dmg", 5))
@@ -21,6 +23,7 @@ func setup(p_dir: Vector2, w: Dictionary, p_target: Node2D = null) -> void:
 	slip = bool(w.get("slip", false))
 	debuff = bool(w.get("debuff", false))
 	homing = bool(w.get("homing", false))
+	falloff = bool(w.get("falloff", false))
 	target = p_target
 	dir = p_dir.normalized()
 
@@ -69,21 +72,29 @@ func _physics_process(delta: float) -> void:
 		global_position += (dir + wob).normalized() * speed * delta
 	else:
 		global_position += dir * speed * delta
+	_travel += speed * delta
 	life -= delta
 	if life <= 0:
 		queue_free()
 
+# #63: 一定距離(45*K)を超えると線形減衰、最低35%まで
+func _eff_dmg() -> float:
+	if not falloff:
+		return dmg
+	var factor: float = clampf(1.0 - maxf(_travel - 45.0 * K, 0.0) / (75.0 * K) * 0.65, 0.35, 1.0)
+	return dmg * factor
+
 func _on_hit(body: Node) -> void:
 	if from_player and body.is_in_group("enemy"):
 		if body.has_method("take_hit"):
-			body.take_hit(dmg, slip, debuff)
+			body.take_hit(_eff_dmg(), slip, debuff)
 			Audio.play("sfx_enemy_hit", -9.0)
 		queue_free()
 	elif not from_player and body.is_in_group("player"):
 		if fire:
 			GameState.apply_fire(dmg)
 		else:
-			GameState.damage_player(dmg)   # 敏捷カット込み
+			GameState.damage_player(_eff_dmg())   # 敏捷カット込み
 		Audio.play("sfx_hit", -6.0)
 		queue_free()
 	elif body.is_in_group("island_body"):
