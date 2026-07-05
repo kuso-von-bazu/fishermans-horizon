@@ -180,6 +180,19 @@ func show_tavern() -> void:
 		row.add_child(_portrait(lid, 72))
 		var compass: String = Database.compass(float(ld.get("dir", 0)))
 		row.add_child(_p("%s\nHP:%d  賞金:%d  [%s]\n情報: 港の【%s】の沖にいるらしい" % [ld.name, ld.hp, ld.bounty, st, compass]))
+		# #61: 未討伐の主へのガイド(ソナー外周に赤い印)
+		if st == "未討伐":
+			var lid2: String = lid
+			var lname: String = ld.name
+			var guiding: bool = GameState.guide_target.get("kind", "") == "lord" and str(GameState.guide_target.get("id", "")) == lid2
+			row.add_child(_btn("ガイド解除" if guiding else "ガイド設定", func():
+				if guiding:
+					GameState.guide_target = {}
+					GameState.notice.emit("ガイドを解除した")
+				else:
+					GameState.guide_target = {"kind": "lord", "id": lid2}
+					GameState.notice.emit("%s へのガイドを設定(ソナー外周の赤い印)" % lname)
+				show_tavern()))
 		content.add_child(row)
 
 # ---------------- 造船所 ----------------
@@ -291,7 +304,22 @@ func show_travel() -> void:
 			content.add_child(_btn("%s へ移動  (方角:%s)" % [isle.name, compass], func():
 				emit_signal("fast_travel_requested", isle.id)))
 		elif GameState.unlocked_islands.has(isle.id):
-			content.add_child(_p("・%s  [未到達]  方角:【%s】 約%dの距離 — 自力航行で到達可" % [isle.name, compass, dist]))
+			# #60: 未到達の島へのガイド(ソナー外周に赤い印)
+			var row := HBoxContainer.new()
+			row.add_theme_constant_override("separation", 10)
+			row.add_child(_p("・%s  [未到達]  方角:【%s】 約%dの距離 — 自力航行で到達可" % [isle.name, compass, dist]))
+			var iid: int = int(isle.id)
+			var guiding: bool = GameState.guide_target.get("kind", "") == "island" and int(GameState.guide_target.get("id", -1)) == iid
+			var iname: String = isle.name
+			row.add_child(_btn("ガイド解除" if guiding else "ガイド設定", func():
+				if guiding:
+					GameState.guide_target = {}
+					GameState.notice.emit("ガイドを解除した")
+				else:
+					GameState.guide_target = {"kind": "island", "id": iid}
+					GameState.notice.emit("%s へのガイドを設定(ソナー外周の赤い印)" % iname)
+				show_travel()))
+			content.add_child(row)
 		else:
 			content.add_child(_p("・%s  [未開放 / 必要名声 %d]  方角:【%s】" % [isle.name, isle.fame_req, compass]))
 

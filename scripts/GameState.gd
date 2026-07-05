@@ -177,6 +177,7 @@ var unlocked_islands: Array[int] = [0]   # 名声で入港可能になった島
 var visited_islands: Array[int] = [0]    # 実際に寄港して到達した島(ファストトラベル可・Issue #19)
 var defeated_lords: Array[String] = []   # 討伐済みで賞金未受領
 var claimed_lords: Array[String] = []    # 賞金受領済み
+var guide_target: Dictionary = {}        # #60/#61: ソナーガイド {"kind":"island"|"lord","id":...}
 
 # --- 航海中ランタイム値(出港でリセット) ---
 var run_food: float = 0.0
@@ -199,6 +200,7 @@ func reset_all() -> void:
 	visited_islands = [0]
 	defeated_lords = []
 	claimed_lords = []
+	guide_target = {}
 	fire_burn = 0.0
 	crew = []
 	harpoon_debuff = "slip"

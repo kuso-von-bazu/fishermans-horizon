@@ -362,10 +362,20 @@ func _spawn_enemy() -> void:
 		var b := _make_enemy(kind, id, base + Vector2(-50, 0))
 		a.pair_partner = b
 		b.pair_partner = a
+		_spawn_escorts(base)
 	elif kind == "lord":
-		_make_enemy(kind, id, _lord_spawn_pos(id))
+		var lpos := _lord_spawn_pos(id)
+		_make_enemy(kind, id, lpos)
+		_spawn_escorts(lpos)
 	else:
 		_make_enemy(kind, id, _ring_pos(70, 150))
+
+# #62: 主の取り巻き。戦闘モブ2体を主の周囲に出現させる
+func _spawn_escorts(center: Vector2) -> void:
+	for i in 2:
+		var mid: String = Database.pick_mob(GameState.current_island)
+		var off := Vector2.RIGHT.rotated(randf() * TAU) * randf_range(140.0, 260.0)
+		_make_enemy("mob", mid, center + off)
 
 func _lord_alive() -> bool:
 	for e in enemies:
@@ -521,7 +531,32 @@ func _update_sonar() -> void:
 			blips.append({"pos": r.global_position, "color": Color(1.0, 0.9, 0.4)})
 	for isle in islands:
 		blips.append({"pos": isle.global_position, "color": Color(0.55, 0.85, 0.5)})
+	hud.set_guide(_guide_world_pos())   # #60/#61
 	hud.set_sonar_data(player, blips)
+
+# #60/#61: ガイド対象のワールド座標。達成済みなら自動解除。
+func _guide_world_pos() -> Variant:
+	var g: Dictionary = GameState.guide_target
+	if g.is_empty():
+		return null
+	if str(g.get("kind", "")) == "island":
+		var iid := int(g.get("id", -1))
+		if iid < 0 or GameState.visited_islands.has(iid):
+			GameState.guide_target = {}
+			return null
+		return island_pos(iid)
+	var lid := str(g.get("id", ""))
+	if not Database.lords.has(lid) or GameState.defeated_lords.has(lid) or GameState.claimed_lords.has(lid):
+		GameState.guide_target = {}
+		return null
+	# 出現中の主がいれば実位置、いなければ島から見た定位置(方角×沖合の中央値)
+	for e in enemies:
+		if is_instance_valid(e) and e.kind == "lord" and e.id == lid:
+			return e.global_position
+	var ld: Dictionary = Database.lords[lid]
+	var ipos := island_pos(int(ld.island))
+	var a := deg_to_rad(float(ld.get("dir", 0)))
+	return ipos + Vector2(sin(a), -cos(a)) * 375.0 * K
 
 # ---------------- 食料半減の選択(#17/#23) ----------------
 # #24: 船の隠しrange値でなく、仕様どおり「燃料積載で次の島に到達できるか」で判定。
@@ -643,6 +678,7 @@ func _maybe_screenshot() -> void:
 	var want_boss := false
 	var want_food := false
 	var want_tavern := false
+	var want_guide := false
 	for a in args:
 		if a.begins_with("--shot"):
 			want_shot = true
@@ -651,12 +687,18 @@ func _maybe_screenshot() -> void:
 			want_boss = a.find("boss") != -1
 			want_food = a.find("food") != -1
 			want_tavern = a.find("tavern") != -1
+			want_guide = a.find("guide") != -1
 	if not want_shot:
 		return
 	await get_tree().create_timer(0.6).timeout
 	if want_sea:
 		title.visible = false
 		_on_set_sail()
+		if want_guide:   # #60/#61: ガイド弧の表示確認
+			GameState.unlocked_islands = [0, 1]
+			GameState.visited_islands = [0]
+			GameState.guide_target = {"kind": "island", "id": 1}
+			await get_tree().create_timer(0.5).timeout
 		if want_food:
 			GameState.unlocked_islands = [0, 1]
 			GameState.visited_islands = [0]

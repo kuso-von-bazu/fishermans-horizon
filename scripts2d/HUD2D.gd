@@ -19,6 +19,7 @@ var sonar: Control
 var prompt: Label
 
 var _sonar_blips: Array = []   # [{pos:Vector2, color:Color}]
+var _guide_pos = null          # #60/#61: ガイド対象のワールド座標(null=なし)
 var _player_node: Node2D
 var _ui_root: Control
 
@@ -334,6 +335,10 @@ func set_sonar_data(player: Node2D, blips: Array) -> void:
 	if sonar:
 		sonar.queue_redraw()
 
+# #60/#61: ガイド対象(Vector2かnull)
+func set_guide(pos) -> void:
+	_guide_pos = pos
+
 func _draw_sonar() -> void:
 	var r := 105.0
 	var center := Vector2(r, r)
@@ -351,6 +356,10 @@ func _draw_sonar() -> void:
 		var v: Vector2 = (c[1] as Vector2).rotated(-rot)
 		var pos := center + v * (r - 13) - Vector2(7, -6)
 		sonar.draw_string(font, pos, c[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.85, 0.97, 1.0))
+	# #60/#61: ガイド方向をソナー外周の赤い弧で示す(距離に関係なく常に表示)
+	if _guide_pos != null:
+		var gang: float = ((_guide_pos as Vector2) - pp).rotated(-rot).angle()
+		sonar.draw_arc(center, r - 3.0, gang - 0.35, gang + 0.35, 16, Color(1.0, 0.12, 0.08, 0.95), 6.0)
 	for b in _sonar_blips:
 		var rel: Vector2 = ((b.pos as Vector2) - pp).rotated(-rot) / range_px * r
 		if rel.length() > r - 4:
