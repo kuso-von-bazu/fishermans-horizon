@@ -30,7 +30,7 @@ var slot_ammo: Array = [0, 0, 0, 0]        # #27: 残弾。0でリロード(relo
 var lock_target: Node2D = null
 var spawn_timer: float = 0.0
 const MAX_FISH := 7
-const MAX_ENEMIES := 4
+const MAX_ENEMIES := 6   # 主(+取り巻き)以外の通常敵の上限(#69/#71/#72/#73再修正)
 var _dock_grace: float = 0.0
 var _dock_target: int = -1
 var _returning: bool = false
@@ -39,6 +39,7 @@ var _food_choice_shown: bool = false
 var _food_dialog_open: bool = false
 var _food_dialog: CanvasLayer
 var _food_msg: Label
+var _boss_bgm_on: bool = false   # #79: 主接近中の緊迫BGM
 
 func island_pos(idx: int) -> Vector2:
 	var p: Vector3 = Database.island(idx).pos
@@ -136,6 +137,7 @@ func _enter_dock(island_id: int, do_reset := true) -> void:
 	if hud:
 		hud.visible = false
 	Audio.play_bgm("bgm_port")
+	_boss_bgm_on = false
 	port_ui.open()
 
 func _on_set_sail() -> void:
@@ -155,6 +157,7 @@ func _on_set_sail() -> void:
 	hud.update_bars()
 	hud.set_location("航海中: %s 近海" % Database.island(GameState.current_island).name)
 	Audio.play_bgm("bgm_sea")
+	_boss_bgm_on = false
 	_dock_grace = 2.0
 	_dock_target = -1
 	_food_choice_shown = false
@@ -225,6 +228,7 @@ func _physics_process(delta: float) -> void:
 	_update_weapons(delta)
 	_update_lock_on()
 	_update_sonar()
+	_update_boss_bgm()
 	if hud:
 		hud.update_bars()
 	# 強制帰還・食料選択(#17/#23)
@@ -255,6 +259,7 @@ func _check_victory() -> void:
 		if hud: hud.visible = false
 		port_ui.close()
 		_clear_sea_actors()
+		Audio.play_bgm("bgm_ending")   # #80: 厳かなエンディングBGM
 		title.show_victory()
 
 # ---------------- 漁 ----------------
@@ -292,6 +297,10 @@ func _update_spawns(delta: float) -> void:
 	for r in relics_world.duplicate():
 		if player.global_position.distance_to(r.global_position) > 360 * K:
 			r.queue_free()
+	# #69他再修正: 主以外の敵は遠く離れたらデスポーンして枠を空ける
+	for e in enemies.duplicate():
+		if is_instance_valid(e) and e.kind != "lord" and player.global_position.distance_to(e.global_position) > 400 * K:
+			e.queue_free()
 	spawn_timer -= delta
 	if spawn_timer > 0:
 		return
@@ -300,7 +309,12 @@ func _update_spawns(delta: float) -> void:
 		_try_spawn_lord()   # #67: 未討伐の主は必ず海域に出現している
 	if fish_schools.size() < MAX_FISH:
 		_spawn_fish()
-	if enemies.size() < MAX_ENEMIES:
+	# #69他再修正: 上限は主を除いた通常敵で数える(主+取り巻きが枠を塞いでいた)
+	var regular := 0
+	for e in enemies:
+		if is_instance_valid(e) and e.kind != "lord":
+			regular += 1
+	if regular < MAX_ENEMIES:
 		_spawn_enemy()
 	if relics_world.size() < 2 and randf() < 0.12:
 		_spawn_relic()
@@ -540,6 +554,20 @@ func _update_lock_on() -> void:
 	if lock_target and is_instance_valid(lock_target):
 		lock_target.locked = true
 
+# #79: 主に発見されている(アグロ中)間は緊迫BGM、離れると通常BGMへ戻す
+func _update_boss_bgm() -> void:
+	var danger := false
+	for e in enemies:
+		if is_instance_valid(e) and e.kind == "lord" and e.get("_aggro") == true:
+			danger = true
+			break
+	if danger and not _boss_bgm_on:
+		_boss_bgm_on = true
+		Audio.play_bgm("bgm_boss")
+	elif not danger and _boss_bgm_on:
+		_boss_bgm_on = false
+		Audio.play_bgm("bgm_sea")
+
 # ---------------- ソナー ----------------
 func _update_sonar() -> void:
 	var blips: Array = []
@@ -558,6 +586,7 @@ func _update_sonar() -> void:
 	for isle in islands:
 		blips.append({"pos": isle.global_position, "color": Color(0.55, 0.85, 0.5)})
 	hud.set_guide(_guide_world_pos())   # #60/#61
+	hud.set_home_guide(island_pos(GameState.current_island))   # #76: 直近寄港島は緑
 	hud.set_sonar_data(player, blips)
 
 # #60/#61: ガイド対象のワールド座標。達成済みなら自動解除。

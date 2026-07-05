@@ -134,12 +134,15 @@ func damage_cut() -> float:        # 敏捷: 被ダメカット(最大40%)
 func attack_mult() -> float:       # 射撃力: 攻撃威力バフ
 	return 1.0 + 0.02 * _crew_sum("sht")
 
-func crit_chance() -> float:       # 水兵: クリティカル
-	var c := 0.0
+func crit_chance() -> float:       # 水兵: クリティカル(#82/#83: 低め+人数で逓減)
+	var n := 0
 	for m in crew:
 		if m.job == "marine":
-			c += 0.08
-	return minf(c, 0.4)
+			n += 1
+	var c := 0.0
+	for i in n:
+		c += 0.05 * pow(0.8, i)   # 1人目5% 2人目+4% 3人目+3.2%…
+	return minf(c, 0.25)
 
 func debuff_dur_mult() -> float:   # 知力: デバフ強化(持続延長)
 	return 1.0 + 0.05 * _crew_sum("int_")

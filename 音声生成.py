@@ -169,6 +169,63 @@ def bgm_sea():
             s[st:st+step] += note(f, 0.5, "sine", 0.12, 0.01, 0.15)[:step]
     return s * 0.8
 
+def bgm_boss():
+    # #79: 主遭遇時の緊迫BGM(8秒ループ・短調・刻むベース+不穏なアルペジオ)
+    dur = 8.0; n = int(dur * SR); s = np.zeros(n)
+    # 刻む低音(8分刻み Dm)
+    step = int(0.25 * SR)
+    bass = ["D2", "D2", "F2", "D2", "A2", "D2", "F2", "G2"] * 4
+    for k in range(int(dur / 0.25)):
+        st = k * step
+        if st + step <= n:
+            seg = tone(NOTES[bass[k % len(bass)]], step, "saw") * env(step, 0.005, 0.08, sl=0.3, r=0.06) * 0.28
+            s[st:st+step] += seg
+    # 不穏なパッド(減和音っぽく)
+    chords = [["D3","F3","G3"], ["D3","F3","A3"]]
+    seg2 = n // 2
+    for i, ch in enumerate(chords):
+        c = synth_chord([NOTES[x] for x in ch], seg2, "tri", 0.13)
+        c *= env(seg2, 0.2, 0.8, sl=0.85, r=0.4)
+        s[i*seg2:(i+1)*seg2] += c
+    # 高音の警笛的アルペジオ
+    arp = ["D5", "A4", "F4", "A4"]
+    step3 = int(0.5 * SR)
+    for k in range(int(dur / 0.5)):
+        st = k * step3
+        if st + step3 <= n:
+            s[st:st+step3] += note(NOTES[arp[k % len(arp)]], 0.5, "square", 0.05, 0.01, 0.1)[:step3]
+    # ドラム的ノイズ(1拍目)
+    for k in range(int(dur)):
+        st = int(k * SR)
+        dn = int(0.12 * SR)
+        if st + dn <= n:
+            s[st:st+dn] += lowpass(noise(dn), 0.2) * env(dn, 0.001, 0.05, r=0.05) * 0.5
+    return np.tanh(s * 1.4) * 0.75
+
+def bgm_ending():
+    # #80: エンディング用の厳かなBGM(24秒・遅いコラール+鐘)
+    dur = 24.0; n = int(dur * SR); s = np.zeros(n)
+    chords = [["C3","G3","C4","E4"], ["A2","E3","A3","C4"], ["F2","C3","F3","A3"], ["G2","D3","G3","B3"],
+              ["C3","G3","C4","E4"], ["F2","C3","F3","A3"]]
+    seg = n // len(chords)
+    for i, ch in enumerate(chords):
+        c = synth_chord([NOTES[x] for x in ch], seg, "sine", 0.22)
+        c += synth_chord([NOTES[x] * 2 for x in ch], seg, "tri", 0.05)
+        c *= env(seg, 0.8, 1.5, sl=0.9, r=1.2)
+        s[i*seg:(i+1)*seg] += c
+    # 鐘の音(倍音を重ねる)
+    bells = [(0.0, "C5"), (4.0, "G4"), (8.0, "E5"), (12.0, "C5"), (16.0, "G4"), (20.0, "C5")]
+    for t0, nn in bells:
+        st = int(t0 * SR)
+        bn = int(3.0 * SR)
+        if st + bn <= n:
+            f = NOTES[nn]
+            bell = np.zeros(bn)
+            for h, amp in [(1.0, 0.20), (2.76, 0.08), (5.4, 0.03)]:
+                bell += tone(f * h, bn) * np.exp(-np.arange(bn) / SR * (1.2 * h)) * amp
+            s[st:st+bn] += bell
+    return s * 0.8
+
 def bgm_port():
     # 16秒・暖かく落ち着いた(Cメジャー系)
     dur = 16.0; n = int(dur * SR); s = np.zeros(n)
@@ -201,4 +258,6 @@ if __name__ == "__main__":
     save("sfx_sell.wav", sfx_sell())
     save("bgm_sea.wav", bgm_sea(), loop=True)
     save("bgm_port.wav", bgm_port(), loop=True)
+    save("bgm_boss.wav", bgm_boss(), loop=True)
+    save("bgm_ending.wav", bgm_ending(), loop=True)
     print("done")

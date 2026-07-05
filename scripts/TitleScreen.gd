@@ -9,6 +9,8 @@ var _root: Control
 var _title: Label
 var _body: Label
 var _button: Button
+var _bg: ColorRect
+var _art: TextureRect
 
 func _ready() -> void:
 	layer = 30
@@ -18,19 +20,19 @@ func _build() -> void:
 	_root = Control.new()
 	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(_root)
-	var bg := ColorRect.new()
-	bg.color = Color(0.03, 0.07, 0.12, 1.0)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_root.add_child(bg)
+	_bg = ColorRect.new()
+	_bg.color = Color(0.03, 0.07, 0.12, 1.0)
+	_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_root.add_child(_bg)
 	# タイトル画像があれば背景に薄く敷く
 	if ResourceLoader.exists("res://assets/images/title.png"):
-		var tr := TextureRect.new()
-		tr.texture = load("res://assets/images/title.png")
-		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-		tr.set_anchors_preset(Control.PRESET_FULL_RECT)
-		tr.modulate = Color(1, 1, 1, 0.45)
-		_root.add_child(tr)
+		_art = TextureRect.new()
+		_art.texture = load("res://assets/images/title.png")
+		_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		_art.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_art.modulate = Color(1, 1, 1, 0.45)
+		_root.add_child(_art)
 
 	# 画面全体を覆う CenterContainer で中身を中央寄せ
 	var center := CenterContainer.new()
@@ -73,10 +75,21 @@ func _build() -> void:
 func show_title() -> void:
 	_title.text = "Fisherman's Horizon"
 	_button.text = "▶ 船出する"
+	if _bg:
+		_bg.color = Color(0.03, 0.07, 0.12, 1.0)
+	if _art:
+		_art.modulate = Color(1, 1, 1, 0.45)
+	_title.add_theme_color_override("font_color", Color(0.9, 0.95, 1.0))
 	visible = true
 
 func show_victory() -> void:
+	# #80: 厳かな雰囲気(深い闇+金色に沈む景色+金文字)
 	_title.text = "Fisherman's Horizon 到達!"
 	_body.text = "レヴィアタンは討たれた。\nあなたは伝説の漁場 Fisherman's Horizon へ至り、\n人類の食糧難を一挙に解決する英雄となった。\n\n── 完 ──"
 	_button.text = "もう一度遊ぶ"
+	if _bg:
+		_bg.color = Color(0.015, 0.02, 0.045, 1.0)
+	if _art:
+		_art.modulate = Color(0.85, 0.7, 0.45, 0.25)
+	_title.add_theme_color_override("font_color", Color(0.95, 0.85, 0.55))
 	visible = true

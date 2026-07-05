@@ -44,9 +44,14 @@ func setup(p_kind: String, p_id: String) -> void:
 	ranged = bool(def.get("ranged", false))
 	aerial = bool(def.get("aerial", false))
 	var base_speed: float = float(def.get("speed", 5.0 if kind == "lord" else 7.0))
-	speed = base_speed * K
-	# #69/#72: reach=触腕などで攻撃射程が伸びる
-	attack_range = (12.0 if kind == "lord" else 9.0) * K * float(def.get("reach", 1.0))
+	speed = base_speed * K * 1.2   # #84: 全敵の移動速度20%アップ
+	# #69/#72: reach=触腕などで攻撃射程が伸びる。#74: 遠隔持ちはかなり遠くから撃つ
+	var rng := 9.0
+	if kind == "lord":
+		rng = 60.0
+	elif bool(def.get("ranged", false)):
+		rng = 45.0
+	attack_range = rng * K * float(def.get("reach", 1.0))
 	# #55: 海賊は高頻度射撃。#70: ワイアーム等は def の atk_cd を優先
 	var cd_default := 0.55 if kind == "pirate" else 1.4
 	attack_cd = float(def.get("atk_cd", cd_default))
@@ -215,17 +220,20 @@ func _attack(delta: float, dist: float) -> void:
 	var eff_dmg := dmg
 	if _debuff_kind == "atk":
 		eff_dmg *= 0.6      # #37 衰弱: 与ダメ減
+	# #74: 遠隔持ちは attack_range(遠距離)で撃ち、近接圏(melee_r)に入られたら近接
+	var melee_r: float = _radius + (12.0 if kind == "lord" else 9.0) * K * float(def.get("reach", 1.0))
 	if kind == "lord":
 		# #65: 全主が遠隔攻撃。近距離では従来の近接/固有技
-		if id == "leviathan" and dist <= attack_range * 1.4:
+		if id == "leviathan" and dist <= melee_r * 1.4:
 			_damage_player(eff_dmg * 1.3)
 			GameState.notice.emit("レヴィアタンの薙ぎ払い!")
-		elif dist <= attack_range * 0.6:
+		elif dist <= melee_r:
 			_damage_player(eff_dmg)
 		else:
 			_ranged_attack(id == "hydra")
 	elif kind == "pirate":
-		if dist <= attack_range * 0.6:
+		# #77: 海賊は近接圏では近接攻撃もする
+		if dist <= melee_r:
 			if str(def.get("wpn", "")) == "all":
 				_damage_player(eff_dmg * 1.6)   # #73: 海賊王の衝角突撃
 				GameState.notice.emit("海賊王の衝角突撃!")
@@ -234,7 +242,7 @@ func _attack(delta: float, dist: float) -> void:
 		else:
 			_ranged_attack(false)
 	elif ranged:
-		if dist <= attack_range * 0.6:
+		if dist <= melee_r:
 			_damage_player(eff_dmg)
 		else:
 			_ranged_attack(false)

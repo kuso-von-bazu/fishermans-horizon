@@ -11,6 +11,7 @@ var bar_armor: ProgressBar
 var lbl_food_val: Label
 var lbl_hold_val: Label
 var lbl_armor_val: Label
+var lbl_status: Label   # #64: 炎上/毒の表示
 var cargo_box: HBoxContainer
 var weapon_box: HBoxContainer
 var _weapon_labels: Array = []
@@ -20,6 +21,7 @@ var prompt: Label
 
 var _sonar_blips: Array = []   # [{pos:Vector2, color:Color}]
 var _guide_pos = null          # #60/#61: ガイド対象のワールド座標(null=なし)
+var _home_pos = null           # #76: 直近に寄港した島(緑の弧)
 var _player_node: Node2D
 var _ui_root: Control
 
@@ -128,6 +130,10 @@ func _build() -> void:
 	bv.add_child(_bar_row("燃料", bar_food, lbl_food_val))
 	bv.add_child(_bar_row("魚倉", bar_hold, lbl_hold_val))
 	bv.add_child(_bar_row("装甲", bar_armor, lbl_armor_val))
+	# #64: 炎上/毒の状態異常表示
+	lbl_status = _label("", 16)
+	lbl_status.add_theme_color_override("font_color", Color(1, 0.5, 0.3))
+	bv.add_child(lbl_status)
 
 	# 下中央: 武器スロット
 	weapon_box = HBoxContainer.new()
@@ -222,6 +228,15 @@ func update_bars() -> void:
 	lbl_food_val.text = "%d%%" % int(bar_food.value * 100)
 	lbl_hold_val.text = "%d/%d 残%d" % [GameState.used_hold(), GameState.max_hold(), GameState.free_hold()]
 	lbl_armor_val.text = "%d/%d" % [int(GameState.run_armor), int(GameState.max_armor())]
+	# #64: 状態異常の常時表示
+	if lbl_status:
+		var st: Array = []
+		if GameState.burn_t > 0.0:
+			st.append("🔥炎上中(あと%d秒)" % int(ceil(GameState.burn_t)))
+		if GameState.poison_t > 0.0:
+			st.append("☠毒(あと%d秒)" % int(ceil(GameState.poison_t)))
+		lbl_status.text = "  ".join(st)
+		lbl_status.visible = not st.is_empty()
 
 func rebuild_cargo() -> void:
 	if cargo_box == null:
@@ -350,6 +365,10 @@ func set_sonar_data(player: Node2D, blips: Array) -> void:
 func set_guide(pos) -> void:
 	_guide_pos = pos
 
+# #76: 直近に寄港した島(緑の弧)
+func set_home_guide(pos) -> void:
+	_home_pos = pos
+
 func _draw_sonar() -> void:
 	var r := 105.0
 	var center := Vector2(r, r)
@@ -367,6 +386,10 @@ func _draw_sonar() -> void:
 		var v: Vector2 = (c[1] as Vector2).rotated(-rot)
 		var pos := center + v * (r - 13) - Vector2(7, -6)
 		sonar.draw_string(font, pos, c[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.85, 0.97, 1.0))
+	# #76: 直近に寄港した島の方向を緑の弧で示す(常時)
+	if _home_pos != null:
+		var hang: float = ((_home_pos as Vector2) - pp).rotated(-rot).angle()
+		sonar.draw_arc(center, r - 3.0, hang - 0.28, hang + 0.28, 14, Color(0.2, 0.95, 0.35, 0.9), 5.0)
 	# #60/#61: ガイド方向をソナー外周の赤い弧で示す(距離に関係なく常に表示)
 	if _guide_pos != null:
 		var gang: float = ((_guide_pos as Vector2) - pp).rotated(-rot).angle()

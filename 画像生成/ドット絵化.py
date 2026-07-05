@@ -11,6 +11,8 @@ SRC = os.path.normpath(os.path.join(HERE, "..", "assets", "images"))
 DST = os.path.join(SRC, "pixel")
 os.makedirs(DST, exist_ok=True)
 LONG = 48
+# #81: 大型ボスは高精細(ドット数多め)
+LONG_OVERRIDE = {"lord_leviathan.png": 128, "lord_hydra.png": 80, "lord_quetzal.png": 80}
 
 for f in sorted(os.listdir(SRC)):
     if not f.lower().endswith(".png"):
@@ -20,7 +22,7 @@ for f in sorted(os.listdir(SRC)):
     p = os.path.join(SRC, f)
     im = Image.open(p).convert("RGBA")
     w, h = im.size
-    s = LONG / max(w, h)
+    s = LONG_OVERRIDE.get(f, LONG) / max(w, h)
     small = im.resize((max(1, int(w * s)), max(1, int(h * s))), Image.LANCZOS)
     # 減色(アルファ保持): RGBを32色にパレット化
     rgb = small.convert("RGB").quantize(colors=32, dither=Image.Dither.NONE).convert("RGB")

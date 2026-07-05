@@ -33,12 +33,13 @@ var combat_mobs := {
 	"dagon":         {"name": "ダゴン",         "hp": 1100, "dmg": 30, "cap": 9,  "price": 1600, "ranged": false, "aerial": false, "speed": 7.5, "reach": 2.5, "entangle": true, "poison": true, "color": Color(0.3,0.5,0.35)},
 }
 
-# 島tierごとの戦闘モブ出現重み(#38/#69/#71/#72)。先の海域ほど強モブ中心。
+# 島tierごとの戦闘モブ出現重み(#38/#69/#71/#72/#75)。
+# #75: 潮鳴り以降はユニコーン/シーハンター/オルニケイトスを外し強モブのみ。
 var mob_weights := [
 	{"narwhal": 0.55, "seahunter": 0.25, "ornithocheirus": 0.15, "wyrm": 0.05},
-	{"narwhal": 0.20, "seahunter": 0.28, "ornithocheirus": 0.20, "wyrm": 0.12, "kraken": 0.12, "wyvern": 0.08},
-	{"narwhal": 0.05, "seahunter": 0.15, "ornithocheirus": 0.18, "wyrm": 0.14, "kraken": 0.14, "wyvern": 0.12, "merman": 0.12, "charybdis": 0.10},
-	{"seahunter": 0.06, "ornithocheirus": 0.12, "wyrm": 0.16, "kraken": 0.12, "wyvern": 0.12, "merman": 0.12, "charybdis": 0.10, "tiamat": 0.10, "dagon": 0.10},
+	{"wyrm": 0.45, "kraken": 0.35, "wyvern": 0.20},
+	{"wyrm": 0.20, "kraken": 0.25, "wyvern": 0.20, "merman": 0.20, "charybdis": 0.15},
+	{"wyrm": 0.10, "kraken": 0.14, "wyvern": 0.16, "merman": 0.16, "charybdis": 0.14, "tiamat": 0.15, "dagon": 0.15},
 ]
 
 func pick_mob(tier: int) -> String:
@@ -131,9 +132,9 @@ var ships := {
 # ---------------------------------------------------------------------------
 var islands := [
 	{"id": 0, "name": "始まりの島",   "fame_req": 0,   "price_mult": 1.0, "pos": Vector3(0, 0, 0),       "spawn": ["sardine","mackerel"], "lords": ["sawshark","dumbo"]},
-	{"id": 1, "name": "潮鳴りの島",   "fame_req": 12,   "price_mult": 1.6, "pos": Vector3(600, 0, -200),  "spawn": ["bonito","squid","mackerel"], "lords": ["whale","walrus"]},   # #57: 島間距離2/3
-	{"id": 2, "name": "嵐越えの島",   "fame_req": 45,  "price_mult": 2.4, "pos": Vector3(1000, 0, 400),  "spawn": ["octopus","squid","bonito"], "lords": ["hydra","quetzal"]},
-	{"id": 3, "name": "果ての島",     "fame_req": 120,  "price_mult": 3.6, "pos": Vector3(1600, 0, -135), "spawn": ["octopus","bonito"], "lords": ["leviathan"]},
+	{"id": 1, "name": "潮鳴りの島",   "fame_req": 12,   "price_mult": 1.6, "pos": Vector3(900, 0, -300),  "spawn": ["bonito","squid","mackerel"], "lords": ["whale","walrus"]},   # #57再: 元の距離に戻す
+	{"id": 2, "name": "嵐越えの島",   "fame_req": 45,  "price_mult": 2.4, "pos": Vector3(1500, 0, 600),  "spawn": ["octopus","squid","bonito"], "lords": ["hydra","quetzal"]},
+	{"id": 3, "name": "果ての島",     "fame_req": 120,  "price_mult": 3.6, "pos": Vector3(2400, 0, -200), "spawn": ["octopus","bonito"], "lords": ["leviathan"]},
 ]
 
 func island(idx: int) -> Dictionary:

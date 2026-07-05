@@ -28,17 +28,48 @@ func setup(p_dir: Vector2, w: Dictionary, p_target: Node2D = null) -> void:
 	dir = p_dir.normalized()
 
 func _ready() -> void:
+	# #78: 攻撃の種類で弾の見た目を変える
 	var mesh := Polygon2D.new()
-	var r := 4.0 if not homing else 5.0
-	var pts := PackedVector2Array()
-	for i in 10:
-		var a := TAU * i / 10.0
-		pts.append(Vector2(cos(a), sin(a)) * r)
-	mesh.polygon = pts
-	if from_player:
-		mesh.color = Color(0.65, 0.9, 1.0) if homing else Color(1.0, 0.85, 0.35)
+	var r := 4.0
+	if homing:
+		# 魚雷: 細長いカプセル型(尾びれ付き)
+		mesh.polygon = PackedVector2Array([
+			Vector2(-3, -9), Vector2(0, -12), Vector2(3, -9), Vector2(3, 7),
+			Vector2(6, 12), Vector2(0, 9), Vector2(-6, 12), Vector2(-3, 7)])
+		mesh.color = Color(0.65, 0.9, 1.0) if from_player else Color(0.95, 0.4, 0.55)
+		r = 5.0
+	elif falloff:
+		# ガトリング: 細い曳光弾
+		mesh.polygon = PackedVector2Array([
+			Vector2(-1.6, -8), Vector2(1.6, -8), Vector2(1.6, 8), Vector2(-1.6, 8)])
+		mesh.color = Color(1.0, 0.95, 0.5) if from_player else Color(1.0, 0.5, 0.3)
+		r = 3.0
+	elif debuff:
+		# 銛: 長い柄+返しのある穂先
+		mesh.polygon = PackedVector2Array([
+			Vector2(0, -14), Vector2(4, -7), Vector2(1.4, -7), Vector2(1.4, 12),
+			Vector2(-1.4, 12), Vector2(-1.4, -7), Vector2(-4, -7)])
+		mesh.color = Color(0.8, 0.85, 0.9)
+	elif fire:
+		# 炎弾: ゆらめく火の玉
+		var pts_f := PackedVector2Array()
+		for i in 10:
+			var a := TAU * i / 10.0
+			var rr := 6.0 if i % 2 == 0 else 3.5
+			pts_f.append(Vector2(cos(a), sin(a)) * rr)
+		mesh.polygon = pts_f
+		mesh.color = Color(1.0, 0.5, 0.15)
+		r = 5.0
 	else:
-		mesh.color = Color(1.0, 0.45, 0.2) if fire else Color(1.0, 0.3, 0.3)
+		# 砲弾: 大きめの鉄球
+		var pts := PackedVector2Array()
+		for i in 12:
+			var a := TAU * i / 12.0
+			pts.append(Vector2(cos(a), sin(a)) * 6.0)
+		mesh.polygon = pts
+		mesh.color = Color(0.35, 0.36, 0.4) if from_player else Color(0.55, 0.2, 0.2)
+		r = 6.0
+	rotation = dir.angle() + PI / 2
 	add_child(mesh)
 	var col := CollisionShape2D.new()
 	var sh := CircleShape2D.new()
@@ -70,6 +101,7 @@ func _physics_process(delta: float) -> void:
 		# 蛇行(ホーミングらしい揺れ)
 		var wob := dir.rotated(PI / 2) * sin(_t * 9.0) * 0.35
 		global_position += (dir + wob).normalized() * speed * delta
+		rotation = dir.angle() + PI / 2   # #78: 魚雷は進行方向を向く
 	else:
 		global_position += dir * speed * delta
 	_travel += speed * delta
