@@ -149,10 +149,11 @@ func _enter_dock(island_id: int, do_reset := true) -> void:
 		hud.visible = false
 	Audio.play_bgm("bgm_port")
 	_boss_bgm_on = ""
+	GameState.docking_locked = false   # 寄港完了でロック解除(次の航海はset_sailでも解除)
 	# #93: 航海から寄港(強制帰還/大破含む)するたびオートセーブ。勝利時は保存しない
 	if was_at_sea and not _victory_shown:
 		GameState.save_game()
-	port_ui.open()
+	port_ui.open(was_at_sea)   # #104: 航海から戻った時だけ寄港バナー
 
 func _on_set_sail() -> void:
 	port_ui.close()
@@ -179,6 +180,8 @@ func _on_set_sail() -> void:
 	_food_dialog_open = false
 	slot_cooldowns = [0.0, 0.0, 0.0, 0.0]
 	_reset_ammo()
+	# #67: 出港時に未討伐の主が確実に海域へ出現しているようにする
+	_try_spawn_lord()
 
 func _on_fast_travel(island_id: int) -> void:
 	port_ui.close()
@@ -205,14 +208,15 @@ func _forced_return(reason: String, wrecked: bool = false) -> void:
 	if _returning:
 		return
 	_returning = true
+	GameState.docking_locked = true   # #101/#105: この時点以降は被弾・積荷取得を無効化
 	if wrecked:
 		var lost := GameState.used_hold()
 		GameState.cargo.clear()
 		GameState.stats_changed.emit()
 		Audio.play("sfx_wreck", -2.0)
 		var msg := "船が大破! 漁獲物(%d)を失い強制帰還" % lost
-		# #99: 定価の10%の修理費(残金が0未満にならないよう徴収)
-		var repair := int(float(GameState.ship().price) * 0.1)
+		# #99再: 定価の2%の修理費(残金が0未満にならないよう徴収)
+		var repair := int(float(GameState.ship().price) * 0.02)
 		var paid: int = mini(repair, GameState.money)
 		if paid > 0:
 			GameState.add_money(-paid)
@@ -220,13 +224,14 @@ func _forced_return(reason: String, wrecked: bool = false) -> void:
 		var gone := GameState.wreck_lose_crew()   # #97: 0〜2人ロスト
 		if gone != "":
 			msg += "\n%s が海に消えた…" % gone
-		hud.show_big_message(msg)
+		hud.show_big_message(msg, 4.0)   # #100: 大破メッセージは長めに表示
 	else:
 		hud.show_big_message(reason)
 	GameState.notice.emit(reason)
 	if player:
 		player.control_enabled = false
-	await get_tree().create_timer(1.8).timeout
+	# #100: 大破時は表示時間を確保してから帰港
+	await get_tree().create_timer(4.5 if wrecked else 1.8).timeout
 	_enter_dock(GameState.current_island, true)
 
 # ---------------- メインループ ----------------
@@ -453,12 +458,12 @@ func _lord_alive() -> bool:
 			return true
 	return false
 
-# 主は島から離れた決まった方角の沖(#15,#18)。北=-Y。
+# 主は島から離れた決まった方角の沖(#15,#18)。北=-Y。#67: 距離を近づけて見つけやすく
 func _lord_spawn_pos(id: String) -> Vector2:
 	var ipos := island_pos(GameState.current_island)
 	var deg: float = float(Database.lords.get(id, {}).get("dir", 0)) + randf_range(-15.0, 15.0)
 	var a := deg_to_rad(deg)
-	return ipos + Vector2(sin(a), -cos(a)) * randf_range(320.0, 430.0) * K
+	return ipos + Vector2(sin(a), -cos(a)) * randf_range(210.0, 300.0) * K
 
 func _make_enemy(kind: String, id: String, pos: Vector2) -> CharacterBody2D:
 	var e := CharacterBody2D.new()

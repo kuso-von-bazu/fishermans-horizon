@@ -49,9 +49,10 @@ func hire_crew(job_id: String) -> bool:
 		notice.emit("資金が足りません(契約金%d)" % cost)
 		return false
 	add_money(-cost)
-	# #85再: 嵐越え(island>=2)以降の酒場はボーナス3倍でより強力なクルー
-	var bm := hire_bonus_mult()
-	var base := 3 if job_id != "sailor" else 1
+	# #85再: 嵐越え(island>=2)以降の酒場はボーナス4倍+最低保証UPでより強力なクルー(水夫は据え置き)
+	var bm := hire_bonus_mult(job_id)
+	var high := current_island >= 2 and job_id != "sailor"
+	var base := 1 if job_id == "sailor" else (5 if high else 3)   # 最低保証の底上げ
 	var m := {
 		"name": _unique_crew_name(),
 		"job": job_id,
@@ -59,7 +60,7 @@ func hire_crew(job_id: String) -> bool:
 		"sht": base + randi_range(0, 2 * bm), "int_": base + randi_range(0, 2 * bm),
 		"vis": base + randi_range(0, 2 * bm),
 	}
-	# #85: 上位ジョブは「ジョブチェンジに必要な値」を最低保証+ランダム上乗せ(嵐越え以降は3倍)
+	# #85: 上位ジョブは「ジョブチェンジに必要な値」を最低保証+ランダム上乗せ(嵐越え以降は4倍)
 	if j.has("req"):
 		var req: Array = j.req
 		if req[0] == "total":
@@ -75,13 +76,13 @@ func hire_crew(job_id: String) -> bool:
 	stats_changed.emit()
 	return true
 
-# #85再: 嵐越えの島(island>=2)以降は契約金3倍・パラメータ上乗せ3倍
+# #85再: 嵐越えの島(island>=2)以降は契約金3倍・上乗せ4倍。ただし水夫は据え置き
 func hire_cost(job_id: String) -> int:
-	var mult := 3 if current_island >= 2 else 1
+	var mult := 3 if (current_island >= 2 and job_id != "sailor") else 1
 	return int(jobs[job_id].hire) * mult
 
-func hire_bonus_mult() -> int:
-	return 3 if current_island >= 2 else 1
+func hire_bonus_mult(job_id: String = "") -> int:
+	return 4 if (current_island >= 2 and job_id != "sailor") else 1
 
 # 使われていない名前を選ぶ(#52)。尽きたら「二代目〜」。
 func _unique_crew_name() -> String:
@@ -178,6 +179,8 @@ func lock_range_mult() -> float:   # 視力+航海士: ロック距離延長
 
 # 被ダメの集約(敏捷カット適用)。#64: 確率で炎上(時間制スリップ)
 func damage_player(amount: float) -> void:
+	if docking_locked:
+		return   # #105: 寄港確定後は被弾しない
 	run_armor = maxf(run_armor - amount * (1.0 - damage_cut()), 0.0)
 	if at_sea and amount >= 3.0 and burn_t <= 0.0 and randf() < 0.12:
 		burn_t = 5.0
@@ -187,6 +190,8 @@ func damage_player(amount: float) -> void:
 
 # #72: ダゴンの毒液。一定時間スリップダメージ
 func apply_poison(dur: float, dps: float) -> void:
+	if docking_locked:
+		return   # #105
 	if poison_t <= 0.0:
 		notice.emit("毒液を浴びた! しばらくスリップダメージ")
 	poison_t = maxf(poison_t, dur)
@@ -206,7 +211,7 @@ func wreck_lose_crew() -> String:
 	if crew.is_empty():
 		return ""
 	var count := 0
-	if randf() < 0.7:            # 70%で1人以上
+	if randf() < 0.5:            # #97再: 50%で1人以上
 		count = 1
 		if randf() < 0.4:        # うち40%で2人
 			count = 2
@@ -244,6 +249,7 @@ var burn_dps: float = 0.0
 var poison_t: float = 0.0    # #72: 毒の残り秒数
 var poison_dps: float = 0.0
 var at_sea: bool = false
+var docking_locked: bool = false   # #101/#105: 寄港確定後は被弾・積荷取得を無効化
 
 # ゲーム全体を初期状態へ(勝利後のリスタート用。オートロードはシーンreloadで消えないため)
 func reset_all() -> void:
@@ -382,6 +388,7 @@ func dock_reset() -> void:
 
 func set_sail() -> void:
 	at_sea = true
+	docking_locked = false   # #105: 出港で解除
 	run_food = max_food()
 	run_armor = max_armor()
 	fire_burn = 0.0
@@ -391,6 +398,8 @@ func set_sail() -> void:
 
 # ヒュドラの炎: 装甲を削るが fire_burn に蓄積し、World 側で時間回復する
 func apply_fire(amount: float) -> void:
+	if docking_locked:
+		return   # #105
 	run_armor = maxf(run_armor - amount, 0.0)
 	fire_burn += amount
 	stats_changed.emit()
@@ -405,6 +414,8 @@ func regen_fire(delta: float) -> void:
 
 # 漁獲を魚倉へ。入りきらなければ false。
 func add_cargo(id: String, cap_needed: int = -1) -> bool:
+	if docking_locked:
+		return false   # #101: 大破/寄港確定後は積荷に入れない
 	var need := cap_needed if cap_needed >= 0 else _cap_of(id)
 	if free_hold() < need:
 		notice.emit("魚倉が満杯です")

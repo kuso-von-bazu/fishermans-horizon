@@ -75,10 +75,32 @@ func _build() -> void:
 	sail.add_theme_color_override("font_color", Color(1, 1, 0.6))
 	vb.add_child(sail)
 
-func open() -> void:
+func open(arrival := false) -> void:
 	visible = true
 	_refresh_header()
 	show_market()
+	if arrival:
+		_show_arrival_banner()   # #104: 寄港メッセージ
+
+# #104: 寄港したことがわかる一時バナー
+func _show_arrival_banner() -> void:
+	var lbl := Label.new()
+	lbl.text = "⚓ %s に寄港した" % Database.island(GameState.current_island).name
+	lbl.add_theme_font_size_override("font_size", 30)
+	lbl.add_theme_color_override("font_color", Color(1.0, 0.92, 0.5))
+	lbl.add_theme_constant_override("outline_size", 6)
+	lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.anchor_left = 0.0
+	lbl.anchor_right = 1.0
+	lbl.anchor_top = 0.12
+	lbl.anchor_bottom = 0.12
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(lbl)
+	var tw := create_tween()
+	tw.tween_interval(2.2)
+	tw.tween_property(lbl, "modulate:a", 0.0, 1.0)
+	tw.tween_callback(lbl.queue_free)
 
 func close() -> void:
 	visible = false
@@ -239,6 +261,8 @@ func show_shipyard() -> void:
 			if wid == cur:
 				continue
 			var w: Dictionary = Database.weapons[wid]
+			if int(w.get("tier", 0)) > tier:
+				continue   # #102: 上位武器は対応する島以降でのみ販売
 			var cost := maxi(int(w.price) - trade_in, 0)
 			row.add_child(_btn("%s(%d)" % [w.name, cost], func():
 				if GameState.money < cost:
@@ -275,6 +299,8 @@ func show_shipyard() -> void:
 	rrow.add_child(_p("現在: %s" % Database.rams[GameState.ram_id].name))
 	for rid in Database.rams:
 		var r: Dictionary = Database.rams[rid]
+		if int(r.get("tier", 0)) > tier:
+			continue   # #102: 上位衝角は対応する島以降でのみ販売
 		rrow.add_child(_btn("%s(%d)" % [r.name, r.price], func():
 			if rid == "none" or GameState.money >= int(Database.rams[rid].price):
 				if rid != "none":

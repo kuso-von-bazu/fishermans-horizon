@@ -8,9 +8,9 @@ extends Node
 var fish := {
 	"sardine":  {"name": "イワシ",   "cap": 1, "price": 20,  "home": 0, "color": Color(0.7,0.8,0.9)},
 	"mackerel": {"name": "サバ",     "cap": 1, "price": 45,  "home": 0, "color": Color(0.4,0.6,0.8)},
-	"bonito":   {"name": "カツオ",   "cap": 2, "price": 90,  "home": 1, "color": Color(0.3,0.5,0.7)},
-	"squid":    {"name": "イカ",     "cap": 2, "price": 70,  "home": 1, "color": Color(0.9,0.8,0.85)},
-	"octopus":  {"name": "タコ",     "cap": 2, "price": 80,  "home": 2, "color": Color(0.8,0.4,0.45)},
+	"bonito":   {"name": "カツオ",   "cap": 2, "price": 150, "home": 1, "color": Color(0.3,0.5,0.7)},
+	"squid":    {"name": "イカ",     "cap": 2, "price": 130, "home": 1, "color": Color(0.9,0.8,0.85)},
+	"octopus":  {"name": "タコ",     "cap": 2, "price": 160, "home": 2, "color": Color(0.8,0.4,0.45)},
 	"grouper":  {"name": "クエ",     "cap": 1, "price": 300, "home": -1,"color": Color(0.55,0.4,0.3), "rare": true},
 }
 
@@ -18,20 +18,20 @@ var fish := {
 # 戦闘モブ(倒せば漁獲可能) hp/dmg/cap/price + flags
 # ---------------------------------------------------------------------------
 var combat_mobs := {
-	# #96: 販売額を全体的に低下(×0.6目安)。#26再: face_left=元画像が左向き→反転条件を逆に
-	"narwhal":       {"name": "ユニコーン",     "hp": 110, "dmg": 6,  "cap": 3, "price": 90,  "ranged": false, "aerial": false, "speed": 8.0,  "face_left": true, "color": Color(0.85,0.85,0.9)},
-	"seahunter":     {"name": "シーハンター",   "hp": 250, "dmg": 12,  "cap": 4, "price": 190, "ranged": false, "aerial": false, "speed": 9.0,  "face_left": true, "color": Color(0.2,0.2,0.25)},
-	"ornithocheirus":{"name": "オルニケイトス", "hp": 160, "dmg": 11, "cap": 3, "price": 170, "ranged": false, "aerial": true,  "speed": 21.0, "color": Color(0.7,0.6,0.4)},
-	"wyrm":          {"name": "ワイアーム",     "hp": 400, "dmg": 18, "cap": 4, "price": 300, "ranged": true,  "aerial": false, "speed": 7.0,  "atk_cd": 0.8, "face_left": true, "color": Color(0.6,0.2,0.2)},
+	# #96再: 販売額は従前(初期値)の約2割引き。#26再: face_left=元画像が左向き→反転条件を逆に
+	"narwhal":       {"name": "ユニコーン",     "hp": 110, "dmg": 6,  "cap": 3, "price": 120, "ranged": false, "aerial": false, "speed": 8.0,  "face_left": true, "color": Color(0.85,0.85,0.9)},
+	"seahunter":     {"name": "シーハンター",   "hp": 250, "dmg": 12,  "cap": 4, "price": 256, "ranged": false, "aerial": false, "speed": 9.0,  "face_left": true, "color": Color(0.2,0.2,0.25)},
+	"ornithocheirus":{"name": "オルニケイトス", "hp": 160, "dmg": 11, "cap": 3, "price": 224, "ranged": false, "aerial": true,  "speed": 21.0, "color": Color(0.7,0.6,0.4)},
+	"wyrm":          {"name": "ワイアーム",     "hp": 400, "dmg": 18, "cap": 4, "price": 400, "ranged": true,  "aerial": false, "speed": 7.0,  "atk_cd": 0.8, "face_left": true, "color": Color(0.6,0.2,0.2)},
 	# #69: 潮鳴り以降の強モブ。reach=触腕の射程倍率, entangle=被弾で討伐まで鈍足
-	"kraken":        {"name": "クラーケン",     "hp": 700, "dmg": 24, "cap": 6, "price": 540,  "ranged": false, "aerial": false, "speed": 8.5,  "reach": 2.2, "entangle": true, "color": Color(0.5,0.2,0.45)},
-	"wyvern":        {"name": "ワイバーン",     "hp": 800, "dmg": 26, "cap": 6, "price": 600, "ranged": true,  "aerial": false, "speed": 9.5,  "atk_cd": 1.1, "face_left": true, "color": Color(0.7,0.15,0.15)},
-	# #71: 嵐越え以降。merman=群れ+俊敏+好戦的, charybdis=渦潮+確率回避。#98: マーマンHP増
-	"merman":        {"name": "マーマン",       "hp": 520, "dmg": 16, "cap": 2, "price": 230,  "ranged": false, "aerial": false, "speed": 13.0, "group": 3, "aggro": 1400.0, "face_left": true, "color": Color(0.25,0.55,0.4)},
-	"charybdis":     {"name": "カリュブディス", "hp": 900, "dmg": 28, "cap": 8, "price": 720, "ranged": true,  "aerial": false, "speed": 6.0,  "dodge": 0.25, "color": Color(0.15,0.3,0.45)},
+	"kraken":        {"name": "クラーケン",     "hp": 700, "dmg": 24, "cap": 6, "price": 720,  "ranged": false, "aerial": false, "speed": 8.5,  "reach": 2.2, "entangle": true, "color": Color(0.5,0.2,0.45)},
+	"wyvern":        {"name": "ワイバーン",     "hp": 800, "dmg": 26, "cap": 6, "price": 800, "ranged": true,  "aerial": false, "speed": 9.5,  "atk_cd": 1.1, "face_left": true, "color": Color(0.7,0.15,0.15)},
+	# #71: 嵐越え以降。merman=群れ+俊敏+好戦的, charybdis=渦潮+確率回避。#98再: マーマンHP350
+	"merman":        {"name": "マーマン",       "hp": 350, "dmg": 16, "cap": 2, "price": 304,  "ranged": false, "aerial": false, "speed": 13.0, "group": 3, "aggro": 1400.0, "face_left": true, "color": Color(0.25,0.55,0.4)},
+	"charybdis":     {"name": "カリュブディス", "hp": 900, "dmg": 28, "cap": 8, "price": 960, "ranged": true,  "aerial": false, "speed": 6.0,  "dodge": 0.25, "color": Color(0.15,0.3,0.45)},
 	# #72: 果ての島。tiamat=空中(魚雷ロック不可)+俊敏+高火力, dagon=触腕+絡め+毒
-	"tiamat":        {"name": "ティアマット",   "hp": 1200, "dmg": 34, "cap": 10, "price": 1080, "ranged": true, "aerial": true, "speed": 16.0, "atk_cd": 1.0, "color": Color(0.15,0.12,0.2)},
-	"dagon":         {"name": "ダゴン",         "hp": 1100, "dmg": 30, "cap": 9,  "price": 960, "ranged": false, "aerial": false, "speed": 7.5, "reach": 2.5, "entangle": true, "poison": true, "color": Color(0.3,0.5,0.35)},
+	"tiamat":        {"name": "ティアマット",   "hp": 1200, "dmg": 34, "cap": 10, "price": 1440, "ranged": true, "aerial": true, "speed": 16.0, "atk_cd": 1.0, "color": Color(0.15,0.12,0.2)},
+	"dagon":         {"name": "ダゴン",         "hp": 1100, "dmg": 30, "cap": 9,  "price": 1280, "ranged": false, "aerial": false, "speed": 7.5, "reach": 2.5, "entangle": true, "poison": true, "color": Color(0.3,0.5,0.35)},
 }
 
 # 島tierごとの戦闘モブ出現重み(#38/#69/#71/#72/#75)。
@@ -109,12 +109,19 @@ var weapons := {
 	"cannon":  {"name": "大砲",           "kind": "aim",  "dmg": 35, "cooldown": 1.4,  "reload": 1.6, "mag": 4,  "range": 140, "price": 1200, "slip": true,  "debuff": false, "homing": false, "sfx": "sfx_cannon",  "desc": "単発威力大・連射小。海賊船にスリップ(漏水/火災)"},
 	"harpoon": {"name": "銛",             "kind": "aim",  "dmg": 18, "cooldown": 1.0,  "reload": 1.2, "mag": 6,  "range": 100, "price": 900,  "slip": false, "debuff": true,  "homing": false, "sfx": "sfx_harpoon", "desc": "中威力。主にデバフ付与(毒/弱体)"},
 	"torpedo": {"name": "魚雷",           "kind": "lock", "dmg": 22, "cooldown": 0.9,  "reload": 2.0, "mag": 8,  "range": 160, "price": 1500, "slip": false, "debuff": false, "homing": true,  "sfx": "sfx_torpedo", "desc": "ロックオンで追尾。空中の敵には不可"},
+	# #102: 嵐越え(tier>=2)以降で買える上位互換。新種は増やさず各武器の強化版
+	"gatling2":{"name": "重ガトリング砲", "kind": "aim",  "dmg": 6,  "cooldown": 0.07, "reload": 0.9, "mag": 55, "range": 145, "price": 5000, "slip": false, "debuff": false, "homing": false, "falloff": true, "tier": 2, "sfx": "sfx_gun",     "desc": "ガトリングの上位。威力・連射・射程を強化"},
+	"cannon2": {"name": "大口径カノン砲", "kind": "aim",  "dmg": 62, "cooldown": 1.25, "reload": 1.4, "mag": 5,  "range": 165, "price": 6500, "slip": true,  "debuff": false, "homing": false, "tier": 2, "sfx": "sfx_cannon",  "desc": "大砲の上位。単発威力・射程を大幅強化"},
+	"harpoon2":{"name": "強化銛砲",       "kind": "aim",  "dmg": 32, "cooldown": 0.85, "reload": 1.0, "mag": 9,  "range": 125, "price": 5500, "slip": false, "debuff": true,  "homing": false, "tier": 2, "sfx": "sfx_harpoon", "desc": "銛の上位。威力・連射・デバフ効率を強化"},
+	"torpedo2":{"name": "追尾魚雷改",     "kind": "lock", "dmg": 40, "cooldown": 0.8,  "reload": 1.7, "mag": 10, "range": 195, "price": 8000, "slip": false, "debuff": false, "homing": true,  "tier": 2, "sfx": "sfx_torpedo", "desc": "魚雷の上位。威力・追尾・射程を強化"},
 }
 
 var rams := {
 	"none":  {"name": "なし",       "dmg": 0,   "price": 0},
 	"iron":  {"name": "鉄製衝角",   "dmg": 40,  "price": 600},
 	"steel": {"name": "鋼鉄衝角",   "dmg": 90,  "price": 2000},
+	# #102: 嵐越え(tier>=2)以降の上位衝角
+	"tungsten": {"name": "超硬タングステン衝角", "dmg": 180, "price": 7000, "tier": 2},
 }
 
 # ---------------------------------------------------------------------------
@@ -124,10 +131,10 @@ var ships := {
 	"raft":     {"name": "粗末な漁船",     "food": 100, "hold": 12,  "armor": 60,   "slots": 1, "range": 0, "speed": 11.0, "price": 0,     "trade": 0},
 	"skiff":    {"name": "武装スキフ",     "food": 140, "hold": 18,  "armor": 140,  "slots": 2, "range": 0, "speed": 11.5, "price": 1500,  "trade": 1000},
 	"cutter":   {"name": "外洋カッター",   "food": 260, "hold": 30,  "armor": 260,  "slots": 3, "range": 1, "speed": 12.0, "price": 5000,  "trade": 3500},
-	"corvette": {"name": "コルベット",     "food": 360, "hold": 40,  "armor": 480,  "slots": 4, "range": 2, "speed": 12.5, "price": 26000, "trade": 17000},
-	"hunter_h": {"name": "猟特化フリゲート","food": 320, "hold": 32,  "armor": 600,  "slots": 4, "range": 2, "speed": 13.5, "price": 40000, "trade": 26000},
-	"hauler":   {"name": "大型運搬艦",     "food": 420, "hold": 70,  "armor": 520,  "slots": 4, "range": 2, "speed": 11.0, "price": 38000, "trade": 25000},
-	"dread":    {"name": "弩級戦艦",       "food": 520, "hold": 60,  "armor": 1100, "slots": 4, "range": 3, "speed": 13.0, "price": 95000, "trade": 62000},
+	"corvette": {"name": "コルベット",     "food": 360, "hold": 40,  "armor": 480,  "slots": 4, "range": 2, "speed": 12.5, "price": 18000, "trade": 12000},
+	"hunter_h": {"name": "猟特化フリゲート","food": 320, "hold": 32,  "armor": 600,  "slots": 4, "range": 2, "speed": 13.5, "price": 28000, "trade": 18000},
+	"hauler":   {"name": "大型運搬艦",     "food": 420, "hold": 70,  "armor": 520,  "slots": 4, "range": 2, "speed": 11.0, "price": 28000, "trade": 18000},
+	"dread":    {"name": "弩級戦艦",       "food": 520, "hold": 60,  "armor": 1100, "slots": 4, "range": 3, "speed": 13.0, "price": 60000, "trade": 40000},
 }
 
 # ---------------------------------------------------------------------------

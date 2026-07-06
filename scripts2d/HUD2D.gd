@@ -337,7 +337,7 @@ func show_notice(text: String) -> void:
 	tw.tween_property(l, "modulate:a", 0.0, 1.0)
 	tw.tween_callback(l.queue_free)
 
-func show_big_message(text: String) -> void:
+func show_big_message(text: String, hold := 1.4) -> void:
 	var l := _label(text, 42)
 	l.add_theme_color_override("font_color", Color(1, 0.55, 0.4))
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -351,7 +351,7 @@ func show_big_message(text: String) -> void:
 	l.offset_bottom = 40
 	_root().add_child(l)
 	var tw := create_tween()
-	tw.tween_interval(1.4)
+	tw.tween_interval(hold)
 	tw.tween_property(l, "modulate:a", 0.0, 1.0)
 	tw.tween_callback(l.queue_free)
 

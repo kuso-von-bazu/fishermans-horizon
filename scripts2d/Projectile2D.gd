@@ -28,50 +28,55 @@ func setup(p_dir: Vector2, w: Dictionary, p_target: Node2D = null) -> void:
 	dir = p_dir.normalized()
 
 func _ready() -> void:
-	# #78: 攻撃の種類で弾の見た目を変える
-	var mesh := Polygon2D.new()
+	# #78: 攻撃の種類で弾の見た目(形+色)を大きく変えて見分けやすく。全体を拡大し暗い輪郭付き
+	var poly := PackedVector2Array()
+	var mcol := Color.WHITE
 	var r := 4.0
-	# #78: 武器種で色を大きく変えて見分けやすく(魚雷=緑/ガトリング=黄/銛=シアン/大砲=赤橙/炎=橙)
 	if homing:
 		# 魚雷: 細長いカプセル型(尾びれ付き)・緑
-		mesh.polygon = PackedVector2Array([
-			Vector2(-3, -9), Vector2(0, -12), Vector2(3, -9), Vector2(3, 7),
-			Vector2(6, 12), Vector2(0, 9), Vector2(-6, 12), Vector2(-3, 7)])
-		mesh.color = Color(0.2, 1.0, 0.35) if from_player else Color(0.7, 1.0, 0.2)
-		r = 5.0
+		poly = PackedVector2Array([
+			Vector2(-5, -15), Vector2(0, -20), Vector2(5, -15), Vector2(5, 11),
+			Vector2(10, 20), Vector2(0, 15), Vector2(-10, 20), Vector2(-5, 11)])
+		mcol = Color(0.2, 1.0, 0.35) if from_player else Color(0.7, 1.0, 0.2)
+		r = 8.0
 	elif falloff:
 		# ガトリング: 細い曳光弾・鮮黄
-		mesh.polygon = PackedVector2Array([
-			Vector2(-1.6, -8), Vector2(1.6, -8), Vector2(1.6, 8), Vector2(-1.6, 8)])
-		mesh.color = Color(1.0, 0.92, 0.1) if from_player else Color(1.0, 0.65, 0.15)
-		r = 3.0
+		poly = PackedVector2Array([
+			Vector2(-3, -15), Vector2(3, -15), Vector2(3, 15), Vector2(-3, 15)])
+		mcol = Color(1.0, 0.92, 0.1) if from_player else Color(1.0, 0.6, 0.1)
+		r = 5.0
 	elif debuff:
 		# 銛: 長い柄+返しのある穂先・シアン
-		mesh.polygon = PackedVector2Array([
-			Vector2(0, -14), Vector2(4, -7), Vector2(1.4, -7), Vector2(1.4, 12),
-			Vector2(-1.4, 12), Vector2(-1.4, -7), Vector2(-4, -7)])
-		mesh.color = Color(0.15, 0.85, 1.0)
+		poly = PackedVector2Array([
+			Vector2(0, -22), Vector2(7, -11), Vector2(2.4, -11), Vector2(2.4, 19),
+			Vector2(-2.4, 19), Vector2(-2.4, -11), Vector2(-7, -11)])
+		mcol = Color(0.15, 0.85, 1.0)
+		r = 7.0
 	elif fire:
 		# 炎弾: ゆらめく火の玉・橙
-		var pts_f := PackedVector2Array()
 		for i in 10:
 			var a := TAU * i / 10.0
-			var rr := 6.0 if i % 2 == 0 else 3.5
-			pts_f.append(Vector2(cos(a), sin(a)) * rr)
-		mesh.polygon = pts_f
-		mesh.color = Color(1.0, 0.45, 0.1)
-		r = 5.0
+			var rr := 10.0 if i % 2 == 0 else 6.0
+			poly.append(Vector2(cos(a), sin(a)) * rr)
+		mcol = Color(1.0, 0.45, 0.1)
+		r = 8.0
 	else:
-		# 砲弾: 大きめの弾・赤橙(自機)/暗赤(敵)
-		var pts := PackedVector2Array()
-		for i in 12:
-			var a := TAU * i / 12.0
-			pts.append(Vector2(cos(a), sin(a)) * 6.0)
-		mesh.polygon = pts
-		mesh.color = Color(1.0, 0.35, 0.1) if from_player else Color(0.7, 0.15, 0.15)
-		r = 6.0
-	rotation = dir.angle() + PI / 2
+		# 砲弾: 大きめの丸弾・赤橙(自機)/暗赤(敵)
+		for i in 14:
+			var a := TAU * i / 14.0
+			poly.append(Vector2(cos(a), sin(a)) * 10.0)
+		mcol = Color(1.0, 0.35, 0.1) if from_player else Color(0.75, 0.12, 0.12)
+		r = 10.0
+	# 暗い輪郭(視認性UP)
+	var outline := Polygon2D.new()
+	outline.polygon = _scaled(poly, 1.5)
+	outline.color = Color(0, 0, 0, 0.8)
+	add_child(outline)
+	var mesh := Polygon2D.new()
+	mesh.polygon = poly
+	mesh.color = mcol
 	add_child(mesh)
+	rotation = dir.angle() + PI / 2
 	var col := CollisionShape2D.new()
 	var sh := CircleShape2D.new()
 	sh.radius = r + 2.0
@@ -90,6 +95,12 @@ func _ready() -> void:
 		trail.color = Color(0.8, 0.95, 1.0, 0.6)
 		add_child(trail)
 		life = 4.0
+
+func _scaled(poly: PackedVector2Array, s: float) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	for p in poly:
+		out.append(p * s)
+	return out
 
 func _physics_process(delta: float) -> void:
 	_t += delta
