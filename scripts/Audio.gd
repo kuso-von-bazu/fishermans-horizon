@@ -7,6 +7,15 @@ var _bgm: AudioStreamPlayer
 var _current_bgm: String = ""
 var _cache: Dictionary = {}
 
+# 共有者提供のBGM(MP3)を優先使用。無ければ合成wavにフォールバック(_bgm_stream内)
+const BGM_FILES := {
+	"bgm_sea":       "res://assets/audio/フィールド.mp3",
+	"bgm_port":      "res://assets/audio/港.mp3",
+	"bgm_boss":      "res://assets/audio/近海の主.mp3",
+	"bgm_leviathan": "res://assets/audio/レヴイアタン.mp3",
+	"bgm_ending":    "res://assets/audio/エンディング.mp3",
+}
+
 func _ready() -> void:
 	for i in 10:
 		var p := AudioStreamPlayer.new()
@@ -42,11 +51,27 @@ func play(name: String, vol_db: float = 0.0, pitch: float = 1.0) -> void:
 	_sfx_pool[0].pitch_scale = pitch
 	_sfx_pool[0].play()
 
+# BGMストリーム: MP3(共有者提供)を優先、無ければ合成wav。ループ有効化。
+func _bgm_stream(name: String) -> AudioStream:
+	var key := "bgm::" + name
+	if _cache.has(key):
+		return _cache[key]
+	var s: AudioStream = null
+	if BGM_FILES.has(name) and ResourceLoader.exists(BGM_FILES[name]):
+		s = load(BGM_FILES[name])
+	if s == null:
+		s = _stream_of(name)
+	# MP3/Vorbis/wavそれぞれのループ指定(ギャップレス)
+	if s is AudioStreamMP3 or s is AudioStreamOggVorbis:
+		s.loop = true
+	_cache[key] = s
+	return s
+
 func play_bgm(name: String) -> void:
 	if _current_bgm == name:
 		return
 	_current_bgm = name
-	var s := _stream_of(name)
+	var s := _bgm_stream(name)
 	_bgm.stream = s
 	if s:
 		_bgm.play()

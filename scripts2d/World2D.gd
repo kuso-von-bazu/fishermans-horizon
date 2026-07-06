@@ -39,7 +39,7 @@ var _food_choice_shown: bool = false
 var _food_dialog_open: bool = false
 var _food_dialog: CanvasLayer
 var _food_msg: Label
-var _boss_bgm_on: bool = false   # #79: 主接近中の緊迫BGM
+var _boss_bgm_on: String = ""    # #79: 主接近中の緊迫BGM("" / "bgm_boss" / "bgm_leviathan")
 var _return_hold: float = 0.0    # #68: 帰還キー長押しの累積秒
 
 func island_pos(idx: int) -> Vector2:
@@ -138,7 +138,7 @@ func _enter_dock(island_id: int, do_reset := true) -> void:
 	if hud:
 		hud.visible = false
 	Audio.play_bgm("bgm_port")
-	_boss_bgm_on = false
+	_boss_bgm_on = ""
 	port_ui.open()
 
 func _on_set_sail() -> void:
@@ -158,7 +158,7 @@ func _on_set_sail() -> void:
 	hud.update_bars()
 	hud.set_location("航海中: %s 近海" % Database.island(GameState.current_island).name)
 	Audio.play_bgm("bgm_sea")
-	_boss_bgm_on = false
+	_boss_bgm_on = ""
 	_return_hold = 0.0
 	_dock_grace = 2.0
 	_dock_target = -1
@@ -566,17 +566,24 @@ func _update_lock_on() -> void:
 		lock_target.locked = true
 
 # #79: 主に発見されている(アグロ中)間は緊迫BGM、離れると通常BGMへ戻す
+# レヴィアタン戦のみ専用曲(共有者提供 レヴイアタン.mp3)
 func _update_boss_bgm() -> void:
 	var danger := false
+	var leviathan := false
 	for e in enemies:
 		if is_instance_valid(e) and e.kind == "lord" and e.get("_aggro") == true:
 			danger = true
+			if e.id == "leviathan":
+				leviathan = true
 			break
-	if danger and not _boss_bgm_on:
-		_boss_bgm_on = true
-		Audio.play_bgm("bgm_boss")
-	elif not danger and _boss_bgm_on:
-		_boss_bgm_on = false
+	var want := ""
+	if danger:
+		want = "bgm_leviathan" if leviathan else "bgm_boss"
+	if want != "" and _boss_bgm_on != want:
+		_boss_bgm_on = want
+		Audio.play_bgm(want)
+	elif want == "" and _boss_bgm_on != "":
+		_boss_bgm_on = ""
 		Audio.play_bgm("bgm_sea")
 
 # ---------------- ソナー ----------------
