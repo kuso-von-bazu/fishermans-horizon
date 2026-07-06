@@ -56,6 +56,17 @@ func hire_crew(job_id: String) -> bool:
 		"sht": base + randi_range(0, 2), "int_": base + randi_range(0, 2),
 		"vis": base + randi_range(0, 2),
 	}
+	# #85: 上位ジョブは「ジョブチェンジに必要な値」を最低保証+ランダム上乗せ
+	if j.has("req"):
+		var req: Array = j.req
+		if req[0] == "total":
+			var target := int(req[1]) + randi_range(0, 8)
+			var keys := ["hp", "agi", "sht", "int_", "vis"]
+			while int(m.hp) + int(m.agi) + int(m.sht) + int(m.int_) + int(m.vis) < target:
+				var k: String = keys[randi() % keys.size()]
+				m[k] = int(m[k]) + 1
+		else:
+			m[req[0]] = int(req[1]) + randi_range(0, 4)
 	crew.append(m)
 	notice.emit("%s(%s)を雇用" % [m.name, j.name])
 	stats_changed.emit()

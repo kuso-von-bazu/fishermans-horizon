@@ -12,6 +12,7 @@ var lbl_food_val: Label
 var lbl_hold_val: Label
 var lbl_armor_val: Label
 var lbl_status: Label   # #64: 炎上/毒の表示
+var lbl_return: Label   # #68: 帰還長押しの進捗
 var cargo_box: HBoxContainer
 var weapon_box: HBoxContainer
 var _weapon_labels: Array = []
@@ -75,17 +76,17 @@ func _build() -> void:
 	sonar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	sonar.draw.connect(_draw_sonar)
 	root.add_child(sonar)
-	# #68: 帰還キーのヒント(ソナー下)
-	var hint := _label("[R] 直近の島へ帰還", 14)
-	hint.anchor_left = 1.0
-	hint.anchor_right = 1.0
-	hint.offset_left = -226
-	hint.offset_right = -16
-	hint.offset_top = 288
-	hint.offset_bottom = 310
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.add_theme_color_override("font_color", Color(0.8, 0.92, 1.0, 0.85))
-	root.add_child(hint)
+	# #68: 帰還キーのヒント(ソナー下)。長押し中は進捗を表示
+	lbl_return = _label("[R]長押し(5秒)で直近の島へ帰還", 14)
+	lbl_return.anchor_left = 1.0
+	lbl_return.anchor_right = 1.0
+	lbl_return.offset_left = -240
+	lbl_return.offset_right = -6
+	lbl_return.offset_top = 288
+	lbl_return.offset_bottom = 310
+	lbl_return.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl_return.add_theme_color_override("font_color", Color(0.8, 0.92, 1.0, 0.85))
+	root.add_child(lbl_return)
 
 	# 左下: 漁獲物パネル(#2)
 	var cargo_panel := PanelContainer.new()
@@ -368,6 +369,19 @@ func set_guide(pos) -> void:
 # #76: 直近に寄港した島(緑の弧)
 func set_home_guide(pos) -> void:
 	_home_pos = pos
+
+# #68: 帰還長押しの進捗(0.0〜1.0)。0で通常ヒントへ戻す
+func set_return_progress(t: float) -> void:
+	if lbl_return == null:
+		return
+	if t <= 0.0:
+		lbl_return.text = "[R]長押し(5秒)で直近の島へ帰還"
+		lbl_return.add_theme_color_override("font_color", Color(0.8, 0.92, 1.0, 0.85))
+	else:
+		var secs: float = ceil((1.0 - clampf(t, 0.0, 1.0)) * 5.0)
+		var bars := int(clampf(t, 0.0, 1.0) * 10.0)
+		lbl_return.text = "帰還まで %d秒  [%s%s]" % [int(secs), "■".repeat(bars), "・".repeat(10 - bars)]
+		lbl_return.add_theme_color_override("font_color", Color(1.0, 0.85, 0.4))
 
 func _draw_sonar() -> void:
 	var r := 105.0

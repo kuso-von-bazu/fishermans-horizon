@@ -40,6 +40,7 @@ var _food_dialog_open: bool = false
 var _food_dialog: CanvasLayer
 var _food_msg: Label
 var _boss_bgm_on: bool = false   # #79: 主接近中の緊迫BGM
+var _return_hold: float = 0.0    # #68: 帰還キー長押しの累積秒
 
 func island_pos(idx: int) -> Vector2:
 	var p: Vector3 = Database.island(idx).pos
@@ -158,6 +159,7 @@ func _on_set_sail() -> void:
 	hud.set_location("航海中: %s 近海" % Database.island(GameState.current_island).name)
 	Audio.play_bgm("bgm_sea")
 	_boss_bgm_on = false
+	_return_hold = 0.0
 	_dock_grace = 2.0
 	_dock_target = -1
 	_food_choice_shown = false
@@ -217,11 +219,19 @@ func _physics_process(delta: float) -> void:
 	GameState.regen_fire(delta)
 	GameState.tick_slips(delta)   # #64/#72: 炎上・毒のスリップ
 	GameState.run_food = maxf(GameState.run_food - delta * 1.5 * GameState.food_drain_mult(), 0.0)
-	# #68: 航海中いつでも直近に寄港した島へファストトラベル
-	if Input.is_action_just_pressed("fast_return") and not _returning and not _food_dialog_open:
-		GameState.notice.emit("%s へ帰還" % Database.island(GameState.current_island).name)
-		_enter_dock(GameState.current_island, true)
-		return
+	# #68: Rキーを5秒長押しで直近の島へ帰還。長押し中に装甲0なら大破(後段の装甲チェックで処理)
+	if Input.is_action_pressed("fast_return") and not _returning and not _food_dialog_open:
+		_return_hold += delta
+		hud.set_return_progress(_return_hold / 5.0)
+		if _return_hold >= 5.0:
+			_return_hold = 0.0
+			hud.set_return_progress(0.0)
+			GameState.notice.emit("%s へ帰還" % Database.island(GameState.current_island).name)
+			_enter_dock(GameState.current_island, true)
+			return
+	elif _return_hold > 0.0:
+		_return_hold = 0.0
+		hud.set_return_progress(0.0)
 	if not _update_docking():
 		_update_fishing(delta)
 	_update_spawns(delta)
@@ -297,9 +307,9 @@ func _update_spawns(delta: float) -> void:
 	for r in relics_world.duplicate():
 		if player.global_position.distance_to(r.global_position) > 360 * K:
 			r.queue_free()
-	# #69他再修正: 主以外の敵は遠く離れたらデスポーンして枠を空ける
+	# #69他再修正: 主以外の敵は遠く離れたらデスポーンして枠を空ける(#67: 主と取り巻きは免除)
 	for e in enemies.duplicate():
-		if is_instance_valid(e) and e.kind != "lord" and player.global_position.distance_to(e.global_position) > 400 * K:
+		if is_instance_valid(e) and e.kind != "lord" and not e.is_escort and player.global_position.distance_to(e.global_position) > 400 * K:
 			e.queue_free()
 	spawn_timer -= delta
 	if spawn_timer > 0:
@@ -309,10 +319,10 @@ func _update_spawns(delta: float) -> void:
 		_try_spawn_lord()   # #67: 未討伐の主は必ず海域に出現している
 	if fish_schools.size() < MAX_FISH:
 		_spawn_fish()
-	# #69他再修正: 上限は主を除いた通常敵で数える(主+取り巻きが枠を塞いでいた)
+	# #69他再修正/#67: 上限は主・取り巻きを除いた通常敵で数える
 	var regular := 0
 	for e in enemies:
-		if is_instance_valid(e) and e.kind != "lord":
+		if is_instance_valid(e) and e.kind != "lord" and not e.is_escort:
 			regular += 1
 	if regular < MAX_ENEMIES:
 		_spawn_enemy()
@@ -410,12 +420,13 @@ func _king_alive() -> bool:
 			return true
 	return false
 
-# #62: 主の取り巻き。戦闘モブ2体を主の周囲に出現させる
+# #62: 主の取り巻き。戦闘モブ2体を主の周囲に出現させる(#67: 上限・デスポーン免除)
 func _spawn_escorts(center: Vector2) -> void:
 	for i in 2:
 		var mid: String = Database.pick_mob(GameState.current_island)
 		var off := Vector2.RIGHT.rotated(randf() * TAU) * randf_range(140.0, 260.0)
-		_make_enemy("mob", mid, center + off)
+		var e := _make_enemy("mob", mid, center + off)
+		e.is_escort = true
 
 func _lord_alive() -> bool:
 	for e in enemies:

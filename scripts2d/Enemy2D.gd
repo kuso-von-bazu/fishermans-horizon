@@ -25,8 +25,14 @@ var _wander_dir: Vector2 = Vector2.RIGHT
 var _wander_t: float = 0.0
 var sprite: Sprite2D
 var _shadow: Sprite2D
+var _tex_side: Texture2D    # #26: 移動方向でドット絵を切替(横/正面/後ろ姿)
+var _tex_front: Texture2D
+var _tex_back: Texture2D
+var _facing: String = "side"
+var _target_w: float = 90.0
 var player: Node2D
 var pair_partner: Node = null
+var is_escort: bool = false   # #67: 主の取り巻き(上限・デスポーン免除)
 var _bob: float = 0.0
 var _radius: float = 40.0
 var locked: bool = false   # 魚雷ロック対象の表示(#16)
@@ -48,7 +54,7 @@ func setup(p_kind: String, p_id: String) -> void:
 	# #69/#72: reach=触腕などで攻撃射程が伸びる。#74: 遠隔持ちはかなり遠くから撃つ
 	var rng := 9.0
 	if kind == "lord":
-		rng = 60.0
+		rng = 95.0   # #86: 主はさらに遠距離から射撃
 	elif bool(def.get("ranged", false)):
 		rng = 45.0
 	attack_range = rng * K * float(def.get("reach", 1.0))
@@ -66,6 +72,7 @@ func _ready() -> void:
 		"mob": target_w = clampf(52.0 + max_hp * 0.06, 55.0, 120.0)   # #33: 小さめ(#69以降の強モブは大きめ)
 		"lord": target_w = clampf(110.0 + max_hp * 0.05, 140.0, 380.0)
 	_radius = target_w * 0.40
+	_target_w = target_w
 	attack_range += _radius
 	# 本体スプライト(生成画像。なければ色付き楕円)
 	sprite = Sprite2D.new()
@@ -78,6 +85,10 @@ func _ready() -> void:
 		sprite.texture = _placeholder(def.get("color", Color(0.7, 0.3, 0.3)))
 		sprite.scale = Vector2.ONE * (target_w / 64.0)
 	add_child(sprite)
+	# #26: 正面/後ろ姿のドット絵(あれば移動方向で切替)
+	_tex_side = tex
+	_tex_front = _load_dir_tex("front")
+	_tex_back = _load_dir_tex("back")
 	# 空中の敵は影を落として浮遊感(#torpedo不可)
 	if aerial and tex:
 		_shadow = Sprite2D.new()
@@ -118,6 +129,45 @@ func _load_tex() -> Texture2D:
 	if ResourceLoader.exists(path):
 		return load(path)
 	return null
+
+# #26: 正面(front)/後ろ姿(back)のドット絵。無ければnull(横向きのまま)
+func _load_dir_tex(suffix: String) -> Texture2D:
+	var p := "res://assets/images/pixel/%s_%s_%s.png" % [kind, id, suffix]
+	if ResourceLoader.exists(p):
+		return load(p)
+	return null
+
+# #26: 移動方向に応じて 横/正面(南向き)/後ろ姿(北向き) を切り替える
+func _update_facing(move_dir: Vector2) -> void:
+	if sprite == null or move_dir.length() < 0.01:
+		return
+	var ny: float = move_dir.normalized().y
+	var want := "side"
+	if ny < -0.7:
+		want = "back"    # 北へ=画面奥へ→後ろ姿
+	elif ny > 0.7:
+		want = "front"   # 南へ=画面手前へ→正面
+	var t: Texture2D = _tex_side
+	match want:
+		"back":
+			t = _tex_back
+		"front":
+			t = _tex_front
+	if t == null:
+		want = "side"
+		t = _tex_side
+	if want != _facing and t != null:
+		_facing = want
+		sprite.texture = t
+		sprite.scale = Vector2.ONE * (_target_w / maxf(float(t.get_width()), 1.0))
+		if _shadow:
+			_shadow.texture = t
+			_shadow.scale = sprite.scale * 0.9
+	# 左右反転は横向きのときだけ
+	if absf(move_dir.x) > 0.1:
+		sprite.flip_h = _facing == "side" and move_dir.x < 0.0
+		if _shadow:
+			_shadow.flip_h = sprite.flip_h
 
 func _placeholder(c: Color) -> Texture2D:
 	var img := Image.create(64, 40, false, Image.FORMAT_RGBA8)
@@ -196,11 +246,8 @@ func _physics_process(delta: float) -> void:
 			_wander_dir = Vector2.RIGHT.rotated(randf() * TAU)
 		move_dir = _wander_dir
 		eff_speed *= 0.3
-	# スプライトの向き(移動方向に左右反転・#26)
-	if sprite and absf(move_dir.x) > 0.1:
-		sprite.flip_h = move_dir.x < 0.0
-		if _shadow:
-			_shadow.flip_h = sprite.flip_h
+	# スプライトの向き(#26: 横/正面/後ろ姿の切替+左右反転)
+	_update_facing(move_dir)
 	if not _aggro:
 		velocity = move_dir * eff_speed
 	elif dist > attack_range:
