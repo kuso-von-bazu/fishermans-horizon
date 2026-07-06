@@ -31,43 +31,44 @@ func _ready() -> void:
 	# #78: 攻撃の種類で弾の見た目を変える
 	var mesh := Polygon2D.new()
 	var r := 4.0
+	# #78: 武器種で色を大きく変えて見分けやすく(魚雷=緑/ガトリング=黄/銛=シアン/大砲=赤橙/炎=橙)
 	if homing:
-		# 魚雷: 細長いカプセル型(尾びれ付き)
+		# 魚雷: 細長いカプセル型(尾びれ付き)・緑
 		mesh.polygon = PackedVector2Array([
 			Vector2(-3, -9), Vector2(0, -12), Vector2(3, -9), Vector2(3, 7),
 			Vector2(6, 12), Vector2(0, 9), Vector2(-6, 12), Vector2(-3, 7)])
-		mesh.color = Color(0.65, 0.9, 1.0) if from_player else Color(0.95, 0.4, 0.55)
+		mesh.color = Color(0.2, 1.0, 0.35) if from_player else Color(0.7, 1.0, 0.2)
 		r = 5.0
 	elif falloff:
-		# ガトリング: 細い曳光弾
+		# ガトリング: 細い曳光弾・鮮黄
 		mesh.polygon = PackedVector2Array([
 			Vector2(-1.6, -8), Vector2(1.6, -8), Vector2(1.6, 8), Vector2(-1.6, 8)])
-		mesh.color = Color(1.0, 0.95, 0.5) if from_player else Color(1.0, 0.5, 0.3)
+		mesh.color = Color(1.0, 0.92, 0.1) if from_player else Color(1.0, 0.65, 0.15)
 		r = 3.0
 	elif debuff:
-		# 銛: 長い柄+返しのある穂先
+		# 銛: 長い柄+返しのある穂先・シアン
 		mesh.polygon = PackedVector2Array([
 			Vector2(0, -14), Vector2(4, -7), Vector2(1.4, -7), Vector2(1.4, 12),
 			Vector2(-1.4, 12), Vector2(-1.4, -7), Vector2(-4, -7)])
-		mesh.color = Color(0.8, 0.85, 0.9)
+		mesh.color = Color(0.15, 0.85, 1.0)
 	elif fire:
-		# 炎弾: ゆらめく火の玉
+		# 炎弾: ゆらめく火の玉・橙
 		var pts_f := PackedVector2Array()
 		for i in 10:
 			var a := TAU * i / 10.0
 			var rr := 6.0 if i % 2 == 0 else 3.5
 			pts_f.append(Vector2(cos(a), sin(a)) * rr)
 		mesh.polygon = pts_f
-		mesh.color = Color(1.0, 0.5, 0.15)
+		mesh.color = Color(1.0, 0.45, 0.1)
 		r = 5.0
 	else:
-		# 砲弾: 大きめの鉄球
+		# 砲弾: 大きめの弾・赤橙(自機)/暗赤(敵)
 		var pts := PackedVector2Array()
 		for i in 12:
 			var a := TAU * i / 12.0
 			pts.append(Vector2(cos(a), sin(a)) * 6.0)
 		mesh.polygon = pts
-		mesh.color = Color(0.35, 0.36, 0.4) if from_player else Color(0.55, 0.2, 0.2)
+		mesh.color = Color(1.0, 0.35, 0.1) if from_player else Color(0.7, 0.15, 0.15)
 		r = 6.0
 	rotation = dir.angle() + PI / 2
 	add_child(mesh)
@@ -109,11 +110,11 @@ func _physics_process(delta: float) -> void:
 	if life <= 0:
 		queue_free()
 
-# #63: 一定距離(45*K)を超えると線形減衰、最低35%まで
+# #63: より近い距離(22*K)から線形減衰、最低35%まで
 func _eff_dmg() -> float:
 	if not falloff:
 		return dmg
-	var factor: float = clampf(1.0 - maxf(_travel - 45.0 * K, 0.0) / (75.0 * K) * 0.65, 0.35, 1.0)
+	var factor: float = clampf(1.0 - maxf(_travel - 22.0 * K, 0.0) / (60.0 * K) * 0.65, 0.35, 1.0)
 	return dmg * factor
 
 func _on_hit(body: Node) -> void:

@@ -53,25 +53,26 @@ func pick_mob(tier: int) -> String:
 	return "narwhal"
 
 # 銛のデバフ効果(#37)。造船所で選択して主にのみ付与。
+# #91: 各デバフ効果を全体的に弱体化
 var harpoon_debuffs := {
-	"slip":  {"name": "毒(スリップ)",   "desc": "継続ダメージ"},
-	"atkfreq": {"name": "麻痺(攻撃頻度減)", "desc": "攻撃間隔1.7倍"},
-	"atk":   {"name": "衰弱(攻撃力減)", "desc": "与ダメージ40%減"},
-	"speed": {"name": "鈍化(移動速度減)", "desc": "移動45%減"},
+	"slip":  {"name": "毒(スリップ)",   "desc": "継続ダメージ(弱)"},
+	"atkfreq": {"name": "麻痺(攻撃頻度減)", "desc": "攻撃間隔1.35倍"},
+	"atk":   {"name": "衰弱(攻撃力減)", "desc": "与ダメージ22%減"},
+	"speed": {"name": "鈍化(移動速度減)", "desc": "移動28%減"},
 }
 
 # ---------------------------------------------------------------------------
 # 近海の主(ボス) 主は対応する島でしか売れない。bounty=賞金, cap=魚倉圧迫
 # ---------------------------------------------------------------------------
-# #65: 全主が遠隔攻撃を持つ。way=同時弾数(扇状), homing=追跡弾を追加で撃つ
+# #65: 全主が遠隔攻撃を持つ。way=同時弾数(扇状), homing=追跡弾, radial=全方向, homing_count=追跡弾数
 var lords := {
-	"sawshark":  {"name": "電動ノコギリザメ",         "hp": 730,  "dmg": 21, "cap": 8,  "price": 800,  "bounty": 1500,  "fame": 8,  "island": 0, "ranged": true, "aerial": false, "pair": false, "speed": 9.5, "dir": 0},
-	"dumbo":     {"name": "ウミダンボ",               "hp": 1000, "dmg": 18, "cap": 9,  "price": 1000, "bounty": 2000,  "fame": 10, "island": 0, "ranged": true, "aerial": false, "pair": false, "speed": 7.5, "dir": 135},
-	"whale":     {"name": "ヒゲマッコウナガスクジラ", "hp": 1640, "dmg": 27, "cap": 14, "price": 1800, "bounty": 3500,  "fame": 16, "island": 1, "ranged": true, "aerial": false, "pair": false, "speed": 8.5, "dir": 45},
-	"walrus":    {"name": "ギガントセイウチ",         "hp": 870,  "dmg": 24, "cap": 7,  "price": 1200, "bounty": 4000,  "fame": 18, "island": 1, "ranged": true, "aerial": false, "pair": true, "speed": 8.5,  "dir": 225},
-	"hydra":     {"name": "ヒュドラ",                 "hp": 2000, "dmg": 30, "cap": 12, "price": 2400, "bounty": 6000,  "fame": 25, "island": 2, "ranged": true,  "aerial": false, "pair": false, "speed": 8.0, "way": 3, "homing": true, "dir": 90},
-	"quetzal":   {"name": "ケツァルコアトル",         "hp": 2370, "dmg": 33, "cap": 13, "price": 3000, "bounty": 8000,  "fame": 30, "island": 2, "ranged": true, "aerial": true,  "pair": false, "speed": 12.0, "dir": 270},
-	"leviathan": {"name": "レヴィアタン",             "hp": 6800, "dmg": 50, "cap": 25, "price": 9999, "bounty": 50000, "fame": 60, "island": 3, "ranged": true,  "aerial": false, "pair": false, "speed": 9.0, "way": 5, "homing": true, "dir": 180},
+	"sawshark":  {"name": "電動ノコギリザメ",         "hp": 730,  "dmg": 21, "cap": 8,  "price": 800,  "bounty": 1500,  "fame": 8,  "island": 0, "ranged": true, "aerial": false, "pair": false, "speed": 9.5, "way": 3, "dir": 0},
+	"dumbo":     {"name": "ウミダンボ",               "hp": 1000, "dmg": 18, "cap": 9,  "price": 1000, "bounty": 2000,  "fame": 10, "island": 0, "ranged": true, "aerial": false, "pair": false, "speed": 7.5, "way": 3, "dir": 135},
+	"whale":     {"name": "ヒゲマッコウナガスクジラ", "hp": 1640, "dmg": 27, "cap": 14, "price": 1800, "bounty": 3500,  "fame": 16, "island": 1, "ranged": true, "aerial": false, "pair": false, "speed": 8.5, "way": 3, "dir": 45},
+	"walrus":    {"name": "ギガントセイウチ",         "hp": 870,  "dmg": 24, "cap": 7,  "price": 1200, "bounty": 4000,  "fame": 18, "island": 1, "ranged": true, "aerial": false, "pair": true, "speed": 8.5,  "way": 3, "dir": 225},
+	"hydra":     {"name": "ヒュドラ",                 "hp": 2000, "dmg": 30, "cap": 12, "price": 2400, "bounty": 6000,  "fame": 25, "island": 2, "ranged": true,  "aerial": false, "pair": false, "speed": 8.0, "way": 7, "fire": true, "homing": true, "dir": 90},
+	"quetzal":   {"name": "ケツァルコアトル",         "hp": 2370, "dmg": 33, "cap": 13, "price": 3000, "bounty": 8000,  "fame": 30, "island": 2, "ranged": true, "aerial": true,  "pair": false, "speed": 12.0, "way": 3, "dir": 270},
+	"leviathan": {"name": "レヴィアタン",             "hp": 6800, "dmg": 50, "cap": 25, "price": 9999, "bounty": 50000, "fame": 60, "island": 3, "ranged": true,  "aerial": false, "pair": false, "speed": 9.0, "radial": true, "homing_count": 2, "dir": 180},
 }
 
 # 方位(度・北=0=-Z, 時計回り)を八方位の日本語に
@@ -93,8 +94,9 @@ var pirates := {
 	"raider":   {"name": "海賊(小)", "hp": 220, "dmg": 11,  "bounty": 90,  "fame": 1, "ranged": true, "wpn": "gatling", "color": Color(0.4,0.3,0.2)},
 	"corsair":  {"name": "海賊(中)", "hp": 450, "dmg": 16, "bounty": 220, "fame": 2, "ranged": true, "wpn": "cannon",  "color": Color(0.35,0.25,0.15)},
 	"dread":    {"name": "海賊(大)", "hp": 900, "dmg": 24, "bounty": 500, "fame": 4, "ranged": true, "wpn": "torpedo", "color": Color(0.25,0.18,0.1)},
-	# #73: レアスポーンの強敵。かつてFisherman's Horizonを目指し、心折れて海賊に落ちた男
-	"king":     {"name": "海賊王",   "hp": 2600, "dmg": 30, "bounty": 4000, "fame": 30, "ranged": true, "wpn": "all", "speed": 12.0, "atk_cd": 0.9, "color": Color(0.1,0.08,0.1)},
+	# #73: レアスポーンの強敵。かつてFisherman's Horizonを目指し、心折れて海賊に落ちた男。
+	# hp/dmgは出現海域(island)に応じてEnemy2Dで強化。賞金は控えめ。
+	"king":     {"name": "海賊王",   "hp": 2200, "dmg": 28, "bounty": 1800, "fame": 20, "ranged": true, "wpn": "all", "speed": 12.0, "atk_cd": 0.9, "color": Color(0.1,0.08,0.1)},
 }
 
 # ---------------------------------------------------------------------------
@@ -121,10 +123,10 @@ var ships := {
 	"raft":     {"name": "粗末な漁船",     "food": 100, "hold": 12,  "armor": 60,   "slots": 1, "range": 0, "speed": 11.0, "price": 0,     "trade": 0},
 	"skiff":    {"name": "武装スキフ",     "food": 140, "hold": 18,  "armor": 140,  "slots": 2, "range": 0, "speed": 11.5, "price": 1500,  "trade": 1000},
 	"cutter":   {"name": "外洋カッター",   "food": 260, "hold": 30,  "armor": 260,  "slots": 3, "range": 1, "speed": 12.0, "price": 5000,  "trade": 3500},
-	"corvette": {"name": "コルベット",     "food": 360, "hold": 40,  "armor": 480,  "slots": 4, "range": 2, "speed": 12.5, "price": 14000, "trade": 9000},
-	"hunter_h": {"name": "猟特化フリゲート","food": 320, "hold": 32,  "armor": 600,  "slots": 4, "range": 2, "speed": 13.5, "price": 22000, "trade": 14000},
-	"hauler":   {"name": "大型運搬艦",     "food": 420, "hold": 70,  "armor": 520,  "slots": 4, "range": 2, "speed": 11.0, "price": 22000, "trade": 14000},
-	"dread":    {"name": "弩級戦艦",       "food": 520, "hold": 60,  "armor": 1100, "slots": 4, "range": 3, "speed": 13.0, "price": 60000, "trade": 40000},
+	"corvette": {"name": "コルベット",     "food": 360, "hold": 40,  "armor": 480,  "slots": 4, "range": 2, "speed": 12.5, "price": 26000, "trade": 17000},
+	"hunter_h": {"name": "猟特化フリゲート","food": 320, "hold": 32,  "armor": 600,  "slots": 4, "range": 2, "speed": 13.5, "price": 40000, "trade": 26000},
+	"hauler":   {"name": "大型運搬艦",     "food": 420, "hold": 70,  "armor": 520,  "slots": 4, "range": 2, "speed": 11.0, "price": 38000, "trade": 25000},
+	"dread":    {"name": "弩級戦艦",       "food": 520, "hold": 60,  "armor": 1100, "slots": 4, "range": 3, "speed": 13.0, "price": 95000, "trade": 62000},
 }
 
 # ---------------------------------------------------------------------------

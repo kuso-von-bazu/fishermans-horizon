@@ -49,14 +49,23 @@ func setup(p_kind: String, p_id: String) -> void:
 	dmg = float(def.dmg)
 	ranged = bool(def.get("ranged", false))
 	aerial = bool(def.get("aerial", false))
+	# #73: 海賊王は出現海域が先の島ほど強化(hp/dmg)
+	if id == "king":
+		var tier := 1.0 + 0.4 * float(GameState.current_island)
+		hp *= tier
+		max_hp = hp
+		dmg *= (1.0 + 0.2 * float(GameState.current_island))
 	var base_speed: float = float(def.get("speed", 5.0 if kind == "lord" else 7.0))
 	speed = base_speed * K * 1.2   # #84: 全敵の移動速度20%アップ
-	# #69/#72: reach=触腕などで攻撃射程が伸びる。#74: 遠隔持ちはかなり遠くから撃つ
+	# #88: 遠隔を持たない戦闘モブはさらに素早く(接近戦を仕掛けやすく)
+	if kind == "mob" and not ranged:
+		speed *= 1.25
+	# #69/#72: reach=触腕などで攻撃射程が伸びる。#74/#86/#87: 遠隔持ちはかなり遠くから撃つ
 	var rng := 9.0
 	if kind == "lord":
 		rng = 95.0   # #86: 主はさらに遠距離から射撃
 	elif bool(def.get("ranged", false)):
-		rng = 45.0
+		rng = 68.0   # #87: 遠隔モブもより遠距離から
 	attack_range = rng * K * float(def.get("reach", 1.0))
 	# #55: 海賊は高頻度射撃。#70: ワイアーム等は def の atk_cd を優先
 	var cd_default := 0.55 if kind == "pirate" else 1.4
@@ -193,9 +202,9 @@ func take_hit(amount: float, slip: bool, debuff: bool) -> void:
 		_slip += amount * 0.6
 	if debuff and kind == "lord":
 		_debuff_kind = GameState.harpoon_debuff
-		_debuff_t = 6.0 * GameState.debuff_dur_mult()
+		_debuff_t = 4.5 * GameState.debuff_dur_mult()   # #91: 弱体化
 		if _debuff_kind == "slip":
-			_slip += amount * 0.8
+			_slip += amount * 0.45
 	# 被弾フラッシュ
 	if sprite:
 		sprite.modulate = Color(2.2, 1.2, 1.2)
@@ -235,7 +244,7 @@ func _physics_process(delta: float) -> void:
 		_aggro = true
 	var eff_speed := speed
 	if _debuff_kind == "speed":
-		eff_speed *= 0.55   # #37 鈍化
+		eff_speed *= 0.72   # #37/#91 鈍化(弱)
 	var move_dir: Vector2
 	if _aggro:
 		move_dir = to.normalized()
@@ -263,10 +272,10 @@ func _attack(delta: float, dist: float) -> void:
 		return
 	_atk_timer = attack_cd
 	if _debuff_kind == "atkfreq":
-		_atk_timer *= 1.7   # #37 麻痺: 攻撃間隔増
+		_atk_timer *= 1.35   # #37/#91 麻痺: 攻撃間隔増(弱)
 	var eff_dmg := dmg
 	if _debuff_kind == "atk":
-		eff_dmg *= 0.6      # #37 衰弱: 与ダメ減
+		eff_dmg *= 0.78     # #37/#91 衰弱: 与ダメ減(弱)
 	# #74: 遠隔持ちは attack_range(遠距離)で撃ち、近接圏(melee_r)に入られたら近接
 	var melee_r: float = _radius + (12.0 if kind == "lord" else 9.0) * K * float(def.get("reach", 1.0))
 	if kind == "lord":
@@ -277,7 +286,7 @@ func _attack(delta: float, dist: float) -> void:
 		elif dist <= melee_r:
 			_damage_player(eff_dmg)
 		else:
-			_ranged_attack(id == "hydra")
+			_ranged_attack(bool(def.get("fire", false)))
 	elif kind == "pirate":
 		# #77: 海賊は近接圏では近接攻撃もする
 		if dist <= melee_r:
@@ -300,7 +309,7 @@ func _attack(delta: float, dist: float) -> void:
 func _ranged_attack(is_fire: bool) -> void:
 	var eff_dmg := dmg
 	if _debuff_kind == "atk":
-		eff_dmg *= 0.6
+		eff_dmg *= 0.78   # #91
 	var base_dir := (player.global_position - global_position).normalized()
 	var wpn := str(def.get("wpn", ""))
 	if wpn == "all":
@@ -312,12 +321,18 @@ func _ranged_attack(is_fire: bool) -> void:
 		"torpedo":
 			_shoot(base_dir, {"dmg": eff_dmg, "homing": true}, false, player)
 		_:
-			var way := int(def.get("way", 1))
-			for i in way:
-				var off: float = (float(i) - float(way - 1) / 2.0) * 0.22
-				_shoot(base_dir.rotated(off), {"dmg": eff_dmg}, is_fire)
-			if bool(def.get("homing", false)):
-				_shoot(base_dir, {"dmg": eff_dmg * 0.8, "homing": true}, is_fire, player)
+			# #65: leviathan=全方向弾(radial)+追跡弾2発、hydra=炎7way+追跡弾、他主=3way
+			if bool(def.get("radial", false)):
+				var count := 12
+				for i in count:
+					_shoot(Vector2.RIGHT.rotated(TAU * i / count), {"dmg": eff_dmg}, is_fire)
+			else:
+				var way := int(def.get("way", 1))
+				for i in way:
+					var off: float = (float(i) - float(way - 1) / 2.0) * 0.20
+					_shoot(base_dir.rotated(off), {"dmg": eff_dmg}, is_fire)
+			for h in int(def.get("homing_count", 1 if bool(def.get("homing", false)) else 0)):
+				_shoot(base_dir.rotated(randf_range(-0.3, 0.3)), {"dmg": eff_dmg * 0.8, "homing": true}, is_fire, player)
 
 func _shoot(d: Vector2, w: Dictionary, is_fire: bool, tgt: Node2D = null) -> void:
 	var proj := Area2D.new()

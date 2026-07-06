@@ -60,6 +60,7 @@ func _ready() -> void:
 	title = TitleScript.new()
 	add_child(title)
 	title.start_pressed.connect(_on_title_start)
+	title.continue_pressed.connect(_on_title_continue)
 	GameState.dock_reset()
 	_enter_dock(0, false)
 	port_ui.close()
@@ -120,8 +121,17 @@ func _on_title_start() -> void:
 	phase = "dock"
 	port_ui.open()
 
+# #93: セーブから再開。ロード後は保存された島の港から開始
+func _on_title_continue() -> void:
+	if not GameState.load_game():
+		return
+	_victory_shown = false
+	title.visible = false
+	_enter_dock(GameState.current_island, false)
+
 func _enter_dock(island_id: int, do_reset := true) -> void:
-	if GameState.at_sea and not GameState.crew.is_empty():
+	var was_at_sea := GameState.at_sea
+	if was_at_sea and not GameState.crew.is_empty():
 		GameState.grow_crew()   # 航海を終えたクルーが成長(#39)
 	phase = "dock"
 	_dock_target = -1
@@ -139,6 +149,9 @@ func _enter_dock(island_id: int, do_reset := true) -> void:
 		hud.visible = false
 	Audio.play_bgm("bgm_port")
 	_boss_bgm_on = ""
+	# #93: 航海から寄港(強制帰還/大破含む)するたびオートセーブ。勝利時は保存しない
+	if was_at_sea and not _victory_shown:
+		GameState.save_game()
 	port_ui.open()
 
 func _on_set_sail() -> void:
@@ -380,8 +393,8 @@ func _spawn_enemy() -> void:
 		kind = "mob"
 		id = Database.pick_mob(isle)   # #38: 島tierごとの出現割合
 	elif roll < 0.50:
-		# #73: 海賊王。島の周り以外の全海域で出現しうる。先の島ほど出やすい
-		if not near_island and not _king_alive() and randf() < 0.06 + 0.05 * float(isle):
+		# #73: 海賊王。島の周り以外の全海域で出現しうる。先の島ほど出やすいがレア(スポーン率低下)。同時1体
+		if not near_island and not _king_alive() and randf() < 0.02 + 0.02 * float(isle):
 			kind = "pirate"
 			id = "king"
 	if id == "":

@@ -244,6 +244,82 @@ func reset_all() -> void:
 	harpoon_debuff = "slip"
 	dock_reset()
 
+# ---------------- オートセーブ(#93) ----------------
+const SAVE_PATH := "user://save.json"
+
+func has_save() -> bool:
+	return FileAccess.file_exists(SAVE_PATH)
+
+func save_game() -> void:
+	var data := {
+		"money": money, "fame": fame, "ship_id": ship_id,
+		"weapons": weapons, "ram_id": ram_id, "harpoon_debuff": harpoon_debuff,
+		"crew": crew, "cargo": cargo, "heads": heads, "relics": relics,
+		"current_island": current_island,
+		"unlocked_islands": unlocked_islands, "visited_islands": visited_islands,
+		"defeated_lords": defeated_lords, "claimed_lords": claimed_lords,
+		"guide_target": guide_target,
+	}
+	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	if f:
+		f.store_string(JSON.stringify(data))
+		f.close()
+
+func delete_save() -> void:
+	if has_save():
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH))
+
+func load_game() -> bool:
+	if not has_save():
+		return false
+	var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
+	if f == null:
+		return false
+	var txt := f.get_as_text()
+	f.close()
+	var data = JSON.parse_string(txt)
+	if typeof(data) != TYPE_DICTIONARY:
+		return false
+	money = int(data.get("money", 200))
+	fame = int(data.get("fame", 0))
+	ship_id = str(data.get("ship_id", "raft"))
+	ram_id = str(data.get("ram_id", "none"))
+	harpoon_debuff = str(data.get("harpoon_debuff", "slip"))
+	relics = int(data.get("relics", 0))
+	current_island = int(data.get("current_island", 0))
+	weapons.assign(data.get("weapons", ["gatling"]))
+	unlocked_islands.assign(_to_int_array(data.get("unlocked_islands", [0])))
+	visited_islands.assign(_to_int_array(data.get("visited_islands", [0])))
+	defeated_lords.assign(data.get("defeated_lords", []))
+	claimed_lords.assign(data.get("claimed_lords", []))
+	guide_target = data.get("guide_target", {})
+	# 辞書の数値はJSONでfloat化するのでintへ戻す
+	cargo = _to_int_dict(data.get("cargo", {}))
+	heads = _to_int_dict(data.get("heads", {}))
+	crew = []
+	for c in data.get("crew", []):
+		crew.append({
+			"name": str(c.get("name", "?")), "job": str(c.get("job", "sailor")),
+			"hp": int(c.get("hp", 1)), "agi": int(c.get("agi", 1)),
+			"sht": int(c.get("sht", 1)), "int_": int(c.get("int_", 1)),
+			"vis": int(c.get("vis", 1)), "changed": bool(c.get("changed", false)),
+		})
+	dock_reset()
+	stats_changed.emit()
+	return true
+
+func _to_int_array(a) -> Array:
+	var out := []
+	for v in a:
+		out.append(int(v))
+	return out
+
+func _to_int_dict(d) -> Dictionary:
+	var out := {}
+	for k in d:
+		out[k] = int(d[k])
+	return out
+
 func ship() -> Dictionary:
 	return Database.ships[ship_id]
 

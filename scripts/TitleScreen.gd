@@ -4,11 +4,13 @@ extends CanvasLayer
 ## レイアウトは CenterContainer で常に画面中央に収まるようにし、解像度に依存しない。
 
 signal start_pressed
+signal continue_pressed
 
 var _root: Control
 var _title: Label
 var _body: Label
 var _button: Button
+var _continue_button: Button
 var _bg: ColorRect
 var _art: TextureRect
 
@@ -72,6 +74,24 @@ func _build() -> void:
 	bc.add_child(_button)
 	vb.add_child(bc)
 
+	# #93: 続きから(セーブがある時のみ表示)
+	_continue_button = Button.new()
+	_continue_button.text = "続きから"
+	_continue_button.add_theme_font_size_override("font_size", 22)
+	_continue_button.custom_minimum_size = Vector2(200, 48)
+	_continue_button.pressed.connect(func(): emit_signal("continue_pressed"))
+	var cc2 := CenterContainer.new()
+	cc2.add_child(_continue_button)
+	vb.add_child(cc2)
+
+	# #90: BGM著作権表示(MusMus)
+	var credit := Label.new()
+	credit.text = "BGM: フリーBGM・音楽素材MusMus  https://musmus.main.jp"
+	credit.add_theme_font_size_override("font_size", 14)
+	credit.add_theme_color_override("font_color", Color(0.75, 0.82, 0.9))
+	credit.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(credit)
+
 func show_title() -> void:
 	_title.text = "Fisherman's Horizon"
 	_button.text = "▶ 船出する"
@@ -80,6 +100,8 @@ func show_title() -> void:
 	if _art:
 		_art.modulate = Color(1, 1, 1, 0.45)
 	_title.add_theme_color_override("font_color", Color(0.9, 0.95, 1.0))
+	if _continue_button:
+		_continue_button.visible = GameState.has_save()   # #93: セーブがある時のみ
 	visible = true
 
 func show_victory() -> void:
@@ -92,4 +114,6 @@ func show_victory() -> void:
 	if _art:
 		_art.modulate = Color(0.85, 0.7, 0.45, 0.25)
 	_title.add_theme_color_override("font_color", Color(0.95, 0.85, 0.55))
+	if _continue_button:
+		_continue_button.visible = false   # 勝利画面では非表示
 	visible = true
