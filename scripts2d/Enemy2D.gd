@@ -178,9 +178,10 @@ func _update_facing(move_dir: Vector2) -> void:
 		if _shadow:
 			_shadow.texture = t
 			_shadow.scale = sprite.scale * 0.9
-	# 左右反転は横向きのときだけ
+	# 左右反転は横向きのときだけ。#26再: 元画像が左向きの種は反転条件を逆に
 	if absf(move_dir.x) > 0.1:
-		sprite.flip_h = _facing == "side" and move_dir.x < 0.0
+		var face_left := bool(def.get("face_left", false))
+		sprite.flip_h = _facing == "side" and ((move_dir.x < 0.0) != face_left)
 		if _shadow:
 			_shadow.flip_h = sprite.flip_h
 
@@ -206,7 +207,8 @@ func take_hit(amount: float, slip: bool, debuff: bool) -> void:
 	hp -= amount * mult
 	if slip and kind == "pirate":
 		_slip += amount * 0.6
-	if debuff and kind == "lord":
+	# #37再: 銛デバフは主+戦闘モブに有効(海賊は無効)
+	if debuff and (kind == "lord" or kind == "mob"):
 		_debuff_kind = GameState.harpoon_debuff
 		_debuff_t = 4.5 * GameState.debuff_dur_mult()   # #91: 弱体化
 		if _debuff_kind == "slip":
