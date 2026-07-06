@@ -7,8 +7,8 @@ extends Node
 # ---------------------------------------------------------------------------
 var fish := {
 	"sardine":  {"name": "イワシ",   "cap": 1, "price": 20,  "home": 0, "color": Color(0.7,0.8,0.9)},
-	"mackerel": {"name": "サバ",     "cap": 2, "price": 45,  "home": 0, "color": Color(0.4,0.6,0.8)},
-	"bonito":   {"name": "カツオ",   "cap": 3, "price": 90,  "home": 1, "color": Color(0.3,0.5,0.7)},
+	"mackerel": {"name": "サバ",     "cap": 1, "price": 45,  "home": 0, "color": Color(0.4,0.6,0.8)},
+	"bonito":   {"name": "カツオ",   "cap": 2, "price": 90,  "home": 1, "color": Color(0.3,0.5,0.7)},
 	"squid":    {"name": "イカ",     "cap": 2, "price": 70,  "home": 1, "color": Color(0.9,0.8,0.85)},
 	"octopus":  {"name": "タコ",     "cap": 2, "price": 80,  "home": 2, "color": Color(0.8,0.4,0.45)},
 	"grouper":  {"name": "クエ",     "cap": 1, "price": 300, "home": -1,"color": Color(0.55,0.4,0.3), "rare": true},
@@ -18,19 +18,20 @@ var fish := {
 # 戦闘モブ(倒せば漁獲可能) hp/dmg/cap/price + flags
 # ---------------------------------------------------------------------------
 var combat_mobs := {
-	"narwhal":       {"name": "ユニコーン",     "hp": 110, "dmg": 6,  "cap": 3, "price": 150, "ranged": false, "aerial": false, "speed": 8.0,  "color": Color(0.85,0.85,0.9)},
-	"seahunter":     {"name": "シーハンター",   "hp": 250, "dmg": 12,  "cap": 4, "price": 320, "ranged": false, "aerial": false, "speed": 9.0,  "color": Color(0.2,0.2,0.25)},
-	"ornithocheirus":{"name": "オルニケイトス", "hp": 160, "dmg": 11, "cap": 3, "price": 280, "ranged": false, "aerial": true,  "speed": 21.0, "color": Color(0.7,0.6,0.4)},
-	"wyrm":          {"name": "ワイアーム",     "hp": 400, "dmg": 18, "cap": 4, "price": 500, "ranged": true,  "aerial": false, "speed": 7.0,  "atk_cd": 0.8, "color": Color(0.6,0.2,0.2)},
+	# #96: 販売額を全体的に低下(×0.6目安)
+	"narwhal":       {"name": "ユニコーン",     "hp": 110, "dmg": 6,  "cap": 3, "price": 90,  "ranged": false, "aerial": false, "speed": 8.0,  "color": Color(0.85,0.85,0.9)},
+	"seahunter":     {"name": "シーハンター",   "hp": 250, "dmg": 12,  "cap": 4, "price": 190, "ranged": false, "aerial": false, "speed": 9.0,  "color": Color(0.2,0.2,0.25)},
+	"ornithocheirus":{"name": "オルニケイトス", "hp": 160, "dmg": 11, "cap": 3, "price": 170, "ranged": false, "aerial": true,  "speed": 21.0, "color": Color(0.7,0.6,0.4)},
+	"wyrm":          {"name": "ワイアーム",     "hp": 400, "dmg": 18, "cap": 4, "price": 300, "ranged": true,  "aerial": false, "speed": 7.0,  "atk_cd": 0.8, "color": Color(0.6,0.2,0.2)},
 	# #69: 潮鳴り以降の強モブ。reach=触腕の射程倍率, entangle=被弾で討伐まで鈍足
-	"kraken":        {"name": "クラーケン",     "hp": 700, "dmg": 24, "cap": 6, "price": 900,  "ranged": false, "aerial": false, "speed": 8.5,  "reach": 2.2, "entangle": true, "color": Color(0.5,0.2,0.45)},
-	"wyvern":        {"name": "ワイバーン",     "hp": 800, "dmg": 26, "cap": 6, "price": 1000, "ranged": true,  "aerial": false, "speed": 9.5,  "atk_cd": 1.1, "color": Color(0.7,0.15,0.15)},
-	# #71: 嵐越え以降。merman=群れ+俊敏+好戦的, charybdis=渦潮+確率回避
-	"merman":        {"name": "マーマン",       "hp": 260, "dmg": 16, "cap": 2, "price": 380,  "ranged": false, "aerial": false, "speed": 13.0, "group": 3, "aggro": 1400.0, "color": Color(0.25,0.55,0.4)},
-	"charybdis":     {"name": "カリュブディス", "hp": 900, "dmg": 28, "cap": 8, "price": 1200, "ranged": true,  "aerial": false, "speed": 6.0,  "dodge": 0.25, "color": Color(0.15,0.3,0.45)},
+	"kraken":        {"name": "クラーケン",     "hp": 700, "dmg": 24, "cap": 6, "price": 540,  "ranged": false, "aerial": false, "speed": 8.5,  "reach": 2.2, "entangle": true, "color": Color(0.5,0.2,0.45)},
+	"wyvern":        {"name": "ワイバーン",     "hp": 800, "dmg": 26, "cap": 6, "price": 600, "ranged": true,  "aerial": false, "speed": 9.5,  "atk_cd": 1.1, "color": Color(0.7,0.15,0.15)},
+	# #71: 嵐越え以降。merman=群れ+俊敏+好戦的, charybdis=渦潮+確率回避。#98: マーマンHP増
+	"merman":        {"name": "マーマン",       "hp": 520, "dmg": 16, "cap": 2, "price": 230,  "ranged": false, "aerial": false, "speed": 13.0, "group": 3, "aggro": 1400.0, "color": Color(0.25,0.55,0.4)},
+	"charybdis":     {"name": "カリュブディス", "hp": 900, "dmg": 28, "cap": 8, "price": 720, "ranged": true,  "aerial": false, "speed": 6.0,  "dodge": 0.25, "color": Color(0.15,0.3,0.45)},
 	# #72: 果ての島。tiamat=空中(魚雷ロック不可)+俊敏+高火力, dagon=触腕+絡め+毒
-	"tiamat":        {"name": "ティアマット",   "hp": 1200, "dmg": 34, "cap": 10, "price": 1800, "ranged": true, "aerial": true, "speed": 16.0, "atk_cd": 1.0, "color": Color(0.15,0.12,0.2)},
-	"dagon":         {"name": "ダゴン",         "hp": 1100, "dmg": 30, "cap": 9,  "price": 1600, "ranged": false, "aerial": false, "speed": 7.5, "reach": 2.5, "entangle": true, "poison": true, "color": Color(0.3,0.5,0.35)},
+	"tiamat":        {"name": "ティアマット",   "hp": 1200, "dmg": 34, "cap": 10, "price": 1080, "ranged": true, "aerial": true, "speed": 16.0, "atk_cd": 1.0, "color": Color(0.15,0.12,0.2)},
+	"dagon":         {"name": "ダゴン",         "hp": 1100, "dmg": 30, "cap": 9,  "price": 960, "ranged": false, "aerial": false, "speed": 7.5, "reach": 2.5, "entangle": true, "poison": true, "color": Color(0.3,0.5,0.35)},
 }
 
 # 島tierごとの戦闘モブ出現重み(#38/#69/#71/#72/#75)。

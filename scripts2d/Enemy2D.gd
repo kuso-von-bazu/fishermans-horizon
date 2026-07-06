@@ -89,7 +89,7 @@ func _ready() -> void:
 	var tex := _load_tex()
 	if tex:
 		sprite.texture = tex
-		sprite.scale = Vector2.ONE * (target_w / maxf(float(tex.get_width()), 1.0))
+		sprite.scale = Vector2.ONE * _tex_scale(tex)   # #26再: 最長辺基準で統一
 	else:
 		sprite.texture = _placeholder(def.get("color", Color(0.7, 0.3, 0.3)))
 		sprite.scale = Vector2.ONE * (target_w / 64.0)
@@ -146,6 +146,11 @@ func _load_dir_tex(suffix: String) -> Texture2D:
 		return load(p)
 	return null
 
+# #26再: テクスチャの最長辺を target_w に合わせるスケール(向き違いでもサイズを統一)
+func _tex_scale(t: Texture2D) -> float:
+	var longest := maxf(float(t.get_width()), float(t.get_height()))
+	return _target_w / maxf(longest, 1.0)
+
 # #26: 移動方向に応じて 横/正面(南向き)/後ろ姿(北向き) を切り替える
 func _update_facing(move_dir: Vector2) -> void:
 	if sprite == null or move_dir.length() < 0.01:
@@ -168,7 +173,8 @@ func _update_facing(move_dir: Vector2) -> void:
 	if want != _facing and t != null:
 		_facing = want
 		sprite.texture = t
-		sprite.scale = Vector2.ONE * (_target_w / maxf(float(t.get_width()), 1.0))
+		# #26再: 幅でなく最長辺で正規化し、横向きと同じ表示サイズに揃える(縦長の正面ビューが巨大化しないように)
+		sprite.scale = Vector2.ONE * _tex_scale(t)
 		if _shadow:
 			_shadow.texture = t
 			_shadow.scale = sprite.scale * 0.9
@@ -262,7 +268,12 @@ func _physics_process(delta: float) -> void:
 	elif dist > attack_range:
 		velocity = move_dir * eff_speed
 	else:
-		velocity = velocity.move_toward(Vector2.ZERO, eff_speed)
+		# #94: 主は射程内でも停止せずプレイヤーを追いながら撃つ。近接圏では減速
+		var melee_r: float = _radius + (12.0 if kind == "lord" else 9.0) * K * float(def.get("reach", 1.0))
+		if kind == "lord" and dist > melee_r:
+			velocity = move_dir * eff_speed * 0.75
+		else:
+			velocity = velocity.move_toward(Vector2.ZERO, eff_speed)
 		_attack(delta, dist)
 	move_and_slide()
 

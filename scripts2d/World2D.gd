@@ -211,7 +211,13 @@ func _forced_return(reason: String, wrecked: bool = false) -> void:
 		GameState.stats_changed.emit()
 		Audio.play("sfx_wreck", -2.0)
 		var msg := "船が大破! 漁獲物(%d)を失い強制帰還" % lost
-		var gone := GameState.wreck_lose_crew()   # #39: 0〜1人ロスト
+		# #99: 定価の10%の修理費(残金が0未満にならないよう徴収)
+		var repair := int(float(GameState.ship().price) * 0.1)
+		var paid: int = mini(repair, GameState.money)
+		if paid > 0:
+			GameState.add_money(-paid)
+			msg += "\n修理費 %d を支払った" % paid
+		var gone := GameState.wreck_lose_crew()   # #97: 0〜2人ロスト
 		if gone != "":
 			msg += "\n%s が海に消えた…" % gone
 		hud.show_big_message(msg)

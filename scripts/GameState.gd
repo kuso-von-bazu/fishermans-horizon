@@ -44,33 +44,44 @@ func hire_crew(job_id: String) -> bool:
 		notice.emit("副船長は同時に1名までです")
 		return false
 	var j: Dictionary = jobs[job_id]
-	if money < int(j.hire):
-		notice.emit("資金が足りません(契約金%d)" % int(j.hire))
+	var cost := hire_cost(job_id)
+	if money < cost:
+		notice.emit("資金が足りません(契約金%d)" % cost)
 		return false
-	add_money(-int(j.hire))
+	add_money(-cost)
+	# #85再: 嵐越え(island>=2)以降の酒場はボーナス3倍でより強力なクルー
+	var bm := hire_bonus_mult()
 	var base := 3 if job_id != "sailor" else 1
 	var m := {
 		"name": _unique_crew_name(),
 		"job": job_id,
-		"hp": base + randi_range(0, 2), "agi": base + randi_range(0, 2),
-		"sht": base + randi_range(0, 2), "int_": base + randi_range(0, 2),
-		"vis": base + randi_range(0, 2),
+		"hp": base + randi_range(0, 2 * bm), "agi": base + randi_range(0, 2 * bm),
+		"sht": base + randi_range(0, 2 * bm), "int_": base + randi_range(0, 2 * bm),
+		"vis": base + randi_range(0, 2 * bm),
 	}
-	# #85: 上位ジョブは「ジョブチェンジに必要な値」を最低保証+ランダム上乗せ
+	# #85: 上位ジョブは「ジョブチェンジに必要な値」を最低保証+ランダム上乗せ(嵐越え以降は3倍)
 	if j.has("req"):
 		var req: Array = j.req
 		if req[0] == "total":
-			var target := int(req[1]) + randi_range(0, 8)
+			var target := int(req[1]) + randi_range(0, 8 * bm)
 			var keys := ["hp", "agi", "sht", "int_", "vis"]
 			while int(m.hp) + int(m.agi) + int(m.sht) + int(m.int_) + int(m.vis) < target:
 				var k: String = keys[randi() % keys.size()]
 				m[k] = int(m[k]) + 1
 		else:
-			m[req[0]] = int(req[1]) + randi_range(0, 4)
+			m[req[0]] = int(req[1]) + randi_range(0, 4 * bm)
 	crew.append(m)
 	notice.emit("%s(%s)を雇用" % [m.name, j.name])
 	stats_changed.emit()
 	return true
+
+# #85再: 嵐越えの島(island>=2)以降は契約金3倍・パラメータ上乗せ3倍
+func hire_cost(job_id: String) -> int:
+	var mult := 3 if current_island >= 2 else 1
+	return int(jobs[job_id].hire) * mult
+
+func hire_bonus_mult() -> int:
+	return 3 if current_island >= 2 else 1
 
 # 使われていない名前を選ぶ(#52)。尽きたら「二代目〜」。
 func _unique_crew_name() -> String:
@@ -190,15 +201,26 @@ func tick_slips(delta: float) -> void:
 		poison_t -= delta
 		run_armor = maxf(run_armor - poison_dps * delta, 0.0)
 
-# 大破時: ランダムで0〜1人ロスト(#39)
+# 大破時: 0〜2人ロスト(#97: 起きやすく最大2人)
 func wreck_lose_crew() -> String:
-	if crew.is_empty() or randf() < 0.5:
+	if crew.is_empty():
 		return ""
-	var i := randi() % crew.size()
-	var m: Dictionary = crew[i]
-	crew.remove_at(i)
+	var count := 0
+	if randf() < 0.7:            # 70%で1人以上
+		count = 1
+		if randf() < 0.4:        # うち40%で2人
+			count = 2
+	count = mini(count, crew.size())
+	if count == 0:
+		return ""
+	var lost := []
+	for i in count:
+		var idx := randi() % crew.size()
+		var m: Dictionary = crew[idx]
+		lost.append("%s(%s)" % [m.name, jobs[m.job].name])
+		crew.remove_at(idx)
 	stats_changed.emit()
-	return "%s(%s)" % [m.name, jobs[m.job].name]
+	return "、".join(lost)
 
 # 積荷: item_id -> 個数(魚倉キャパは Database の cap で計算)
 var cargo: Dictionary = {}

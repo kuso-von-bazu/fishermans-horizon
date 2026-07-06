@@ -164,10 +164,12 @@ func show_tavern() -> void:
 	hire_row.add_child(_p("雇用:"))
 	for jid in GameState.jobs:
 		var j2: Dictionary = GameState.jobs[jid]
-		hire_row.add_child(_btn("%s(%d)" % [j2.name, j2.hire], func():
+		hire_row.add_child(_btn("%s(%d)" % [j2.name, GameState.hire_cost(jid)], func():
 			GameState.hire_crew(jid)
 			show_tavern()))
 	content.add_child(hire_row)
+	if GameState.current_island >= 2:
+		content.add_child(_p("※この港は契約金3倍だが、他の港よりも格段に強力なクルーを雇用できる(初期能力の上乗せ3倍)"))
 	content.add_child(_p("効果: 体力=燃料減少↓ 敏捷=被ダメ減 射撃=威力↑ 知力=デバフ強化 視力=ロック距離↑"))
 
 	content.add_child(_p(""))
