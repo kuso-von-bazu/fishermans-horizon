@@ -295,6 +295,7 @@ func _attack(delta: float, dist: float) -> void:
 		# #65: 全主が遠隔攻撃。近距離では従来の近接/固有技
 		if id == "leviathan" and dist <= melee_r * 1.4:
 			_damage_player(eff_dmg * 1.3)
+			GameState.ignite(5.0)   # #65: 薙ぎ払いは必ず炎上
 			GameState.notice.emit("レヴィアタンの薙ぎ払い!")
 		elif dist <= melee_r:
 			_damage_player(eff_dmg)
@@ -342,9 +343,9 @@ func _fire_weapon(wpn: String, eff_dmg: float, base_dir: Vector2, is_fire: bool)
 		"torpedo":
 			_shoot(base_dir, {"dmg": eff_dmg, "homing": true}, false, player)
 		_:
-			# #65: leviathan=全方向弾(radial)+追跡弾2発、hydra=炎7way+追跡弾、他主=3way
+			# #65: leviathan=全方向弾(radial)+追跡弾、hydra=炎7way+追跡弾、他主=way
 			if bool(def.get("radial", false)):
-				var count := 12
+				var count := int(def.get("radial_count", 12))
 				for i in count:
 					_shoot(Vector2.RIGHT.rotated(TAU * i / count), {"dmg": eff_dmg}, is_fire)
 			else:

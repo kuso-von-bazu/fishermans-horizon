@@ -147,6 +147,7 @@ func _on_hit(body: Node) -> void:
 	elif not from_player and body.is_in_group("player"):
 		if fire:
 			GameState.apply_fire(dmg)
+			GameState.ignite(4.0)   # #65: ヒュドラの炎弾は被弾で必ず炎上
 		else:
 			GameState.damage_player(_eff_dmg())   # 敏捷カット込み
 		Audio.play("sfx_hit", -6.0)

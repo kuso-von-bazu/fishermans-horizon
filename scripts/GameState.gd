@@ -188,6 +188,14 @@ func damage_player(amount: float) -> void:
 		notice.emit("船が炎上! しばらくスリップダメージ")
 	stats_changed.emit()
 
+# #65: 確定炎上(ヒュドラの炎7way/レヴィアタンの薙ぎ払いなど)。必ずburn_tを起こす
+func ignite(dps := 4.0) -> void:
+	if docking_locked:
+		return
+	burn_t = 5.0
+	burn_dps = dps
+	notice.emit("船が炎上! しばらくスリップダメージ")
+
 # #72: ダゴンの毒液。一定時間スリップダメージ
 func apply_poison(dur: float, dps: float) -> void:
 	if docking_locked:
