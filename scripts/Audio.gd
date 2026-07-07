@@ -13,6 +13,7 @@ const BGM_FILES := {
 	"bgm_port":      "res://assets/audio/港.mp3",
 	"bgm_boss":      "res://assets/audio/近海の主.mp3",
 	"bgm_leviathan": "res://assets/audio/レヴイアタン.mp3",
+	"bgm_king":      "res://assets/audio/海賊王.mp3",
 	"bgm_ending":    "res://assets/audio/エンディング.mp3",
 }
 

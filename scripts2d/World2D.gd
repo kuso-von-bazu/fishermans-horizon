@@ -592,17 +592,26 @@ func _update_lock_on() -> void:
 # #79: 主に発見されている(アグロ中)間は緊迫BGM、離れると通常BGMへ戻す
 # レヴィアタン戦のみ専用曲(共有者提供 レヴイアタン.mp3)
 func _update_boss_bgm() -> void:
-	var danger := false
 	var leviathan := false
+	var lord_danger := false
+	var king_danger := false
 	for e in enemies:
-		if is_instance_valid(e) and e.kind == "lord" and e.get("_aggro") == true:
-			danger = true
+		if not is_instance_valid(e) or e.get("_aggro") != true:
+			continue
+		if e.kind == "lord":
+			lord_danger = true
 			if e.id == "leviathan":
 				leviathan = true
-			break
+		elif e.kind == "pirate" and e.id == "king":
+			king_danger = true
+	# 優先: レヴィアタン > 近海の主 > 海賊王
 	var want := ""
-	if danger:
-		want = "bgm_leviathan" if leviathan else "bgm_boss"
+	if leviathan:
+		want = "bgm_leviathan"
+	elif lord_danger:
+		want = "bgm_boss"
+	elif king_danger:
+		want = "bgm_king"
 	if want != "" and _boss_bgm_on != want:
 		_boss_bgm_on = want
 		Audio.play_bgm(want)
