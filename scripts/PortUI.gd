@@ -207,7 +207,10 @@ func show_tavern() -> void:
 		row.add_theme_constant_override("separation", 12)
 		row.add_child(_portrait(lid, 72))
 		var compass: String = Database.compass(float(ld.get("dir", 0)))
-		row.add_child(_p("%s\nHP:%d  賞金:%d  [%s]\n情報: 港の【%s】の沖にいるらしい" % [ld.name, ld.hp, ld.bounty, st, compass]))
+		# #112: 主の説明(lore)を併記
+		var info := _p("%s\nHP:%d  賞金:%d  [%s]\n情報: 港の【%s】の沖にいるらしい\n%s" % [ld.name, ld.hp, ld.bounty, st, compass, str(ld.get("lore", ""))])
+		info.custom_minimum_size = Vector2(560, 0)
+		row.add_child(info)
 		# #61: 未討伐の主へのガイド(ソナー外周に赤い印)
 		if st == "未討伐":
 			var lid2: String = lid
