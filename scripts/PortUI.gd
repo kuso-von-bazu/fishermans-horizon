@@ -207,9 +207,11 @@ func show_tavern() -> void:
 		row.add_theme_constant_override("separation", 12)
 		row.add_child(_portrait(lid, 72))
 		var compass: String = Database.compass(float(ld.get("dir", 0)))
-		# #112: 主の説明(lore)を併記
+		# #112: 主の説明(lore)を併記。長文は折り返して横幅が間延びしないようにする
 		var info := _p("%s\nHP:%d  賞金:%d  [%s]\n情報: 港の【%s】の沖にいるらしい\n%s" % [ld.name, ld.hp, ld.bounty, st, compass, str(ld.get("lore", ""))])
-		info.custom_minimum_size = Vector2(560, 0)
+		info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		info.custom_minimum_size = Vector2(380, 0)
+		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(info)
 		# #61: 未討伐の主へのガイド(ソナー外周に赤い印)
 		if st == "未討伐":
