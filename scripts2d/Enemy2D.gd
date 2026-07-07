@@ -324,9 +324,17 @@ func _ranged_attack(is_fire: bool) -> void:
 	if _debuff_kind == "atk":
 		eff_dmg *= 0.78   # #91
 	var base_dir := (player.global_position - global_position).normalized()
+	# #66: volley=複数武器を同時発射(海賊中/大)
+	if def.has("volley"):
+		for wp in def.volley:
+			_fire_weapon(str(wp), eff_dmg, base_dir, is_fire)
+		return
 	var wpn := str(def.get("wpn", ""))
 	if wpn == "all":
 		wpn = ["cannon", "gatling", "torpedo"][randi() % 3]   # #73: 海賊王は全武装
+	_fire_weapon(wpn, eff_dmg, base_dir, is_fire)
+
+func _fire_weapon(wpn: String, eff_dmg: float, base_dir: Vector2, is_fire: bool) -> void:
 	match wpn:
 		"gatling":
 			for i in 3:

@@ -69,10 +69,10 @@ var harpoon_debuffs := {
 var lords := {
 	"sawshark":  {"name": "電動ノコギリザメ",         "hp": 730,  "dmg": 21, "cap": 8,  "price": 800,  "bounty": 1500,  "fame": 8,  "island": 0, "ranged": true, "aerial": false, "pair": false, "speed": 9.5, "way": 3, "dir": 0},
 	"dumbo":     {"name": "ウミダンボ",               "hp": 1000, "dmg": 18, "cap": 9,  "price": 1000, "bounty": 2000,  "fame": 10, "island": 0, "ranged": true, "aerial": false, "pair": false, "speed": 7.5, "way": 3, "dir": 135},
-	"whale":     {"name": "ヒゲマッコウナガスクジラ", "hp": 1640, "dmg": 27, "cap": 14, "price": 1800, "bounty": 3500,  "fame": 16, "island": 1, "ranged": true, "aerial": false, "pair": false, "speed": 8.5, "way": 3, "dir": 45},
+	"whale":     {"name": "ヒゲマッコウナガスクジラ", "hp": 1640, "dmg": 27, "cap": 14, "price": 1800, "bounty": 3500,  "fame": 16, "island": 1, "ranged": true, "aerial": false, "pair": false, "speed": 8.5, "way": 3, "homing": true, "dir": 45},
 	"walrus":    {"name": "ギガントセイウチ",         "hp": 870,  "dmg": 24, "cap": 7,  "price": 1200, "bounty": 4000,  "fame": 18, "island": 1, "ranged": true, "aerial": false, "pair": true, "speed": 8.5,  "way": 3, "dir": 225},
 	"hydra":     {"name": "ヒュドラ",                 "hp": 2000, "dmg": 30, "cap": 12, "price": 2400, "bounty": 6000,  "fame": 25, "island": 2, "ranged": true,  "aerial": false, "pair": false, "speed": 8.0, "way": 7, "fire": true, "homing": true, "dir": 90},
-	"quetzal":   {"name": "ケツァルコアトル",         "hp": 2370, "dmg": 33, "cap": 13, "price": 3000, "bounty": 8000,  "fame": 30, "island": 2, "ranged": true, "aerial": true,  "pair": false, "speed": 12.0, "way": 3, "dir": 270},
+	"quetzal":   {"name": "ケツァルコアトル",         "hp": 2370, "dmg": 33, "cap": 13, "price": 3000, "bounty": 8000,  "fame": 30, "island": 2, "ranged": true, "aerial": true,  "pair": false, "speed": 12.0, "way": 3, "homing": true, "dir": 270},
 	"leviathan": {"name": "レヴィアタン",             "hp": 6800, "dmg": 50, "cap": 25, "price": 9999, "bounty": 50000, "fame": 60, "island": 3, "ranged": true,  "aerial": false, "pair": false, "speed": 9.0, "radial": true, "homing_count": 2, "dir": 180},
 }
 
@@ -92,12 +92,13 @@ func dir_vec(deg: float) -> Vector3:
 # ---------------------------------------------------------------------------
 var pirates := {
 	# #66: wpn=遠隔攻撃の種類(gatling=連射弾/cannon=砲弾/torpedo=追尾魚雷/all=全部+衝角)
+	# #66: 中はガトリング3連+大砲、大はガトリング3連+追尾魚雷を同時に撃つ(volley)
 	"raider":   {"name": "海賊(小)", "hp": 220, "dmg": 11,  "bounty": 90,  "fame": 1, "ranged": true, "wpn": "gatling", "color": Color(0.4,0.3,0.2)},
-	"corsair":  {"name": "海賊(中)", "hp": 450, "dmg": 16, "bounty": 220, "fame": 2, "ranged": true, "wpn": "cannon",  "color": Color(0.35,0.25,0.15)},
-	"dread":    {"name": "海賊(大)", "hp": 900, "dmg": 24, "bounty": 500, "fame": 4, "ranged": true, "wpn": "torpedo", "color": Color(0.25,0.18,0.1)},
+	"corsair":  {"name": "海賊(中)", "hp": 450, "dmg": 16, "bounty": 220, "fame": 2, "ranged": true, "volley": ["gatling", "cannon"],  "color": Color(0.35,0.25,0.15)},
+	"dread":    {"name": "海賊(大)", "hp": 900, "dmg": 24, "bounty": 500, "fame": 4, "ranged": true, "volley": ["gatling", "torpedo"], "color": Color(0.25,0.18,0.1)},
 	# #73: レアスポーンの強敵。かつてFisherman's Horizonを目指し、心折れて海賊に落ちた男。
-	# hp/dmgは出現海域(island)に応じてEnemy2Dで強化。賞金は控えめ。
-	"king":     {"name": "海賊王",   "hp": 2200, "dmg": 28, "bounty": 1800, "fame": 20, "ranged": true, "wpn": "all", "speed": 12.0, "atk_cd": 0.9, "color": Color(0.1,0.08,0.1)},
+	# hp/dmgは出現海域(island)に応じてEnemy2Dで強化。
+	"king":     {"name": "海賊王",   "hp": 2200, "dmg": 28, "bounty": 4000, "fame": 30, "ranged": true, "wpn": "all", "speed": 12.0, "atk_cd": 0.9, "color": Color(0.1,0.08,0.1)},
 }
 
 # ---------------------------------------------------------------------------
@@ -110,10 +111,10 @@ var weapons := {
 	"harpoon": {"name": "銛",             "kind": "aim",  "dmg": 18, "cooldown": 1.0,  "reload": 1.2, "mag": 6,  "range": 100, "price": 900,  "slip": false, "debuff": true,  "homing": false, "sfx": "sfx_harpoon", "desc": "中威力。主にデバフ付与(毒/弱体)"},
 	"torpedo": {"name": "魚雷",           "kind": "lock", "dmg": 22, "cooldown": 0.9,  "reload": 2.0, "mag": 8,  "range": 160, "price": 1500, "slip": false, "debuff": false, "homing": true,  "sfx": "sfx_torpedo", "desc": "ロックオンで追尾。空中の敵には不可"},
 	# #102: 嵐越え(tier>=2)以降で買える上位互換。新種は増やさず各武器の強化版
-	"gatling2":{"name": "重ガトリング砲", "kind": "aim",  "dmg": 6,  "cooldown": 0.07, "reload": 0.9, "mag": 55, "range": 145, "price": 5000, "slip": false, "debuff": false, "homing": false, "falloff": true, "tier": 2, "sfx": "sfx_gun",     "desc": "ガトリングの上位。威力・連射・射程を強化"},
-	"cannon2": {"name": "大口径カノン砲", "kind": "aim",  "dmg": 62, "cooldown": 1.25, "reload": 1.4, "mag": 5,  "range": 165, "price": 6500, "slip": true,  "debuff": false, "homing": false, "tier": 2, "sfx": "sfx_cannon",  "desc": "大砲の上位。単発威力・射程を大幅強化"},
-	"harpoon2":{"name": "強化銛砲",       "kind": "aim",  "dmg": 32, "cooldown": 0.85, "reload": 1.0, "mag": 9,  "range": 125, "price": 5500, "slip": false, "debuff": true,  "homing": false, "tier": 2, "sfx": "sfx_harpoon", "desc": "銛の上位。威力・連射・デバフ効率を強化"},
-	"torpedo2":{"name": "追尾魚雷改",     "kind": "lock", "dmg": 40, "cooldown": 0.8,  "reload": 1.7, "mag": 10, "range": 195, "price": 8000, "slip": false, "debuff": false, "homing": true,  "tier": 2, "sfx": "sfx_torpedo", "desc": "魚雷の上位。威力・追尾・射程を強化"},
+	"gatling2":{"name": "重ガトリング砲", "kind": "aim",  "dmg": 4,  "cooldown": 0.07, "reload": 0.9, "mag": 55, "range": 145, "price": 5000, "slip": false, "debuff": false, "homing": false, "falloff": true, "tier": 2, "sfx": "sfx_gun",     "desc": "ガトリングの上位。連射・射程・弾数を強化"},
+	"cannon2": {"name": "大口径カノン砲", "kind": "aim",  "dmg": 46, "cooldown": 1.25, "reload": 1.4, "mag": 5,  "range": 165, "price": 6500, "slip": true,  "debuff": false, "homing": false, "tier": 2, "sfx": "sfx_cannon",  "desc": "大砲の上位。単発威力・射程を強化"},
+	"harpoon2":{"name": "強化銛砲",       "kind": "aim",  "dmg": 24, "cooldown": 0.85, "reload": 1.0, "mag": 9,  "range": 125, "price": 5500, "slip": false, "debuff": true,  "homing": false, "tier": 2, "sfx": "sfx_harpoon", "desc": "銛の上位。連射・デバフ効率を強化"},
+	"torpedo2":{"name": "追尾魚雷改",     "kind": "lock", "dmg": 30, "cooldown": 0.8,  "reload": 1.7, "mag": 10, "range": 195, "price": 8000, "slip": false, "debuff": false, "homing": true,  "tier": 2, "sfx": "sfx_torpedo", "desc": "魚雷の上位。追尾・射程・弾数を強化"},
 }
 
 var rams := {

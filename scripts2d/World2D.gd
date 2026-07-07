@@ -339,8 +339,7 @@ func _update_spawns(delta: float) -> void:
 	if spawn_timer > 0:
 		return
 	spawn_timer = 1.5
-	if not _lord_alive():
-		_try_spawn_lord()   # #67: 未討伐の主は必ず海域に出現している
+	_try_spawn_lord()   # #67: 未討伐の主は全て海域に出現している(各主ごとに存在チェック)
 	if fish_schools.size() < MAX_FISH:
 		_spawn_fish()
 	# #69他再修正/#67: 上限は主・取り巻きを除いた通常敵で数える
@@ -418,25 +417,32 @@ func _spawn_enemy() -> void:
 	if id == "king":
 		GameState.notice.emit("海賊王の旗艦が現れた!")
 
-# #67: 未討伐の主がいれば必ず定位置の沖に出現させる
+# #67再: 未討伐の主は全て、それぞれの定位置の沖に同時出現させる
 func _try_spawn_lord() -> void:
 	var isle := GameState.current_island
 	var lords: Array = Database.island(isle).get("lords", [])
-	var avail := lords.filter(func(l): return not GameState.claimed_lords.has(l) and not GameState.defeated_lords.has(l))
-	if avail.is_empty():
-		return
-	var id: String = avail[randi() % avail.size()]
-	if bool(Database.lords.get(id, {}).get("pair", false)):
-		var base := _lord_spawn_pos(id)
-		var a := _make_enemy("lord", id, base + Vector2(50, 0))
-		var b := _make_enemy("lord", id, base + Vector2(-50, 0))
-		a.pair_partner = b
-		b.pair_partner = a
-		_spawn_escorts(base)
-	else:
-		var lpos := _lord_spawn_pos(id)
-		_make_enemy("lord", id, lpos)
-		_spawn_escorts(lpos)
+	for id in lords:
+		if GameState.claimed_lords.has(id) or GameState.defeated_lords.has(id):
+			continue
+		if _lord_id_alive(id):
+			continue
+		if bool(Database.lords.get(id, {}).get("pair", false)):
+			var base := _lord_spawn_pos(id)
+			var a := _make_enemy("lord", id, base + Vector2(50, 0))
+			var b := _make_enemy("lord", id, base + Vector2(-50, 0))
+			a.pair_partner = b
+			b.pair_partner = a
+			_spawn_escorts(base)
+		else:
+			var lpos := _lord_spawn_pos(id)
+			_make_enemy("lord", id, lpos)
+			_spawn_escorts(lpos)
+
+func _lord_id_alive(id: String) -> bool:
+	for e in enemies:
+		if is_instance_valid(e) and e.kind == "lord" and e.id == id:
+			return true
+	return false
 
 func _king_alive() -> bool:
 	for e in enemies:
@@ -458,12 +464,12 @@ func _lord_alive() -> bool:
 			return true
 	return false
 
-# 主は島から離れた決まった方角の沖(#15,#18)。北=-Y。#67: 距離を近づけて見つけやすく
+# 主は島から離れた決まった方角の沖(#15,#18)。北=-Y。#67再: 距離を元に戻す
 func _lord_spawn_pos(id: String) -> Vector2:
 	var ipos := island_pos(GameState.current_island)
 	var deg: float = float(Database.lords.get(id, {}).get("dir", 0)) + randf_range(-15.0, 15.0)
 	var a := deg_to_rad(deg)
-	return ipos + Vector2(sin(a), -cos(a)) * randf_range(210.0, 300.0) * K
+	return ipos + Vector2(sin(a), -cos(a)) * randf_range(320.0, 430.0) * K
 
 func _make_enemy(kind: String, id: String, pos: Vector2) -> CharacterBody2D:
 	var e := CharacterBody2D.new()
