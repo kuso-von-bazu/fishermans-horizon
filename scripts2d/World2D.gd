@@ -510,6 +510,8 @@ func _update_weapons(delta: float) -> void:
 	for i in slot_cooldowns.size():
 		if slot_cooldowns[i] > 0:
 			slot_cooldowns[i] -= delta
+	if GameState.docking_locked:
+		return   # #101: 大破/寄港確定後は攻撃不可(討伐・賞金取得を防ぐ)
 	var slots := int(GameState.ship().slots)
 	if Input.is_action_pressed("fire_primary"):
 		for i in slots:

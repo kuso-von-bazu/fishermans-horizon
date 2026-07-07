@@ -34,44 +34,45 @@ func _build_visual() -> void:
 	var poly := PackedVector2Array()
 	var mcol := Color.WHITE
 	var r := 4.0
+	# #78再: 形・色の区別は維持しつつ大きさは元に近い小さめに戻す
 	if homing:
 		# 魚雷: 細長いカプセル型(尾びれ付き)・緑
 		poly = PackedVector2Array([
-			Vector2(-5, -15), Vector2(0, -20), Vector2(5, -15), Vector2(5, 11),
-			Vector2(10, 20), Vector2(0, 15), Vector2(-10, 20), Vector2(-5, 11)])
+			Vector2(-3, -9), Vector2(0, -12), Vector2(3, -9), Vector2(3, 7),
+			Vector2(6, 12), Vector2(0, 9), Vector2(-6, 12), Vector2(-3, 7)])
 		mcol = Color(0.2, 1.0, 0.35) if from_player else Color(0.7, 1.0, 0.2)
-		r = 8.0
+		r = 5.0
 	elif falloff:
 		# ガトリング: 細い曳光弾・鮮黄
 		poly = PackedVector2Array([
-			Vector2(-3, -15), Vector2(3, -15), Vector2(3, 15), Vector2(-3, 15)])
+			Vector2(-1.6, -8), Vector2(1.6, -8), Vector2(1.6, 8), Vector2(-1.6, 8)])
 		mcol = Color(1.0, 0.92, 0.1) if from_player else Color(1.0, 0.6, 0.1)
-		r = 5.0
+		r = 3.0
 	elif debuff:
 		# 銛: 長い柄+返しのある穂先・シアン
 		poly = PackedVector2Array([
-			Vector2(0, -22), Vector2(7, -11), Vector2(2.4, -11), Vector2(2.4, 19),
-			Vector2(-2.4, 19), Vector2(-2.4, -11), Vector2(-7, -11)])
+			Vector2(0, -13), Vector2(4, -6.5), Vector2(1.4, -6.5), Vector2(1.4, 11),
+			Vector2(-1.4, 11), Vector2(-1.4, -6.5), Vector2(-4, -6.5)])
 		mcol = Color(0.15, 0.85, 1.0)
-		r = 7.0
+		r = 4.5
 	elif fire:
 		# 炎弾: ゆらめく火の玉・橙
 		for i in 10:
 			var a := TAU * i / 10.0
-			var rr := 10.0 if i % 2 == 0 else 6.0
+			var rr := 6.0 if i % 2 == 0 else 3.5
 			poly.append(Vector2(cos(a), sin(a)) * rr)
 		mcol = Color(1.0, 0.45, 0.1)
-		r = 8.0
+		r = 5.0
 	else:
-		# 砲弾: 大きめの丸弾・赤橙(自機)/暗赤(敵)
-		for i in 14:
-			var a := TAU * i / 14.0
-			poly.append(Vector2(cos(a), sin(a)) * 10.0)
+		# 砲弾: 丸弾・赤橙(自機)/暗赤(敵)
+		for i in 12:
+			var a := TAU * i / 12.0
+			poly.append(Vector2(cos(a), sin(a)) * 6.0)
 		mcol = Color(1.0, 0.35, 0.1) if from_player else Color(0.75, 0.12, 0.12)
-		r = 10.0
+		r = 6.0
 	# 暗い輪郭(視認性UP)
 	var outline := Polygon2D.new()
-	outline.polygon = _scaled(poly, 1.5)
+	outline.polygon = _scaled(poly, 1.45)
 	outline.color = Color(0, 0, 0, 0.8)
 	add_child(outline)
 	var mesh := Polygon2D.new()
@@ -132,6 +133,10 @@ func _eff_dmg() -> float:
 
 func _on_hit(body: Node) -> void:
 	if from_player and body.is_in_group("enemy"):
+		# #101: 大破/寄港確定後は飛行中の弾も敵に当てない(討伐・賞金取得を防ぐ)
+		if GameState.docking_locked:
+			queue_free()
+			return
 		# #106: 魚雷(homing)は空中の敵をすり抜ける(他の敵への射線上でも当てない)
 		if homing and body.get("aerial") == true:
 			return

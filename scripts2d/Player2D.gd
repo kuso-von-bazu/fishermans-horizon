@@ -185,6 +185,8 @@ func _physics_process(delta: float) -> void:
 func _handle_ram() -> void:
 	if _ram_cd > 0.0:
 		return
+	if GameState.docking_locked:
+		return   # #101: 大破/寄港確定後は衝角も無効
 	var rd := float(Database.rams[GameState.ram_id].dmg)
 	if rd <= 0.0 or velocity.length() < 3.0 * K:
 		return
