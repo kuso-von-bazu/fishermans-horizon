@@ -66,7 +66,7 @@ func _build() -> void:
 	vb.add_child(_body)
 
 	_button = Button.new()
-	_button.text = "▶ 船出する"
+	_button.text = "船出する"
 	_button.add_theme_font_size_override("font_size", 26)
 	_button.custom_minimum_size = Vector2(240, 56)
 	_button.pressed.connect(func(): emit_signal("start_pressed"))
@@ -94,7 +94,7 @@ func _build() -> void:
 
 func show_title() -> void:
 	_title.text = "Fisherman's Horizon"
-	_button.text = "▶ 船出する"
+	_button.text = "船出する"
 	if _bg:
 		_bg.color = Color(0.03, 0.07, 0.12, 1.0)
 	if _art:

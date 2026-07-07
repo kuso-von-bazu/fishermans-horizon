@@ -776,6 +776,7 @@ func _maybe_screenshot() -> void:
 	var want_food := false
 	var want_tavern := false
 	var want_guide := false
+	var want_bullets := false
 	for a in args:
 		if a.begins_with("--shot"):
 			want_shot = true
@@ -785,6 +786,7 @@ func _maybe_screenshot() -> void:
 			want_food = a.find("food") != -1
 			want_tavern = a.find("tavern") != -1
 			want_guide = a.find("guide") != -1
+			want_bullets = a.find("bullets") != -1
 	if not want_shot:
 		return
 	await get_tree().create_timer(0.6).timeout
@@ -796,6 +798,32 @@ func _maybe_screenshot() -> void:
 			GameState.visited_islands = [0]
 			GameState.guide_target = {"kind": "island", "id": 1}
 			await get_tree().create_timer(0.5).timeout
+		if want_bullets:   # #78: 各武器の弾を静止配置して見た目を確認
+			player.control_enabled = false
+			var specs := [
+				{"dmg": 8, "falloff": true},                 # ガトリング(黄・細)
+				{"dmg": 40},                                 # 大砲(赤橙・丸)
+				{"dmg": 18, "debuff": true},                 # 銛(シアン・銛型)
+				{"dmg": 22, "homing": true},                 # 魚雷(緑・カプセル)
+			]
+			for i in specs.size():
+				var proj := Area2D.new()
+				proj.set_script(ProjectileScript)
+				add_child(proj)
+				proj.from_player = true
+				proj.global_position = player.global_position + Vector2((i - 1.5) * 90.0, -120.0)
+				proj.setup(Vector2.UP, specs[i])
+				proj.speed = 0.0   # 静止させて撮影
+			# 敵の炎弾も1つ
+			var fp := Area2D.new()
+			fp.set_script(ProjectileScript)
+			add_child(fp)
+			fp.from_player = false
+			fp.fire = true
+			fp.global_position = player.global_position + Vector2(270.0, -120.0)
+			fp.setup(Vector2.UP, {"dmg": 20})
+			fp.speed = 0.0
+			await get_tree().create_timer(0.4).timeout
 		if want_food:
 			GameState.unlocked_islands = [0, 1]
 			GameState.visited_islands = [0]

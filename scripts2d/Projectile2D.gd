@@ -26,9 +26,11 @@ func setup(p_dir: Vector2, w: Dictionary, p_target: Node2D = null) -> void:
 	falloff = bool(w.get("falloff", false))
 	target = p_target
 	dir = p_dir.normalized()
+	# 見た目/当たり判定は全フラグ確定後に構築(add_child直後の_readyでは間に合わないため#78のバグ修正)
+	_build_visual()
 
-func _ready() -> void:
-	# #78: 攻撃の種類で弾の見た目(形+色)を大きく変えて見分けやすく。全体を拡大し暗い輪郭付き
+# #78: 攻撃の種類で弾の見た目(形+色)を大きく変えて見分けやすく。全体を拡大し暗い輪郭付き
+func _build_visual() -> void:
 	var poly := PackedVector2Array()
 	var mcol := Color.WHITE
 	var r := 4.0
@@ -130,6 +132,9 @@ func _eff_dmg() -> float:
 
 func _on_hit(body: Node) -> void:
 	if from_player and body.is_in_group("enemy"):
+		# #106: 魚雷(homing)は空中の敵をすり抜ける(他の敵への射線上でも当てない)
+		if homing and body.get("aerial") == true:
+			return
 		if body.has_method("take_hit"):
 			body.take_hit(_eff_dmg(), slip, debuff)
 			Audio.play("sfx_enemy_hit", -9.0)

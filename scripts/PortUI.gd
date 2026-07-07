@@ -71,7 +71,7 @@ func _build() -> void:
 	scroll.add_child(content)
 
 	# 出港ボタン(常時下部)
-	var sail := _btn("⚓ 出港する", func(): emit_signal("set_sail_requested"))
+	var sail := _btn("出港する", func(): emit_signal("set_sail_requested"))
 	sail.add_theme_color_override("font_color", Color(1, 1, 0.6))
 	vb.add_child(sail)
 
@@ -85,7 +85,7 @@ func open(arrival := false) -> void:
 # #104: 寄港したことがわかる一時バナー
 func _show_arrival_banner() -> void:
 	var lbl := Label.new()
-	lbl.text = "⚓ %s に寄港した" % Database.island(GameState.current_island).name
+	lbl.text = "%s に寄港した" % Database.island(GameState.current_island).name
 	lbl.add_theme_font_size_override("font_size", 30)
 	lbl.add_theme_color_override("font_color", Color(1.0, 0.92, 0.5))
 	lbl.add_theme_constant_override("outline_size", 6)
@@ -181,17 +181,21 @@ func show_tavern() -> void:
 			GameState.fire_crew(m)
 			show_tavern()))
 		content.add_child(row)
-	var hire_row := HBoxContainer.new()
-	hire_row.add_theme_constant_override("separation", 8)
-	hire_row.add_child(_p("雇用:"))
+	content.add_child(_p("雇用(※上位ジョブは規定パラメータ以上で1キャラにつき1度だけジョブチェンジも可能):"))
+	# #107: 各ジョブの説明付きで雇用ボタンを縦に並べる
 	for jid in GameState.jobs:
 		var j2: Dictionary = GameState.jobs[jid]
-		hire_row.add_child(_btn("%s(%d)" % [j2.name, GameState.hire_cost(jid)], func():
+		var hrow := HBoxContainer.new()
+		hrow.add_theme_constant_override("separation", 10)
+		hrow.add_child(_btn("%s(%d)" % [j2.name, GameState.hire_cost(jid)], func():
 			GameState.hire_crew(jid)
 			show_tavern()))
-	content.add_child(hire_row)
+		var dsc := _p(str(j2.get("desc", "")))
+		dsc.custom_minimum_size = Vector2(540, 0)
+		hrow.add_child(dsc)
+		content.add_child(hrow)
 	if GameState.current_island >= 2:
-		content.add_child(_p("※この港は契約金3倍だが、他の港よりも格段に強力なクルーを雇用できる(初期能力の上乗せ3倍)"))
+		content.add_child(_p("※この港は契約金3倍(水夫を除く)だが、他の港より格段に強力なクルーを雇用できる(初期能力の上乗せ4倍)"))
 	content.add_child(_p("効果: 体力=燃料減少↓ 敏捷=被ダメ減 射撃=威力↑ 知力=デバフ強化 視力=ロック距離↑"))
 
 	content.add_child(_p(""))
@@ -280,7 +284,7 @@ func show_shipyard() -> void:
 
 	# 銛のデバフ設定(#37): 主にのみ適用
 	content.add_child(_p(""))
-	content.add_child(_h("銛のデバフ設定(近海の主にのみ有効)", 18))
+	content.add_child(_h("銛のデバフ設定(近海の主・戦闘モブに有効 / 海賊には無効)", 18))
 	var drow := HBoxContainer.new()
 	drow.add_theme_constant_override("separation", 8)
 	drow.add_child(_p("現在: %s" % Database.harpoon_debuffs[GameState.harpoon_debuff].name))
