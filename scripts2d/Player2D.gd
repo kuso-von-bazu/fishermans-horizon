@@ -166,17 +166,17 @@ func _build_ship_texture(with_ram: bool, ram_steel: bool) -> ImageTexture:
 	var map: Array = SHIP_MAPS.get(GameState.ship_id, SHIP_MAP)   # #130: 船ごとの絵
 	var w: int = map[0].length()
 	var h := map.size()
-	var ram_rows := 6 if with_ram else 0
+	var ram_rows := 11 if with_ram else 0   # #36再: より細長く鋭角に
 	var img := Image.create(w, h + ram_rows, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
-	# 衝角(#36/#43): 船首(進行方向)に尖った二等辺三角形
+	# 衝角(#36/#43): 船首(進行方向)に細長く鋭い二等辺三角形
 	if with_ram:
 		var rc := Color(0.78, 0.82, 0.88) if ram_steel else Color(0.5, 0.46, 0.4)
 		var cx := w / 2
 		for ry in ram_rows:
-			# ry=0(先端)は幅1、下へ行くほど広がる二等辺三角形
-			var half: int = int(round(float(ry) / float(ram_rows - 1) * 3.0))
-			for x in range(cx - half - 1, cx + half + 1):
+			# ry=0(先端)は幅0、根元でも幅2程度の鋭角(細長い)
+			var half: int = int(floor(float(ry) / float(ram_rows - 1) * 2.0))
+			for x in range(cx - half, cx + half + 1):
 				if x >= 0 and x < w:
 					img.set_pixel(x, ry, rc)
 	for y in h:
@@ -203,43 +203,39 @@ func _build_visual() -> void:
 	cap.height = 60.0 * sc
 	col.shape = cap
 	add_child(col)
-	# 煙突の煙(蒸気らしくゆったり・遠ざかるほど薄く消える #131)
+	# 煙突の煙(#131再: さらにゆっくり・ほぼ静止して世界座標に残し、船が進むと後方へたなびく)
 	var smoke := CPUParticles2D.new()
-	smoke.amount = 18
-	smoke.lifetime = 3.4
-	smoke.local_coords = false          # 世界座標に残してたなびかせる
+	smoke.amount = 20
+	smoke.lifetime = 3.8
+	smoke.local_coords = false          # 世界座標に残す→船の後方へたなびく
 	smoke.position = Vector2(0, -6 * sc)
-	smoke.direction = Vector2(0, 1)
-	smoke.spread = 18.0
-	smoke.initial_velocity_min = 3.0    # ゆっくり噴き上がる
-	smoke.initial_velocity_max = 9.0
-	smoke.damping_min = 3.0             # だんだん失速
-	smoke.damping_max = 6.0
+	smoke.spread = 45.0
+	smoke.gravity = Vector2.ZERO
+	smoke.initial_velocity_min = 1.0    # ほぼ静止(その場で膨らむ)
+	smoke.initial_velocity_max = 4.0
 	smoke.scale_amount_min = 2.0
-	smoke.scale_amount_max = 5.0
-	var scurve := Curve.new()           # 遠ざかる(時間経過)ほど大きく広がる
-	scurve.add_point(Vector2(0.0, 0.6))
-	scurve.add_point(Vector2(1.0, 2.2))
+	smoke.scale_amount_max = 4.5
+	var scurve := Curve.new()           # 時間経過で大きく広がる
+	scurve.add_point(Vector2(0.0, 0.5))
+	scurve.add_point(Vector2(1.0, 2.4))
 	smoke.scale_amount_curve = scurve
 	var sramp := Gradient.new()         # 遠ざかるほど薄く消える
-	sramp.set_color(0, Color(0.88, 0.88, 0.9, 0.45))
+	sramp.set_color(0, Color(0.88, 0.88, 0.9, 0.42))
 	sramp.set_color(1, Color(0.9, 0.9, 0.92, 0.0))
 	smoke.color_ramp = sramp
 	add_child(smoke)
-	# 航跡(#132: 船幅に応じた幅+通過経路に残る)。世界座標に残す
+	# 航跡(#132再: ほぼ静止した泡を世界座標に残し、通過経路に沿って残す)
 	_wake = CPUParticles2D.new()
-	_wake.amount = 64
+	_wake.amount = 70
 	_wake.lifetime = 3.2
 	_wake.local_coords = false
 	_wake.position = Vector2(0, 42 * sc)
-	_wake.direction = Vector2(0, 1)
-	_wake.spread = 8.0
+	_wake.spread = 12.0
+	_wake.gravity = Vector2.ZERO
 	_wake.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
-	_wake.emission_rect_extents = Vector2(11.0 * sc, 2.0)   # 船幅に応じた幅
-	_wake.initial_velocity_min = 4.0
-	_wake.initial_velocity_max = 14.0
-	_wake.damping_min = 2.0
-	_wake.damping_max = 4.0
+	_wake.emission_rect_extents = Vector2(11.0 * sc, 1.5)   # 船幅に応じた幅
+	_wake.initial_velocity_min = 0.0    # その場に残す(経路に沿う)
+	_wake.initial_velocity_max = 3.0
 	_wake.scale_amount_min = 2.5
 	_wake.scale_amount_max = 6.0
 	var wramp := Gradient.new()

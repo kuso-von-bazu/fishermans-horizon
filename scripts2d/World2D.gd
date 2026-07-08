@@ -599,7 +599,7 @@ func _crewed(w: Dictionary) -> Dictionary:
 	var dmg: float = float(w.dmg) * GameState.attack_mult()
 	if randf() < GameState.crit_chance():
 		dmg *= 2.0   # 水兵のクリティカル
-		GameState.notice.emit("クリティカル!")
+		w2["crit"] = true   # #139: メッセージは命中時に出す
 	w2.dmg = dmg
 	return w2
 

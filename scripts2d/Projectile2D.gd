@@ -13,6 +13,7 @@ var fire: bool = false
 var falloff: bool = false   # #63: ガトリング系は距離で威力減衰
 var pirate_burn: float = 0.0   # #113/#117: 海賊船に炎上(スリップ)させる確率
 var burn_chance: float = 0.0   # #72: 自機を炎上させる確率(ティアマット等)
+var crit: bool = false         # #139: クリティカル(命中時にメッセージ)
 var target: Node2D = null
 var dir: Vector2 = Vector2.UP
 var from_player: bool = true
@@ -28,6 +29,7 @@ func setup(p_dir: Vector2, w: Dictionary, p_target: Node2D = null) -> void:
 	falloff = bool(w.get("falloff", false))
 	pirate_burn = float(w.get("pirate_burn", 0.0))
 	burn_chance = float(w.get("burn_chance", 0.0))
+	crit = bool(w.get("crit", false))
 	target = p_target
 	dir = p_dir.normalized()
 	# 見た目/当たり判定は全フラグ確定後に構築(add_child直後の_readyでは間に合わないため#78のバグ修正)
@@ -131,14 +133,16 @@ func _scaled(poly: PackedVector2Array, s: float) -> PackedVector2Array:
 func _physics_process(delta: float) -> void:
 	_t += delta
 	if homing:
+		# #30再: 発射直後から急加速して直進し、敵に近づくほど弧を描いて追尾(蛇行なし)
+		var accel_speed: float = speed * lerpf(0.45, 1.9, minf(_t / 0.5, 1.0))
 		if is_instance_valid(target):
-			# 旋回力が徐々に立ち上がり弧を描いて追う(#30)
-			var steer: float = lerpf(1.2, 7.0, minf(_t / 0.9, 1.0))
-			var want := (target.global_position - global_position).normalized()
-			dir = dir.lerp(want, steer * delta).normalized()
-		# 蛇行(ホーミングらしい揺れ)
-		var wob := dir.rotated(PI / 2) * sin(_t * 9.0) * 0.35
-		global_position += (dir + wob).normalized() * speed * delta
+			var to_t: Vector2 = target.global_position - global_position
+			var d: float = to_t.length()
+			# 遠いうちはほぼ直進、近づくほど旋回力を上げて弧を描く
+			var near: float = clampf(1.0 - d / (130.0 * K), 0.0, 1.0)
+			var steer: float = lerpf(0.4, 9.0, near)
+			dir = dir.lerp(to_t.normalized(), steer * delta).normalized()
+		global_position += dir * accel_speed * delta
 		rotation = dir.angle() + PI / 2   # #78: 魚雷は進行方向を向く
 	else:
 		global_position += dir * speed * delta
@@ -169,6 +173,8 @@ func _on_hit(body: Node) -> void:
 				return   # #111: 回避(弾は後方へそのまま通過)
 			if res == 0:
 				Audio.play("sfx_enemy_hit", -9.0)
+				if crit:
+					GameState.notice.emit("クリティカル!")   # #139: 命中時に表示
 				var ekind = body.get("kind")
 				# #113/#117: 海賊船に確率で炎上(スリップ)。主・モブは生き物なので対象外
 				if pirate_burn > 0.0 and ekind == "pirate" and randf() < pirate_burn and body.has_method("ignite_slip"):
