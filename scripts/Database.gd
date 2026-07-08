@@ -30,7 +30,7 @@ var combat_mobs := {
 	"merman":        {"name": "マーマン",       "hp": 350, "dmg": 16, "cap": 2, "price": 304,  "ranged": false, "aerial": false, "speed": 13.0, "group": 3, "aggro": 1400.0, "face_left": true, "color": Color(0.25,0.55,0.4)},
 	"charybdis":     {"name": "カリュブディス", "hp": 900, "dmg": 28, "cap": 8, "price": 960, "ranged": true,  "aerial": false, "speed": 6.0,  "dodge": 0.333, "color": Color(0.15,0.3,0.45)},
 	# #72: 果ての島。tiamat=空中(魚雷ロック不可)+俊敏+高火力+炎上弾+低回避, dagon=触腕+絡め+毒+高速
-	"tiamat":        {"name": "ティアマット",   "hp": 1200, "dmg": 34, "cap": 10, "price": 1440, "ranged": true, "aerial": true, "speed": 16.0, "atk_cd": 1.0, "dodge": 0.15, "burn_chance": 0.6, "color": Color(0.15,0.12,0.2)},
+	"tiamat":        {"name": "ティアマット",   "hp": 1200, "dmg": 34, "cap": 10, "price": 1440, "ranged": true, "aerial": true, "speed": 16.0, "atk_cd": 1.0, "dodge": 0.15, "dodge_pass": true, "burn_chance": 0.6, "color": Color(0.15,0.12,0.2)},
 	"dagon":         {"name": "ダゴン",         "hp": 1100, "dmg": 30, "cap": 9,  "price": 1280, "ranged": false, "aerial": false, "speed": 10.0, "reach": 2.5, "entangle": true, "poison": true, "color": Color(0.3,0.5,0.35)},
 }
 
@@ -72,8 +72,8 @@ var lords := {
 	"whale":     {"name": "ヒゲマッコウナガスクジラ", "hp": 1640, "dmg": 27, "cap": 14, "price": 1800, "bounty": 3500,  "fame": 16, "island": 1, "ranged": true, "aerial": false, "pair": false, "speed": 8.5, "way": 3, "homing": true, "dir": 45, "face_left": true, "lore": "富栄養化の影響で体長は50メートルにも達する。"},
 	"walrus":    {"name": "ギガントセイウチ",         "hp": 870,  "dmg": 24, "cap": 7,  "price": 1200, "bounty": 4000,  "fame": 18, "island": 1, "ranged": true, "aerial": false, "pair": true, "speed": 8.5,  "way": 3, "dir": 225, "lore": "おしどり夫婦でいつも夫婦で行動している。"},
 	# #110/#111: ヒュドラ/ケツァル/レヴィアタンを強化。#65: 弾幕(way/homing_count/radial_count)と確定炎上(burn_fire)
-	"hydra":     {"name": "ヒュドラ",                 "hp": 2600, "dmg": 38, "cap": 12, "price": 2400, "bounty": 6000,  "fame": 25, "island": 2, "ranged": true,  "aerial": false, "pair": false, "speed": 8.5, "way": 7, "fire": true, "burn_fire": true, "homing_count": 2, "dir": 90, "lore": "旧人類が神を作り出す過程で生まれた失敗作。口から炎を吐いて攻撃してくる。"},
-	"quetzal":   {"name": "ケツァルコアトル",         "hp": 3000, "dmg": 42, "cap": 13, "price": 3000, "bounty": 8000,  "fame": 30, "island": 2, "ranged": true, "aerial": true,  "pair": false, "speed": 13.0, "way": 5, "homing_count": 2, "dodge": 0.12, "kite": true, "dir": 270, "lore": "空中から攻撃してくるので、魚雷でのロックオンは不可能。旧人類がレヴィアタンへの対抗策として創造したが、彼らはそれぞれ空と海を荒らしまわるばかりであった。"},
+	"hydra":     {"name": "ヒュドラ",                 "hp": 3200, "dmg": 46, "cap": 12, "price": 2400, "bounty": 6000,  "fame": 25, "island": 2, "ranged": true,  "aerial": false, "pair": false, "speed": 8.5, "way": 7, "fire": true, "burn_fire": true, "homing_count": 2, "dir": 90, "lore": "旧人類が神を作り出す過程で生まれた失敗作。口から炎を吐いて攻撃してくる。"},
+	"quetzal":   {"name": "ケツァルコアトル",         "hp": 3600, "dmg": 50, "cap": 13, "price": 3000, "bounty": 8000,  "fame": 30, "island": 2, "ranged": true, "aerial": true,  "pair": false, "speed": 13.0, "way": 5, "homing_count": 2, "dodge": 0.12, "dodge_pass": true, "kite": true, "dir": 270, "lore": "空中から攻撃してくるので、魚雷でのロックオンは不可能。旧人類がレヴィアタンへの対抗策として創造したが、彼らはそれぞれ空と海を荒らしまわるばかりであった。"},
 	"leviathan": {"name": "レヴィアタン",             "hp": 6800, "dmg": 50, "cap": 25, "price": 9999, "bounty": 50000, "fame": 60, "island": 3, "ranged": true,  "aerial": false, "pair": false, "speed": 9.0, "radial": true, "radial_count": 18, "homing_count": 4, "dir": 180, "face_left": true, "lore": "旧人類が創り出した神。神の領域に達した旧人類のバイオテクノロジーは神をも創造したが、皮肉にもそれは人類種の天敵となり、残されたわずかな陸地を除いて人類の生存可能領域はなくなった。"},
 }
 

@@ -198,7 +198,8 @@ func _placeholder(c: Color) -> Texture2D:
 				img.set_pixel(x, y, c)
 	return ImageTexture.create_from_image(img)
 
-func take_hit(amount: float, slip: bool, debuff: bool, no_dodge: bool = false) -> void:
+# 戻り値: 0=命中, 1=回避(弾は消える), 2=回避(弾は後方へ通過)
+func take_hit(amount: float, slip: bool, debuff: bool, no_dodge: bool = false) -> int:
 	# #71/#111/#72: カリュブディス/ケツァル/ティアマット等は一定確率で攻撃をかわす。魚雷(no_dodge)は必中
 	if not no_dodge and float(def.get("dodge", 0.0)) > 0.0 and randf() < float(def.get("dodge", 0.0)):
 		if sprite:
@@ -206,7 +207,7 @@ func take_hit(amount: float, slip: bool, debuff: bool, no_dodge: bool = false) -
 			var tw0 := create_tween()
 			tw0.tween_property(sprite, "modulate", Color.WHITE, 0.25)
 		GameState.notice.emit("%s が攻撃を回避!" % def.name)
-		return
+		return 2 if bool(def.get("dodge_pass", false)) else 1
 	# #128: 遠隔攻撃を受けたら視界外でも即座に発見状態になり追ってくる
 	_aggro = true
 	var mult := 1.25 if _debuff_t > 0.0 else 1.0
@@ -229,6 +230,7 @@ func take_hit(amount: float, slip: bool, debuff: bool, no_dodge: bool = false) -
 	queue_redraw()
 	if hp <= 0:
 		_die()
+	return 0
 
 func _physics_process(delta: float) -> void:
 	if _slip > 0.0:

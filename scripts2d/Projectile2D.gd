@@ -145,18 +145,21 @@ func _on_hit(body: Node) -> void:
 		if homing and body.get("aerial") == true:
 			return
 		if body.has_method("take_hit"):
-			body.take_hit(_eff_dmg(), slip, debuff, homing)   # #71: 魚雷(homing)は必中(no_dodge)
-			Audio.play("sfx_enemy_hit", -9.0)
-			var ekind = body.get("kind")
-			# #113/#117: 海賊船に確率で炎上(スリップ)。主・モブは生き物なので対象外
-			if pirate_burn > 0.0 and ekind == "pirate" and randf() < pirate_burn and body.has_method("ignite_slip"):
-				body.ignite_slip(dmg * 0.8)
-				_spawn_effect("fire", body.global_position)
-			# #115: 大砲/魚雷の着弾は派手な爆発。#116: 銛は主・モブに血しぶき
-			if homing or (not falloff and not debuff and not fire):
-				_spawn_effect("explosion", body.global_position)
-			elif debuff and (ekind == "lord" or ekind == "mob"):
-				_spawn_effect("blood", body.global_position)
+			var res: int = body.take_hit(_eff_dmg(), slip, debuff, homing)   # #71: 魚雷(homing)は必中(no_dodge)
+			if res == 2:
+				return   # #111: 回避(弾は後方へそのまま通過)
+			if res == 0:
+				Audio.play("sfx_enemy_hit", -9.0)
+				var ekind = body.get("kind")
+				# #113/#117: 海賊船に確率で炎上(スリップ)。主・モブは生き物なので対象外
+				if pirate_burn > 0.0 and ekind == "pirate" and randf() < pirate_burn and body.has_method("ignite_slip"):
+					body.ignite_slip(dmg * 0.8)
+					_spawn_effect("fire", body.global_position)
+				# #115: 大砲/魚雷の着弾は派手な爆発。#116: 銛は主・モブに血しぶき
+				if homing or (not falloff and not debuff and not fire):
+					_spawn_effect("explosion", body.global_position)
+				elif debuff and (ekind == "lord" or ekind == "mob"):
+					_spawn_effect("blood", body.global_position)
 		queue_free()
 	elif not from_player and body.is_in_group("player"):
 		if fire:
