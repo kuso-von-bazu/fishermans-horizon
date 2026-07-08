@@ -411,21 +411,16 @@ func set_sail() -> void:
 	poison_t = 0.0
 	stats_changed.emit()
 
-# ヒュドラの炎: 装甲を削るが fire_burn に蓄積し、World 側で時間回復する
+# ヒュドラの炎: 装甲を削る。#143: 装甲は回復させない(0で確実に大破するように永続ダメージ化)
 func apply_fire(amount: float) -> void:
 	if docking_locked:
 		return   # #105
 	run_armor = maxf(run_armor - amount, 0.0)
-	fire_burn += amount
 	stats_changed.emit()
 
-# 炎被害の自然回復(World の航海ループから毎フレーム呼ぶ)
-func regen_fire(delta: float) -> void:
-	if fire_burn <= 0.0:
-		return
-	var heal: float = minf(fire_burn, 7.0 * delta)
-	run_armor = minf(run_armor + heal, max_armor())
-	fire_burn -= heal
+# #143: 装甲の自然回復は廃止(炎ダメージが回復して大破しない不具合の解消)
+func regen_fire(_delta: float) -> void:
+	pass
 
 # 漁獲を魚倉へ。入りきらなければ false。
 func add_cargo(id: String, cap_needed: int = -1) -> bool:
