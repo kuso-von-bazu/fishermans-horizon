@@ -12,6 +12,7 @@ var control_enabled: bool = true
 var entanglers: Array = []   # #69/#72: 絡めてきた敵。討伐(無効化)まで鈍足
 var _ram_cd: float = 0.0
 var _wake: CPUParticles2D
+var _smoke: CPUParticles2D   # #131: 蒸気(移動方向と逆向きに流す)
 var _flame: CPUParticles2D   # #136: 炎上アニメ
 var _sc: float = 1.0
 var _body_pts: PackedVector2Array
@@ -226,6 +227,7 @@ func _build_visual() -> void:
 	sramp.set_color(1, Color(0.9, 0.9, 0.92, 0.0))
 	smoke.color_ramp = sramp
 	add_child(smoke)
+	_smoke = smoke
 	# 航跡(#132再: ほぼ静止した泡を世界座標に残し、通過経路に沿って残す)
 	_wake = CPUParticles2D.new()
 	_wake.amount = 70
@@ -325,6 +327,9 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	if _flame:
 		_flame.emitting = GameState.burn_t > 0.0   # #136: 炎上中だけ炎
+	if _smoke:
+		# #131: 蒸気は移動方向と逆向き(=船の後方)へ流す。世界座標の重力で押す
+		_smoke.gravity = -velocity * 0.7
 	if _wake:
 		_wake.emitting = spd > max_speed * 0.15
 		# #132: バック時は船の前方に航跡が残る
