@@ -79,6 +79,14 @@ func _build_ocean() -> void:
 	ocean_mat.shader = load("res://shaders/ocean2d.gdshader")
 	rect.material = ocean_mat
 	layer.add_child(rect)
+	# #135: 島のワールド座標をシェーダへ(島周りは淡い青にする)
+	var ipos := PackedVector2Array()
+	for i in Database.islands.size():
+		ipos.append(island_pos(i))
+	while ipos.size() < 4:
+		ipos.append(Vector2(1e9, 1e9))
+	ocean_mat.set_shader_parameter("islands", ipos)
+	ocean_mat.set_shader_parameter("island_count", mini(Database.islands.size(), 4))
 
 func _build_islands() -> void:
 	for i in Database.islands.size():

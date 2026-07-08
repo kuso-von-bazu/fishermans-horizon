@@ -12,6 +12,7 @@ var control_enabled: bool = true
 var entanglers: Array = []   # #69/#72: 絡めてきた敵。討伐(無効化)まで鈍足
 var _ram_cd: float = 0.0
 var _wake: CPUParticles2D
+var _sc: float = 1.0
 var _body_pts: PackedVector2Array
 
 func _ready() -> void:
@@ -54,11 +55,116 @@ const PIX := {
 	"D": Color(0.58, 0.46, 0.32), "F": Color(0.10, 0.10, 0.12),
 	"R": Color(0.75, 0.20, 0.15), "W": Color(0.85, 0.85, 0.80),
 	"B": Color(0.35, 0.55, 0.62),
+	"G": Color(0.30, 0.33, 0.36), "Y": Color(0.80, 0.66, 0.25),  # G=砲鉄 Y=積荷
+	"g": Color(0.30, 0.55, 0.35), "P": Color(0.45, 0.30, 0.18),  # g=緑帯 P=古木
+}
+
+# #130: 船ごとに描き分けたドット絵(見た目を差別化)。未定義はSHIP_MAP(弩級)。
+const SHIP_MAPS := {
+	# 粗末な漁船: 小さな木の筏(煙突なし・古木)
+	"raft": [
+		"...PPPP...",
+		"..PDDDDP..",
+		".PDDDDDDP.",
+		".PDWDDWDP.",
+		".PDDDDDDP.",
+		".PDDDDDDP.",
+		".PDWDDWDP.",
+		".PDDDDDDP.",
+		"..PDDDDP..",
+		"...PPPP...",
+	],
+	# 武装スキフ: 小型・船首に砲1門
+	"skiff": [
+		"...HHHH...",
+		"..HhGGhH..",
+		".HhDDDDhH.",
+		".HhDWWDhH.",
+		".HhDWWDhH.",
+		".HhDFFDhH.",
+		".HhDRRDhH.",
+		".HhDDDDhH.",
+		".HhDDDDhH.",
+		"..HhDDhH..",
+		"..HhDDhH..",
+		"...HHHH...",
+	],
+	# 外洋カッター: すらりとした船体・単煙突・尖った船首
+	"cutter": [
+		"....HH....",
+		"...HhhH...",
+		"..HhWWhH..",
+		"..HhDDhH..",
+		".HhDWWDhH.",
+		".HhDBBDhH.",
+		".HhDFFDhH.",
+		".HhDRRDhH.",
+		".HhDFFDhH.",
+		".HhDDDDhH.",
+		".HhDWWDhH.",
+		".HhDDDDhH.",
+		"..HhDDhH..",
+		"..HhhhH...",
+		"...HHH....",
+	],
+	# コルベット: 軍艦・双煙突・舷側砲
+	"corvette": [
+		"....HHHH....",
+		"...HhhhhH...",
+		"..HhDWWDhH..",
+		".HhGDWWDGhH.",
+		".HhDDBBDDhH.",
+		".HhDFFFFDhH.",
+		".HhDFRRFDhH.",
+		".HhGDFFDGhH.",
+		".HhDDWWDDhH.",
+		".HhDDDDDDhH.",
+		".HhGDDDDGhH.",
+		"..HhDDDDhH..",
+		"..HhhDDhhH..",
+		"...HhhhhH...",
+		"....HHHH....",
+	],
+	# 猟特化フリゲート: 細長い・緑帯・銛座
+	"hunter_h": [
+		"....GG....",
+		"...HggH...",
+		"..HhgghH..",
+		"..HhDDhH..",
+		".HhDggDhH.",
+		".HhDWWDhH.",
+		".HhDFFDhH.",
+		".HhDggDhH.",
+		".HhDFFDhH.",
+		".HhDWWDhH.",
+		".HhDggDhH.",
+		".HhDDDDhH.",
+		"..HhDDhH..",
+		"..HhgghH..",
+		"...HggH...",
+		"....HH....",
+	],
+	# 大型運搬艦: 幅広・積荷(黄)コンテナ・ずんぐり
+	"hauler": [
+		"..HHHHHHHH..",
+		".HhhhhhhhhH.",
+		".HhDDDDDDhH.",
+		".HhYYDDYYhH.",
+		".HhYYDDYYhH.",
+		".HhDDFFDDhH.",
+		".HhDDRRDDhH.",
+		".HhYYDDYYhH.",
+		".HhYYDDYYhH.",
+		".HhDDDDDDhH.",
+		".HhhDDDDhhH.",
+		"..HHHHHHHH..",
+	],
 }
 
 func _build_ship_texture(with_ram: bool, ram_steel: bool) -> ImageTexture:
-	var w := SHIP_MAP[0].length()
-	var h := SHIP_MAP.size()
+	var map: Array = SHIP_MAPS.get(GameState.ship_id, SHIP_MAP)   # #130: 船ごとの絵
+	var w: int = map[0].length()
+	var h := map.size()
 	var ram_rows := 6 if with_ram else 0
 	var img := Image.create(w, h + ram_rows, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
@@ -73,7 +179,7 @@ func _build_ship_texture(with_ram: bool, ram_steel: bool) -> ImageTexture:
 				if x >= 0 and x < w:
 					img.set_pixel(x, ry, rc)
 	for y in h:
-		var row: String = SHIP_MAP[y]
+		var row: String = map[y]
 		for x in w:
 			var ch := row[x]
 			if PIX.has(ch):
@@ -82,6 +188,7 @@ func _build_ship_texture(with_ram: bool, ram_steel: bool) -> ImageTexture:
 
 func _build_visual() -> void:
 	var sc := _ship_scale()
+	_sc = sc
 	var with_ram: bool = GameState.ram_id != "none"
 	var sprite := Sprite2D.new()
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -95,31 +202,49 @@ func _build_visual() -> void:
 	cap.height = 60.0 * sc
 	col.shape = cap
 	add_child(col)
-	# 煙突の煙(蒸気船らしさ・#28)
+	# 煙突の煙(蒸気らしくゆったり・遠ざかるほど薄く消える #131)
 	var smoke := CPUParticles2D.new()
-	smoke.amount = 14
-	smoke.lifetime = 1.6
+	smoke.amount = 18
+	smoke.lifetime = 3.4
+	smoke.local_coords = false          # 世界座標に残してたなびかせる
 	smoke.position = Vector2(0, -6 * sc)
 	smoke.direction = Vector2(0, 1)
-	smoke.spread = 25.0
-	smoke.initial_velocity_min = 8.0
-	smoke.initial_velocity_max = 20.0
+	smoke.spread = 18.0
+	smoke.initial_velocity_min = 3.0    # ゆっくり噴き上がる
+	smoke.initial_velocity_max = 9.0
+	smoke.damping_min = 3.0             # だんだん失速
+	smoke.damping_max = 6.0
 	smoke.scale_amount_min = 2.0
-	smoke.scale_amount_max = 6.0
-	smoke.color = Color(0.85, 0.85, 0.88, 0.35)
+	smoke.scale_amount_max = 5.0
+	var scurve := Curve.new()           # 遠ざかる(時間経過)ほど大きく広がる
+	scurve.add_point(Vector2(0.0, 0.6))
+	scurve.add_point(Vector2(1.0, 2.2))
+	smoke.scale_amount_curve = scurve
+	var sramp := Gradient.new()         # 遠ざかるほど薄く消える
+	sramp.set_color(0, Color(0.88, 0.88, 0.9, 0.45))
+	sramp.set_color(1, Color(0.9, 0.9, 0.92, 0.0))
+	smoke.color_ramp = sramp
 	add_child(smoke)
-	# 航跡パーティクル(#46: 長く残る白い引き波+舷側のしぶき)
+	# 航跡(#132: 船幅に応じた幅+通過経路に残る)。世界座標に残す
 	_wake = CPUParticles2D.new()
-	_wake.amount = 48
-	_wake.lifetime = 2.4
+	_wake.amount = 64
+	_wake.lifetime = 3.2
+	_wake.local_coords = false
 	_wake.position = Vector2(0, 42 * sc)
 	_wake.direction = Vector2(0, 1)
-	_wake.spread = 26.0
-	_wake.initial_velocity_min = 14.0
-	_wake.initial_velocity_max = 40.0
+	_wake.spread = 8.0
+	_wake.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	_wake.emission_rect_extents = Vector2(11.0 * sc, 2.0)   # 船幅に応じた幅
+	_wake.initial_velocity_min = 4.0
+	_wake.initial_velocity_max = 14.0
+	_wake.damping_min = 2.0
+	_wake.damping_max = 4.0
 	_wake.scale_amount_min = 2.5
-	_wake.scale_amount_max = 7.0
-	_wake.color = Color(0.9, 0.97, 1.0, 0.55)
+	_wake.scale_amount_max = 6.0
+	var wramp := Gradient.new()
+	wramp.set_color(0, Color(0.9, 0.97, 1.0, 0.5))
+	wramp.set_color(1, Color(0.9, 0.97, 1.0, 0.0))
+	_wake.color_ramp = wramp
 	add_child(_wake)
 	for side in [-1.0, 1.0]:
 		var spray := CPUParticles2D.new()
@@ -179,7 +304,11 @@ func _physics_process(delta: float) -> void:
 	velocity = velocity.move_toward(forward() * throttle * eff_max, accel * delta)
 	move_and_slide()
 	if _wake:
-		_wake.emitting = spd > max_speed * 0.25
+		_wake.emitting = spd > max_speed * 0.15
+		# #132: バック時は船の前方に航跡が残る
+		var reversing := velocity.dot(forward()) < -1.0
+		_wake.position = Vector2(0, -44 * _sc) if reversing else Vector2(0, 42 * _sc)
+		_wake.direction = Vector2(0, -1) if reversing else Vector2(0, 1)
 	_handle_ram()
 
 func _handle_ram() -> void:
