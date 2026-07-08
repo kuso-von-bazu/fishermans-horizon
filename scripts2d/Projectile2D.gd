@@ -11,6 +11,8 @@ var debuff: bool = false
 var homing: bool = false
 var fire: bool = false
 var falloff: bool = false   # #63: ガトリング系は距離で威力減衰
+var pirate_burn: float = 0.0   # #113/#117: 海賊船に炎上(スリップ)させる確率
+var burn_chance: float = 0.0   # #72: 自機を炎上させる確率(ティアマット等)
 var target: Node2D = null
 var dir: Vector2 = Vector2.UP
 var from_player: bool = true
@@ -24,6 +26,8 @@ func setup(p_dir: Vector2, w: Dictionary, p_target: Node2D = null) -> void:
 	debuff = bool(w.get("debuff", false))
 	homing = bool(w.get("homing", false))
 	falloff = bool(w.get("falloff", false))
+	pirate_burn = float(w.get("pirate_burn", 0.0))
+	burn_chance = float(w.get("burn_chance", 0.0))
 	target = p_target
 	dir = p_dir.normalized()
 	# 見た目/当たり判定は全フラグ確定後に構築(add_child直後の_readyでは間に合わないため#78のバグ修正)
@@ -141,8 +145,18 @@ func _on_hit(body: Node) -> void:
 		if homing and body.get("aerial") == true:
 			return
 		if body.has_method("take_hit"):
-			body.take_hit(_eff_dmg(), slip, debuff)
+			body.take_hit(_eff_dmg(), slip, debuff, homing)   # #71: 魚雷(homing)は必中(no_dodge)
 			Audio.play("sfx_enemy_hit", -9.0)
+			var ekind = body.get("kind")
+			# #113/#117: 海賊船に確率で炎上(スリップ)。主・モブは生き物なので対象外
+			if pirate_burn > 0.0 and ekind == "pirate" and randf() < pirate_burn and body.has_method("ignite_slip"):
+				body.ignite_slip(dmg * 0.8)
+				_spawn_effect("fire", body.global_position)
+			# #115: 大砲/魚雷の着弾は派手な爆発。#116: 銛は主・モブに血しぶき
+			if homing or (not falloff and not debuff and not fire):
+				_spawn_effect("explosion", body.global_position)
+			elif debuff and (ekind == "lord" or ekind == "mob"):
+				_spawn_effect("blood", body.global_position)
 		queue_free()
 	elif not from_player and body.is_in_group("player"):
 		if fire:
@@ -150,7 +164,49 @@ func _on_hit(body: Node) -> void:
 			GameState.ignite(4.0)   # #65: ヒュドラの炎弾は被弾で必ず炎上
 		else:
 			GameState.damage_player(_eff_dmg())   # 敏捷カット込み
+			if burn_chance > 0.0 and randf() < burn_chance:
+				GameState.ignite(4.0)   # #72: ティアマット等の弾は高確率で炎上
+		# #115: 海賊の大砲/魚雷が自機に当たると派手な爆発
+		if homing or (not falloff and not debuff and not fire):
+			_spawn_effect("explosion", global_position)
 		Audio.play("sfx_hit", -6.0)
 		queue_free()
 	elif body.is_in_group("island_body"):
 		queue_free()
+
+# #115/#116: 着弾エフェクト(爆発/炎/血しぶき)を親に生成(弾の消滅後も残す)
+func _spawn_effect(kind: String, pos: Vector2) -> void:
+	var p := CPUParticles2D.new()
+	p.emitting = true
+	p.one_shot = true
+	p.explosiveness = 1.0
+	p.lifetime = 0.5
+	get_parent().add_child(p)
+	p.global_position = pos
+	match kind:
+		"explosion":
+			p.amount = 24
+			p.initial_velocity_min = 60.0
+			p.initial_velocity_max = 200.0
+			p.scale_amount_min = 3.0
+			p.scale_amount_max = 7.0
+			p.color = Color(1.0, 0.6, 0.15)
+		"fire":
+			p.amount = 14
+			p.initial_velocity_min = 20.0
+			p.initial_velocity_max = 70.0
+			p.direction = Vector2(0, -1)
+			p.gravity = Vector2(0, -40)
+			p.scale_amount_min = 2.5
+			p.scale_amount_max = 5.0
+			p.color = Color(1.0, 0.4, 0.1)
+		"blood":
+			p.amount = 10
+			p.initial_velocity_min = 30.0
+			p.initial_velocity_max = 90.0
+			p.scale_amount_min = 1.5
+			p.scale_amount_max = 3.0
+			p.color = Color(0.7, 0.05, 0.08)
+	# 一定時間後に自動削除
+	var t := get_tree().create_timer(1.0)
+	t.timeout.connect(p.queue_free)

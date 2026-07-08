@@ -76,16 +76,17 @@ func _build() -> void:
 	sonar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	sonar.draw.connect(_draw_sonar)
 	root.add_child(sonar)
-	# #68: 帰還キーのヒント(ソナー下)。長押し中は進捗を表示
-	lbl_return = _label("[R]長押し(5秒)で直近の島へ帰還", 14)
+	# #68: 帰還キーのヒント(ソナー下)。資金/名声と同じ見やすい白フォントに
+	lbl_return = _label("[R]長押し(5秒)で直近の島へ帰還", 18)
 	lbl_return.anchor_left = 1.0
 	lbl_return.anchor_right = 1.0
-	lbl_return.offset_left = -240
+	lbl_return.offset_left = -250
 	lbl_return.offset_right = -6
-	lbl_return.offset_top = 288
-	lbl_return.offset_bottom = 310
+	lbl_return.offset_top = 286
+	lbl_return.offset_bottom = 312
 	lbl_return.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl_return.add_theme_color_override("font_color", Color(0.8, 0.92, 1.0, 0.85))
+	lbl_return.add_theme_constant_override("outline_size", 4)
+	lbl_return.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
 	root.add_child(lbl_return)
 
 	# 左下: 漁獲物パネル(#2)
@@ -376,7 +377,7 @@ func set_return_progress(t: float) -> void:
 		return
 	if t <= 0.0:
 		lbl_return.text = "[R]長押し(5秒)で直近の島へ帰還"
-		lbl_return.add_theme_color_override("font_color", Color(0.8, 0.92, 1.0, 0.85))
+		lbl_return.add_theme_color_override("font_color", Color.WHITE)
 	else:
 		var secs: float = ceil((1.0 - clampf(t, 0.0, 1.0)) * 5.0)
 		var bars := int(clampf(t, 0.0, 1.0) * 10.0)

@@ -28,10 +28,10 @@ var combat_mobs := {
 	"wyvern":        {"name": "ワイバーン",     "hp": 800, "dmg": 26, "cap": 6, "price": 800, "ranged": true,  "aerial": false, "speed": 9.5,  "atk_cd": 1.1, "face_left": true, "color": Color(0.7,0.15,0.15)},
 	# #71: 嵐越え以降。merman=群れ+俊敏+好戦的, charybdis=渦潮+確率回避。#98再: マーマンHP350
 	"merman":        {"name": "マーマン",       "hp": 350, "dmg": 16, "cap": 2, "price": 304,  "ranged": false, "aerial": false, "speed": 13.0, "group": 3, "aggro": 1400.0, "face_left": true, "color": Color(0.25,0.55,0.4)},
-	"charybdis":     {"name": "カリュブディス", "hp": 900, "dmg": 28, "cap": 8, "price": 960, "ranged": true,  "aerial": false, "speed": 6.0,  "dodge": 0.25, "color": Color(0.15,0.3,0.45)},
-	# #72: 果ての島。tiamat=空中(魚雷ロック不可)+俊敏+高火力, dagon=触腕+絡め+毒
-	"tiamat":        {"name": "ティアマット",   "hp": 1200, "dmg": 34, "cap": 10, "price": 1440, "ranged": true, "aerial": true, "speed": 16.0, "atk_cd": 1.0, "color": Color(0.15,0.12,0.2)},
-	"dagon":         {"name": "ダゴン",         "hp": 1100, "dmg": 30, "cap": 9,  "price": 1280, "ranged": false, "aerial": false, "speed": 7.5, "reach": 2.5, "entangle": true, "poison": true, "color": Color(0.3,0.5,0.35)},
+	"charybdis":     {"name": "カリュブディス", "hp": 900, "dmg": 28, "cap": 8, "price": 960, "ranged": true,  "aerial": false, "speed": 6.0,  "dodge": 0.333, "color": Color(0.15,0.3,0.45)},
+	# #72: 果ての島。tiamat=空中(魚雷ロック不可)+俊敏+高火力+炎上弾+低回避, dagon=触腕+絡め+毒+高速
+	"tiamat":        {"name": "ティアマット",   "hp": 1200, "dmg": 34, "cap": 10, "price": 1440, "ranged": true, "aerial": true, "speed": 16.0, "atk_cd": 1.0, "dodge": 0.15, "burn_chance": 0.6, "color": Color(0.15,0.12,0.2)},
+	"dagon":         {"name": "ダゴン",         "hp": 1100, "dmg": 30, "cap": 9,  "price": 1280, "ranged": false, "aerial": false, "speed": 10.0, "reach": 2.5, "entangle": true, "poison": true, "color": Color(0.3,0.5,0.35)},
 }
 
 # 島tierごとの戦闘モブ出現重み(#38/#69/#71/#72/#75)。
@@ -67,14 +67,14 @@ var harpoon_debuffs := {
 # ---------------------------------------------------------------------------
 # #65: 全主が遠隔攻撃を持つ。way=同時弾数(扇状), homing=追跡弾, radial=全方向, homing_count=追跡弾数
 var lords := {
-	"sawshark":  {"name": "電動ノコギリザメ",         "hp": 730,  "dmg": 21, "cap": 8,  "price": 800,  "bounty": 1500,  "fame": 8,  "island": 0, "ranged": true, "aerial": false, "pair": false, "speed": 9.5, "way": 3, "dir": 0, "lore": "旧人類の狂気が生んだ悲しきモンスター。"},
+	"sawshark":  {"name": "電動ノコギリザメ",         "hp": 730,  "dmg": 21, "cap": 8,  "price": 800,  "bounty": 1500,  "fame": 8,  "island": 0, "ranged": true, "aerial": false, "pair": false, "speed": 9.5, "way": 3, "dir": 0, "face_left": true, "lore": "旧人類の狂気が生んだ悲しきモンスター。"},
 	"dumbo":     {"name": "ウミダンボ",               "hp": 1000, "dmg": 18, "cap": 9,  "price": 1000, "bounty": 2000,  "fame": 10, "island": 0, "ranged": true, "aerial": false, "pair": false, "speed": 7.5, "way": 3, "dir": 135, "lore": "大きな耳で器用に泳ぐ。旧大陸が極度の海面上昇で沈没していく中、海に適応した象。地上の象は絶滅しており、現生人類にとって象は海の動物。"},
 	"whale":     {"name": "ヒゲマッコウナガスクジラ", "hp": 1640, "dmg": 27, "cap": 14, "price": 1800, "bounty": 3500,  "fame": 16, "island": 1, "ranged": true, "aerial": false, "pair": false, "speed": 8.5, "way": 3, "homing": true, "dir": 45, "lore": "富栄養化の影響で体長は50メートルにも達する。"},
 	"walrus":    {"name": "ギガントセイウチ",         "hp": 870,  "dmg": 24, "cap": 7,  "price": 1200, "bounty": 4000,  "fame": 18, "island": 1, "ranged": true, "aerial": false, "pair": true, "speed": 8.5,  "way": 3, "dir": 225, "lore": "おしどり夫婦でいつも夫婦で行動している。"},
 	# #110/#111: ヒュドラ/ケツァル/レヴィアタンを強化。#65: 弾幕(way/homing_count/radial_count)と確定炎上(burn_fire)
 	"hydra":     {"name": "ヒュドラ",                 "hp": 2600, "dmg": 38, "cap": 12, "price": 2400, "bounty": 6000,  "fame": 25, "island": 2, "ranged": true,  "aerial": false, "pair": false, "speed": 8.5, "way": 7, "fire": true, "burn_fire": true, "homing_count": 2, "dir": 90, "lore": "旧人類が神を作り出す過程で生まれた失敗作。口から炎を吐いて攻撃してくる。"},
-	"quetzal":   {"name": "ケツァルコアトル",         "hp": 3000, "dmg": 42, "cap": 13, "price": 3000, "bounty": 8000,  "fame": 30, "island": 2, "ranged": true, "aerial": true,  "pair": false, "speed": 13.0, "way": 5, "homing_count": 2, "dir": 270, "lore": "空中から攻撃してくるので、魚雷でのロックオンは不可能。旧人類がレヴィアタンへの対抗策として創造したが、彼らはそれぞれ空と海を荒らしまわるばかりであった。"},
-	"leviathan": {"name": "レヴィアタン",             "hp": 6800, "dmg": 50, "cap": 25, "price": 9999, "bounty": 50000, "fame": 60, "island": 3, "ranged": true,  "aerial": false, "pair": false, "speed": 9.0, "radial": true, "radial_count": 18, "homing_count": 4, "dir": 180, "lore": "旧人類が創り出した神。神の領域に達した旧人類のバイオテクノロジーは神をも創造したが、皮肉にもそれは人類種の天敵となり、残されたわずかな陸地を除いて人類の生存可能領域はなくなった。"},
+	"quetzal":   {"name": "ケツァルコアトル",         "hp": 3000, "dmg": 42, "cap": 13, "price": 3000, "bounty": 8000,  "fame": 30, "island": 2, "ranged": true, "aerial": true,  "pair": false, "speed": 13.0, "way": 5, "homing_count": 2, "dodge": 0.12, "kite": true, "dir": 270, "lore": "空中から攻撃してくるので、魚雷でのロックオンは不可能。旧人類がレヴィアタンへの対抗策として創造したが、彼らはそれぞれ空と海を荒らしまわるばかりであった。"},
+	"leviathan": {"name": "レヴィアタン",             "hp": 6800, "dmg": 50, "cap": 25, "price": 9999, "bounty": 50000, "fame": 60, "island": 3, "ranged": true,  "aerial": false, "pair": false, "speed": 9.0, "radial": true, "radial_count": 18, "homing_count": 4, "dir": 180, "face_left": true, "lore": "旧人類が創り出した神。神の領域に達した旧人類のバイオテクノロジーは神をも創造したが、皮肉にもそれは人類種の天敵となり、残されたわずかな陸地を除いて人類の生存可能領域はなくなった。"},
 }
 
 # 方位(度・北=0=-Z, 時計回り)を八方位の日本語に
@@ -108,14 +108,14 @@ var pirates := {
 # ---------------------------------------------------------------------------
 var weapons := {
 	"gatling": {"name": "ガトリングガン", "kind": "aim",  "dmg": 3,  "cooldown": 0.08, "reload": 1.0, "mag": 40, "range": 120, "price": 500,  "slip": false, "debuff": false, "homing": false, "falloff": true, "sfx": "sfx_gun",     "desc": "単発威力小・連射力大。遠距離では威力減衰(#63)"},
-	"cannon":  {"name": "大砲",           "kind": "aim",  "dmg": 35, "cooldown": 1.4,  "reload": 1.6, "mag": 4,  "range": 140, "price": 1200, "slip": true,  "debuff": false, "homing": false, "sfx": "sfx_cannon",  "desc": "単発威力大・連射小。海賊船にスリップ(漏水/火災)"},
-	"harpoon": {"name": "銛",             "kind": "aim",  "dmg": 18, "cooldown": 1.0,  "reload": 1.2, "mag": 6,  "range": 100, "price": 900,  "slip": false, "debuff": true,  "homing": false, "sfx": "sfx_harpoon", "desc": "中威力。主にデバフ付与(毒/弱体)"},
-	"torpedo": {"name": "魚雷",           "kind": "lock", "dmg": 22, "cooldown": 0.9,  "reload": 2.0, "mag": 8,  "range": 160, "price": 1500, "slip": false, "debuff": false, "homing": true,  "sfx": "sfx_torpedo", "desc": "ロックオンで追尾。空中の敵には不可"},
+	"cannon":  {"name": "大砲",           "kind": "aim",  "dmg": 35, "cooldown": 1.4,  "reload": 1.6, "mag": 4,  "range": 140, "price": 1200, "slip": true,  "debuff": false, "homing": false, "pirate_burn": 0.7, "sfx": "sfx_cannon",  "desc": "単発威力大・連射小。海賊船に高確率で炎上(スリップ)"},
+	"harpoon": {"name": "銛",             "kind": "aim",  "dmg": 18, "cooldown": 1.0,  "reload": 1.2, "mag": 6,  "range": 100, "price": 900,  "slip": false, "debuff": true,  "homing": false, "sfx": "sfx_harpoon", "desc": "中威力。主・戦闘モブにデバフ付与(毒/弱体)"},
+	"torpedo": {"name": "魚雷",           "kind": "lock", "dmg": 22, "cooldown": 0.9,  "reload": 2.0, "mag": 8,  "range": 160, "price": 1500, "slip": false, "debuff": false, "homing": true,  "pirate_burn": 0.35, "sfx": "sfx_torpedo", "desc": "ロックオンで追尾。空中の敵には不可。海賊船に確率で炎上"},
 	# #102: 嵐越え(tier>=2)以降で買える上位互換。新種は増やさず各武器の強化版
 	"gatling2":{"name": "重ガトリング砲", "kind": "aim",  "dmg": 4,  "cooldown": 0.07, "reload": 0.9, "mag": 55, "range": 145, "price": 5000, "slip": false, "debuff": false, "homing": false, "falloff": true, "tier": 2, "sfx": "sfx_gun",     "desc": "ガトリングの上位。連射・射程・弾数を強化"},
-	"cannon2": {"name": "大口径カノン砲", "kind": "aim",  "dmg": 46, "cooldown": 1.25, "reload": 1.4, "mag": 5,  "range": 165, "price": 6500, "slip": true,  "debuff": false, "homing": false, "tier": 2, "sfx": "sfx_cannon",  "desc": "大砲の上位。単発威力・射程を強化"},
+	"cannon2": {"name": "大口径カノン砲", "kind": "aim",  "dmg": 46, "cooldown": 1.25, "reload": 1.4, "mag": 5,  "range": 165, "price": 6500, "slip": true,  "debuff": false, "homing": false, "pirate_burn": 0.7, "tier": 2, "sfx": "sfx_cannon",  "desc": "大砲の上位。単発威力・射程を強化"},
 	"harpoon2":{"name": "強化銛砲",       "kind": "aim",  "dmg": 24, "cooldown": 0.85, "reload": 1.0, "mag": 9,  "range": 125, "price": 5500, "slip": false, "debuff": true,  "homing": false, "tier": 2, "sfx": "sfx_harpoon", "desc": "銛の上位。連射・デバフ効率を強化"},
-	"torpedo2":{"name": "追尾魚雷改",     "kind": "lock", "dmg": 30, "cooldown": 0.8,  "reload": 1.7, "mag": 10, "range": 195, "price": 8000, "slip": false, "debuff": false, "homing": true,  "tier": 2, "sfx": "sfx_torpedo", "desc": "魚雷の上位。追尾・射程・弾数を強化"},
+	"torpedo2":{"name": "追尾魚雷改",     "kind": "lock", "dmg": 30, "cooldown": 0.8,  "reload": 1.7, "mag": 10, "range": 195, "price": 8000, "slip": false, "debuff": false, "homing": true,  "pirate_burn": 0.35, "tier": 2, "sfx": "sfx_torpedo", "desc": "魚雷の上位。追尾・射程・弾数を強化"},
 }
 
 var rams := {

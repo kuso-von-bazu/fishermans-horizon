@@ -102,6 +102,14 @@ func _build_player() -> void:
 	camera.make_current()
 	camera.global_position = player.global_position
 
+func _input(event: InputEvent) -> void:
+	# #16: マウスホイールでロックオン対象を切替(航海中のみ)
+	if phase == "sea" and event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			_cycle_lock(-1)
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			_cycle_lock(1)
+
 func _process(_d: float) -> void:
 	# カメラ追従 + 海シェーダにカメラ左上のワールド座標を渡す
 	if camera and player:
@@ -215,8 +223,8 @@ func _forced_return(reason: String, wrecked: bool = false) -> void:
 		GameState.stats_changed.emit()
 		Audio.play("sfx_wreck", -2.0)
 		var msg := "船が大破! 漁獲物(%d)を失い強制帰還" % lost
-		# #99再: 定価の2%の修理費(残金が0未満にならないよう徴収)
-		var repair := int(float(GameState.ship().price) * 0.02)
+		# #99再: 定価の4%の修理費(残金が0未満にならないよう徴収)
+		var repair := int(float(GameState.ship().price) * 0.04)
 		var paid: int = mini(repair, GameState.money)
 		if paid > 0:
 			GameState.add_money(-paid)
@@ -432,11 +440,13 @@ func _try_spawn_lord() -> void:
 			var b := _make_enemy("lord", id, base + Vector2(-50, 0))
 			a.pair_partner = b
 			b.pair_partner = a
-			_spawn_escorts(base)
+			var esc := _spawn_escorts(base, id)
+			a.escorts = esc
+			b.escorts = esc
 		else:
 			var lpos := _lord_spawn_pos(id)
-			_make_enemy("lord", id, lpos)
-			_spawn_escorts(lpos)
+			var lord := _make_enemy("lord", id, lpos)
+			lord.escorts = _spawn_escorts(lpos, id)
 
 func _lord_id_alive(id: String) -> bool:
 	for e in enemies:
@@ -451,12 +461,30 @@ func _king_alive() -> bool:
 	return false
 
 # #62: 主の取り巻き。戦闘モブ2体を主の周囲に出現させる(#67: 上限・デスポーン免除)
-func _spawn_escorts(center: Vector2) -> void:
-	for i in 2:
-		var mid: String = Database.pick_mob(GameState.current_island)
+# #119: レヴィアタンはカリュブディス/ティアマット/ダゴンから2種。#120: マーマンは取り巻きにしない
+func _spawn_escorts(center: Vector2, lord_id: String = "") -> Array:
+	var out: Array = []
+	var ids: Array = []
+	if lord_id == "leviathan":
+		var pool := ["charybdis", "tiamat", "dagon"]
+		pool.shuffle()
+		ids = [pool[0], pool[1]]
+	else:
+		for i in 2:
+			var mid: String = Database.pick_mob(GameState.current_island)
+			var guard := 0
+			while mid == "merman" and guard < 8:   # #120: マーマン除外
+				mid = Database.pick_mob(GameState.current_island)
+				guard += 1
+			if mid == "merman":
+				mid = "wyrm"
+			ids.append(mid)
+	for mid in ids:
 		var off := Vector2.RIGHT.rotated(randf() * TAU) * randf_range(140.0, 260.0)
 		var e := _make_enemy("mob", mid, center + off)
 		e.is_escort = true
+		out.append(e)
+	return out
 
 func _lord_alive() -> bool:
 	for e in enemies:
@@ -481,11 +509,25 @@ func _make_enemy(kind: String, id: String, pos: Vector2) -> CharacterBody2D:
 	return e
 
 func _spawn_relic() -> void:
+	# #124: 島の領域内には遺産を出さない(魚群#53と同様に島から離す)
+	var pos := _ring_pos(60, 180)
+	for attempt in 6:
+		var ok := true
+		for isle_node in islands:
+			if pos.distance_to(isle_node.global_position) < 340.0:
+				ok = false
+				break
+		if ok:
+			break
+		pos = _ring_pos(60, 180)
+	for isle_node in islands:
+		if pos.distance_to(isle_node.global_position) < 340.0:
+			return
 	var r := Area2D.new()
 	r.set_script(RelicScript)
 	r.setup(randi_range(200, 500) * (GameState.current_island + 1))
 	add_child(r)
-	r.global_position = _ring_pos(60, 180)
+	r.global_position = pos
 	relics_world.append(r)
 
 # ---------------- 武器 ----------------
@@ -575,20 +617,45 @@ func _fire_torpedo(w: Dictionary) -> void:
 	proj.from_player = true
 	proj.setup(dir, _crewed(w), lock_target)
 
-func _update_lock_on() -> void:
-	# マウスに近い非空中の敵をロック(#16)。新規ロックで効果音。
-	var mouse := get_global_mouse_position()
-	var best := 260.0
-	var t: Node2D = null
+# #16: ロック可能な敵(非空中・射程内・画面内)の一覧
+func _lockable_enemies() -> Array:
+	var out: Array = []
+	var vp := get_viewport_rect().size
+	var cam_pos: Vector2 = camera.global_position if camera else player.global_position
+	var lock_r := 160.0 * K * GameState.lock_range_mult()
 	for e in enemies:
 		if not is_instance_valid(e) or e.aerial:
 			continue
-		if e.global_position.distance_to(player.global_position) > 160.0 * K * GameState.lock_range_mult():
-			continue   # 視力/航海士でロック距離延長(#39)
-		var d: float = e.global_position.distance_to(mouse)
+		if e.global_position.distance_to(player.global_position) > lock_r:
+			continue
+		# 画面内判定
+		var rel: Vector2 = e.global_position - (cam_pos - vp * 0.5)
+		if rel.x < -40 or rel.y < -40 or rel.x > vp.x + 40 or rel.y > vp.y + 40:
+			continue
+		out.append(e)
+	return out
+
+# #16: ロック対象は倒すか画面外に出るまで固定。ホイールで切替
+func _update_lock_on() -> void:
+	var lockable := _lockable_enemies()
+	# 現在のロックが有効(生存・画面内・射程内)なら維持
+	if lock_target and is_instance_valid(lock_target) and lockable.has(lock_target):
+		return
+	# 無効になったら最寄りを新規ロック
+	var t: Node2D = _pick_nearest_lock(lockable)
+	_set_lock(t)
+
+func _pick_nearest_lock(lockable: Array) -> Node2D:
+	var best := 1e18
+	var t: Node2D = null
+	for e in lockable:
+		var d: float = e.global_position.distance_to(player.global_position)
 		if d < best:
 			best = d
 			t = e
+	return t
+
+func _set_lock(t: Node2D) -> void:
 	if t != null and t != lock_target:
 		Audio.play("sfx_lock", -6.0)
 	if lock_target and is_instance_valid(lock_target):
@@ -596,6 +663,18 @@ func _update_lock_on() -> void:
 	lock_target = t
 	if lock_target and is_instance_valid(lock_target):
 		lock_target.locked = true
+
+# #16: マウスホイールでロック対象を切替
+func _cycle_lock(dir: int) -> void:
+	var lockable := _lockable_enemies()
+	if lockable.is_empty():
+		return
+	var idx := lockable.find(lock_target)
+	if idx < 0:
+		_set_lock(lockable[0])
+		return
+	idx = (idx + dir + lockable.size()) % lockable.size()
+	_set_lock(lockable[idx])
 
 # #79: 主に発見されている(アグロ中)間は緊迫BGM、離れると通常BGMへ戻す
 # レヴィアタン戦のみ専用曲(共有者提供 レヴイアタン.mp3)

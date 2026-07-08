@@ -13,7 +13,10 @@ func _ready() -> void:
 	layer = 20
 	visible = false
 	_build()
-	GameState.notice.connect(func(_t): if visible: _refresh_header())
+	GameState.notice.connect(func(t):
+		if visible:
+			_refresh_header()
+			_show_toast(t))   # #123: 資金不足などの通知を港でも表示
 
 func _build() -> void:
 	_root = Control.new()
@@ -81,6 +84,28 @@ func open(arrival := false) -> void:
 	show_market()
 	if arrival:
 		_show_arrival_banner()   # #104: 寄港メッセージ
+
+# #123: 通知トースト(資金不足など)を港画面下部に一時表示
+func _show_toast(text: String) -> void:
+	if _root == null or text.strip_edges() == "":
+		return
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.add_theme_font_size_override("font_size", 22)
+	lbl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.55))
+	lbl.add_theme_constant_override("outline_size", 5)
+	lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.anchor_left = 0.0
+	lbl.anchor_right = 1.0
+	lbl.anchor_top = 0.86
+	lbl.anchor_bottom = 0.86
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(lbl)
+	var tw := create_tween()
+	tw.tween_interval(1.8)
+	tw.tween_property(lbl, "modulate:a", 0.0, 0.8)
+	tw.tween_callback(lbl.queue_free)
 
 # #104: 寄港したことがわかる一時バナー
 func _show_arrival_banner() -> void:

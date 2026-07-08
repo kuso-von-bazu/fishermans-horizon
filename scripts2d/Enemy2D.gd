@@ -20,6 +20,8 @@ var _atk_timer: float = 0.0
 var _slip: float = 0.0
 var _debuff_t: float = 0.0
 var _debuff_kind: String = ""
+var _debuff_power: float = 0.0   # #114: 銛の重ねがけ強度(減衰加算)
+var _debuff_stacks: int = 0
 var _aggro: bool = false        # #32: 発見で加速
 var _wander_dir: Vector2 = Vector2.RIGHT
 var _wander_t: float = 0.0
@@ -33,6 +35,7 @@ var _target_w: float = 90.0
 var player: Node2D
 var pair_partner: Node = null
 var is_escort: bool = false   # #67: 主の取り巻き(上限・デスポーン免除)
+var escorts: Array = []       # #118: この主の取り巻き参照(全滅で引き撃ち)
 var _bob: float = 0.0
 var _radius: float = 40.0
 var locked: bool = false   # 魚雷ロック対象の表示(#16)
@@ -195,24 +198,29 @@ func _placeholder(c: Color) -> Texture2D:
 				img.set_pixel(x, y, c)
 	return ImageTexture.create_from_image(img)
 
-func take_hit(amount: float, slip: bool, debuff: bool) -> void:
-	# #71: カリュブディス等は一定確率で攻撃をかわす(渦に潜る)
-	if float(def.get("dodge", 0.0)) > 0.0 and randf() < float(def.get("dodge", 0.0)):
+func take_hit(amount: float, slip: bool, debuff: bool, no_dodge: bool = false) -> void:
+	# #71/#111/#72: カリュブディス/ケツァル/ティアマット等は一定確率で攻撃をかわす。魚雷(no_dodge)は必中
+	if not no_dodge and float(def.get("dodge", 0.0)) > 0.0 and randf() < float(def.get("dodge", 0.0)):
 		if sprite:
 			sprite.modulate = Color(0.5, 0.7, 1.6)
 			var tw0 := create_tween()
 			tw0.tween_property(sprite, "modulate", Color.WHITE, 0.25)
+		GameState.notice.emit("%s が攻撃を回避!" % def.name)
 		return
+	# #128: 遠隔攻撃を受けたら視界外でも即座に発見状態になり追ってくる
+	_aggro = true
 	var mult := 1.25 if _debuff_t > 0.0 else 1.0
 	hp -= amount * mult
 	if slip and kind == "pirate":
 		_slip += amount * 0.6
-	# #37再: 銛デバフは主+戦闘モブに有効(海賊は無効)
+	# #37再: 銛デバフは主+戦闘モブに有効(海賊は無効)。#114: 複数ヒットで減衰しつつ増加、最後のヒットから4.5秒
 	if debuff and (kind == "lord" or kind == "mob"):
 		_debuff_kind = GameState.harpoon_debuff
-		_debuff_t = 4.5 * GameState.debuff_dur_mult()   # #91: 弱体化
+		_debuff_power += 0.6 * pow(0.55, float(_debuff_stacks))
+		_debuff_stacks += 1
+		_debuff_t = 4.5 * GameState.debuff_dur_mult()
 		if _debuff_kind == "slip":
-			_slip += amount * 0.45
+			_slip += amount * (0.45 + 0.25 * _debuff_power)
 	# 被弾フラッシュ
 	if sprite:
 		sprite.modulate = Color(2.2, 1.2, 1.2)
@@ -235,6 +243,8 @@ func _physics_process(delta: float) -> void:
 		_debuff_t -= delta
 		if _debuff_t <= 0.0:
 			_debuff_kind = ""
+			_debuff_power = 0.0   # #114: 効果切れで重ねがけリセット
+			_debuff_stacks = 0
 	# 泳ぎアニメ(#26): 揺れ+伸縮でドット絵を動かす
 	_bob += delta * (2.6 if _aggro else 1.4)
 	if sprite:
@@ -252,10 +262,13 @@ func _physics_process(delta: float) -> void:
 		_aggro = true
 	var eff_speed := speed
 	if _debuff_kind == "speed":
-		eff_speed *= 0.72   # #37/#91 鈍化(弱)
+		eff_speed *= 1.0 - 0.4 * clampf(_debuff_power, 0.0, 1.0)   # #91/#114 鈍化(重ねがけで増加/減衰)
 	var move_dir: Vector2
 	if _aggro:
 		move_dir = to.normalized()
+		# #118: ケツァル等は取り巻きを全滅させると引き撃ち(射程内では距離を取りつつ撃つ)
+		if bool(def.get("kite", false)) and _escorts_cleared() and dist < attack_range * 0.85:
+			move_dir = -to.normalized()
 	else:
 		_wander_t -= delta
 		if _wander_t <= 0.0:
@@ -285,10 +298,10 @@ func _attack(delta: float, dist: float) -> void:
 		return
 	_atk_timer = attack_cd
 	if _debuff_kind == "atkfreq":
-		_atk_timer *= 1.35   # #37/#91 麻痺: 攻撃間隔増(弱)
+		_atk_timer *= 1.0 + 0.5 * _debuff_power   # #91/#114 麻痺: 攻撃間隔増(重ねがけで増加/減衰)
 	var eff_dmg := dmg
 	if _debuff_kind == "atk":
-		eff_dmg *= 0.78     # #37/#91 衰弱: 与ダメ減(弱)
+		eff_dmg *= 1.0 - 0.35 * clampf(_debuff_power, 0.0, 1.0)  # #91/#114 衰弱: 与ダメ減
 	# #74: 遠隔持ちは attack_range(遠距離)で撃ち、近接圏(melee_r)に入られたら近接
 	var melee_r: float = _radius + (12.0 if kind == "lord" else 9.0) * K * float(def.get("reach", 1.0))
 	if kind == "lord":
@@ -321,9 +334,11 @@ func _attack(delta: float, dist: float) -> void:
 
 # #65/#66: way=扇状同時弾, homing=追跡弾を追加, wpn=gatling(3連小弾)/torpedo(追尾)/cannon
 func _ranged_attack(is_fire: bool) -> void:
+	if GameState.docking_locked:
+		return   # #121: 寄港確定/寄港中は敵は遠隔攻撃をしない(紛らわしさ解消)
 	var eff_dmg := dmg
 	if _debuff_kind == "atk":
-		eff_dmg *= 0.78   # #91
+		eff_dmg *= 1.0 - 0.35 * clampf(_debuff_power, 0.0, 1.0)   # #91/#114
 	var base_dir := (player.global_position - global_position).normalized()
 	# #66: volley=複数武器を同時発射(海賊中/大)
 	if def.has("volley"):
@@ -357,6 +372,9 @@ func _fire_weapon(wpn: String, eff_dmg: float, base_dir: Vector2, is_fire: bool)
 				_shoot(base_dir.rotated(randf_range(-0.3, 0.3)), {"dmg": eff_dmg * 0.8, "homing": true}, is_fire, player)
 
 func _shoot(d: Vector2, w: Dictionary, is_fire: bool, tgt: Node2D = null) -> void:
+	# #72: ティアマット等は遠隔弾に高確率の炎上を付与
+	if float(def.get("burn_chance", 0.0)) > 0.0 and not w.has("homing"):
+		w["burn_chance"] = float(def.get("burn_chance", 0.0))
 	var proj := Area2D.new()
 	proj.set_script(preload("res://scripts2d/Projectile2D.gd"))
 	get_parent().add_child(proj)
@@ -364,6 +382,23 @@ func _shoot(d: Vector2, w: Dictionary, is_fire: bool, tgt: Node2D = null) -> voi
 	proj.from_player = false
 	proj.fire = is_fire
 	proj.setup(d, w, tgt)
+
+# #113/#117: 海賊船に炎上(スリップ被害)を与える
+func ignite_slip(amount: float) -> void:
+	if kind != "pirate":
+		return
+	_slip += amount
+	if sprite:
+		sprite.modulate = Color(1.8, 0.9, 0.5)
+		var tw := create_tween()
+		tw.tween_property(sprite, "modulate", Color.WHITE, 0.3)
+
+# #118: 取り巻きが全滅したか
+func _escorts_cleared() -> bool:
+	for e in escorts:
+		if is_instance_valid(e):
+			return false
+	return true
 
 func _damage_player(amount: float) -> void:
 	GameState.damage_player(amount)   # 敏捷カット込み(クルー#39)

@@ -132,10 +132,15 @@ func grow_crew() -> void:
 				m[k] = int(m[k]) + maxi(int(g[k]), 0)
 
 func crew_wages() -> int:
-	var total := 0
+	# #125: 到達した島が増えるごとに賃金が少しずつ上昇(最遠到達島に比例)
+	var reached := 0
+	for iid in visited_islands:
+		reached = maxi(reached, int(iid))
+	var mult := 1.0 + 0.25 * float(reached)
+	var total := 0.0
 	for m in crew:
-		total += int(jobs[m.job].wage)
-	return total
+		total += float(jobs[m.job].wage) * mult
+	return int(round(total))
 
 func _crew_sum(stat: String) -> int:
 	var s := 0
