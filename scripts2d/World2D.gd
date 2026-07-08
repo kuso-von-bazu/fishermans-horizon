@@ -477,6 +477,9 @@ func _spawn_escorts(center: Vector2, lord_id: String = "") -> Array:
 		var pool := ["charybdis", "tiamat", "dagon"]
 		pool.shuffle()
 		ids = [pool[0], pool[1]]
+	elif lord_id == "hydra" or lord_id == "quetzal":
+		# #141: カリュブディス必ず1体+クラーケン/ワイバーンのいずれか1体
+		ids = ["charybdis", ["kraken", "wyvern"][randi() % 2]]
 	else:
 		for i in 2:
 			var mid: String = Database.pick_mob(GameState.current_island)

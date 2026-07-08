@@ -28,7 +28,7 @@ var combat_mobs := {
 	"wyvern":        {"name": "ワイバーン",     "hp": 800, "dmg": 26, "cap": 6, "price": 800, "ranged": true,  "aerial": false, "speed": 9.5,  "atk_cd": 1.1, "face_left": true, "color": Color(0.7,0.15,0.15)},
 	# #71: 嵐越え以降。merman=群れ+俊敏+好戦的, charybdis=渦潮+確率回避。#98再: マーマンHP350
 	"merman":        {"name": "マーマン",       "hp": 350, "dmg": 16, "cap": 2, "price": 304,  "ranged": false, "aerial": false, "speed": 13.0, "group": 3, "aggro": 1400.0, "face_left": true, "color": Color(0.25,0.55,0.4)},
-	"charybdis":     {"name": "カリュブディス", "hp": 900, "dmg": 28, "cap": 8, "price": 960, "ranged": true,  "aerial": false, "speed": 6.0,  "dodge": 0.333, "color": Color(0.15,0.3,0.45)},
+	"charybdis":     {"name": "カリュブディス", "hp": 900, "dmg": 28, "cap": 8, "price": 960, "ranged": true,  "aerial": false, "speed": 9.5,  "dodge": 0.333, "color": Color(0.15,0.3,0.45)},
 	# #72: 果ての島。tiamat=空中(魚雷ロック不可)+俊敏+高火力+炎上弾+低回避, dagon=触腕+絡め+毒+高速
 	"tiamat":        {"name": "ティアマット",   "hp": 1200, "dmg": 34, "cap": 10, "price": 1440, "ranged": true, "aerial": true, "speed": 16.0, "atk_cd": 1.0, "dodge": 0.15, "dodge_pass": true, "burn_chance": 0.6, "color": Color(0.15,0.12,0.2)},
 	"dagon":         {"name": "ダゴン",         "hp": 1100, "dmg": 30, "cap": 9,  "price": 1280, "ranged": false, "aerial": false, "speed": 10.0, "reach": 2.5, "entangle": true, "poison": true, "color": Color(0.3,0.5,0.35)},
@@ -39,8 +39,8 @@ var combat_mobs := {
 var mob_weights := [
 	{"narwhal": 0.55, "seahunter": 0.25, "ornithocheirus": 0.15, "wyrm": 0.05},
 	{"wyrm": 0.45, "kraken": 0.35, "wyvern": 0.20},
-	{"wyrm": 0.20, "kraken": 0.25, "wyvern": 0.20, "merman": 0.20, "charybdis": 0.15},
-	{"wyrm": 0.10, "kraken": 0.14, "wyvern": 0.16, "merman": 0.16, "charybdis": 0.14, "tiamat": 0.15, "dagon": 0.15},
+	{"kraken": 0.30, "wyvern": 0.25, "merman": 0.25, "charybdis": 0.20},                                  # #75: 嵐越え以降はワイアーム非出現
+	{"kraken": 0.16, "wyvern": 0.18, "merman": 0.18, "charybdis": 0.16, "tiamat": 0.16, "dagon": 0.16},
 ]
 
 func pick_mob(tier: int) -> String:

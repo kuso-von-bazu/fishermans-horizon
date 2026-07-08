@@ -124,12 +124,14 @@ func jobchange(m: Dictionary, job_id: String) -> void:
 	stats_changed.emit()
 
 # 帰港ごとの成長(ジョブの伸びに沿って+)
+const STAT_MAX := 70   # #140: 各パラメータの上限
+
 func grow_crew() -> void:
 	for m in crew:
 		var g: Dictionary = jobs[m.job].growth
 		for k in g:
 			if randf() < 0.5 + float(g[k]) * 0.18:
-				m[k] = int(m[k]) + maxi(int(g[k]), 0)
+				m[k] = mini(int(m[k]) + maxi(int(g[k]), 0), STAT_MAX)   # #140: 上限70
 
 func crew_wages() -> int:
 	# #125: 到達した島が増えるごとに賃金が少しずつ上昇(最遠到達島に比例)
