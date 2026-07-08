@@ -77,11 +77,11 @@ func _build() -> void:
 	sonar.draw.connect(_draw_sonar)
 	root.add_child(sonar)
 	# #68: 帰還キーのヒント(ソナー下)。資金/名声と同じ見やすい白フォントに
-	lbl_return = _label("[R]長押し(5秒)で直近の島へ帰還", 18)
+	lbl_return = _label("[R]長押し(5秒)で直近の島へ帰還", 17)
 	lbl_return.anchor_left = 1.0
 	lbl_return.anchor_right = 1.0
-	lbl_return.offset_left = -250
-	lbl_return.offset_right = -6
+	lbl_return.offset_left = -350
+	lbl_return.offset_right = -16
 	lbl_return.offset_top = 286
 	lbl_return.offset_bottom = 312
 	lbl_return.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
