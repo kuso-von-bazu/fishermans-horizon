@@ -27,6 +27,9 @@ var _wander_dir: Vector2 = Vector2.RIGHT
 var _wander_t: float = 0.0
 var sprite: Sprite2D
 var _shadow: Sprite2D
+var _flame: CPUParticles2D    # #136: 炎上(海賊)
+var _debuff_fx: CPUParticles2D # #137: デバフ表示
+var _debuff_fx_kind: String = ""
 var _tex_side: Texture2D    # #26: 移動方向でドット絵を切替(横/正面/後ろ姿)
 var _tex_front: Texture2D
 var _tex_back: Texture2D
@@ -131,6 +134,45 @@ func _ready() -> void:
 	var ps := get_tree().get_first_node_in_group("player")
 	if ps:
 		player = ps
+	# #136: 海賊の炎上 / #137: デバフのエフェクト用パーティクル
+	_flame = _make_particles(Color(1.0, 0.85, 0.35, 0.9), Color(0.7, 0.15, 0.05, 0.0))
+	add_child(_flame)
+	_debuff_fx = _make_particles(Color(0.4, 0.9, 0.4, 0.9), Color(0.4, 0.9, 0.4, 0.0))
+	add_child(_debuff_fx)
+
+# #137: デバフ種別ごとの色(毒=緑/麻痺=黄/衰弱=紫/鈍化=青)
+func _set_debuff_fx_color(kind_str: String) -> void:
+	var c := Color(0.4, 0.9, 0.4)
+	match kind_str:
+		"slip": c = Color(0.35, 0.9, 0.35)    # 毒=緑
+		"atkfreq": c = Color(1.0, 0.9, 0.3)   # 麻痺=黄
+		"atk": c = Color(0.7, 0.4, 0.9)       # 衰弱=紫
+		"speed": c = Color(0.4, 0.75, 1.0)    # 鈍化=青
+	var g := Gradient.new()
+	g.set_color(0, Color(c.r, c.g, c.b, 0.9))
+	g.set_color(1, Color(c.r, c.g, c.b, 0.0))
+	_debuff_fx.color_ramp = g
+
+func _make_particles(c0: Color, c1: Color) -> CPUParticles2D:
+	var p := CPUParticles2D.new()
+	p.amount = 16
+	p.lifetime = 0.7
+	p.emitting = false
+	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
+	p.emission_sphere_radius = _radius * 0.7
+	p.direction = Vector2(0, -1)
+	p.gravity = Vector2(0, -60)
+	p.spread = 30.0
+	p.initial_velocity_min = 15.0
+	p.initial_velocity_max = 40.0
+	p.scale_amount_min = 2.0
+	p.scale_amount_max = 4.0
+	var g := Gradient.new()
+	g.set_color(0, c0)
+	g.set_color(1, c1)
+	p.color_ramp = g
+	p.z_index = 3
+	return p
 
 func _load_tex() -> Texture2D:
 	# ドット絵版(#26)優先。なければ元画像。
@@ -247,6 +289,17 @@ func _physics_process(delta: float) -> void:
 			_debuff_kind = ""
 			_debuff_power = 0.0   # #114: 効果切れで重ねがけリセット
 			_debuff_stacks = 0
+	# #136: 海賊の炎上表示(スリップ被害中)
+	if _flame:
+		_flame.emitting = kind == "pirate" and _slip > 0.5
+	# #137: デバフ種別に応じたエフェクト
+	if _debuff_fx:
+		var want_fx := _debuff_kind if _debuff_t > 0.0 else ""
+		if want_fx != _debuff_fx_kind:
+			_debuff_fx_kind = want_fx
+			if want_fx != "":
+				_set_debuff_fx_color(want_fx)
+		_debuff_fx.emitting = want_fx != ""
 	# 泳ぎアニメ(#26): 揺れ+伸縮でドット絵を動かす
 	_bob += delta * (2.6 if _aggro else 1.4)
 	if sprite:

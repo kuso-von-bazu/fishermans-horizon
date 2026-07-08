@@ -38,46 +38,65 @@ func _build_visual() -> void:
 	var poly := PackedVector2Array()
 	var mcol := Color.WHITE
 	var r := 4.0
-	# #78再: 形・色の区別は維持しつつ大きさは元に近い小さめに戻す
+	# #78再: 形・色の区別は維持。彩度を下げてシックな配色に。炎だけは火の玉状で例外
+	if fire:
+		# #78: 炎弾は火の玉状(進行方向=局所-Yが太く、後方が細い涙滴)。外=橙赤/内=黄の2色
+		var drop := PackedVector2Array([
+			Vector2(0, -9), Vector2(6, -4), Vector2(4.5, 2), Vector2(1.5, 11),
+			Vector2(-1.5, 11), Vector2(-4.5, 2), Vector2(-6, -4)])
+		var outline0 := Polygon2D.new()
+		outline0.polygon = _scaled(drop, 1.4)
+		outline0.color = Color(0, 0, 0, 0.55)
+		add_child(outline0)
+		var outer := Polygon2D.new()
+		outer.polygon = drop
+		outer.color = Color(0.85, 0.35, 0.12)   # 外炎(橙赤)
+		add_child(outer)
+		var inner := Polygon2D.new()
+		inner.polygon = _scaled(PackedVector2Array([
+			Vector2(0, -7), Vector2(3.2, -3), Vector2(2.2, 2), Vector2(0, 7),
+			Vector2(-2.2, 2), Vector2(-3.2, -3)]), 1.0)
+		inner.color = Color(1.0, 0.82, 0.35)     # 内炎(黄)
+		add_child(inner)
+		rotation = dir.angle() + PI / 2
+		var colf := CollisionShape2D.new()
+		var shf := CircleShape2D.new()
+		shf.radius = 7.0
+		colf.shape = shf
+		add_child(colf)
+		body_entered.connect(_on_hit)
+		return
 	if homing:
-		# 魚雷: 細長いカプセル型(尾びれ付き)・緑
+		# 魚雷: 細長いカプセル型(尾びれ付き)・くすんだ緑
 		poly = PackedVector2Array([
 			Vector2(-3, -9), Vector2(0, -12), Vector2(3, -9), Vector2(3, 7),
 			Vector2(6, 12), Vector2(0, 9), Vector2(-6, 12), Vector2(-3, 7)])
-		mcol = Color(0.2, 1.0, 0.35) if from_player else Color(0.7, 1.0, 0.2)
+		mcol = Color(0.42, 0.66, 0.46) if from_player else Color(0.55, 0.66, 0.34)
 		r = 5.0
 	elif falloff:
-		# ガトリング: 細い曳光弾・鮮黄
+		# ガトリング: 細い曳光弾・くすんだ琥珀
 		poly = PackedVector2Array([
 			Vector2(-1.6, -8), Vector2(1.6, -8), Vector2(1.6, 8), Vector2(-1.6, 8)])
-		mcol = Color(1.0, 0.92, 0.1) if from_player else Color(1.0, 0.6, 0.1)
+		mcol = Color(0.82, 0.74, 0.42) if from_player else Color(0.78, 0.6, 0.38)
 		r = 3.0
 	elif debuff:
-		# 銛: 長い柄+返しのある穂先・シアン
+		# 銛: 長い柄+返しのある穂先・くすんだ青緑
 		poly = PackedVector2Array([
 			Vector2(0, -13), Vector2(4, -6.5), Vector2(1.4, -6.5), Vector2(1.4, 11),
 			Vector2(-1.4, 11), Vector2(-1.4, -6.5), Vector2(-4, -6.5)])
-		mcol = Color(0.15, 0.85, 1.0)
+		mcol = Color(0.45, 0.62, 0.66)
 		r = 4.5
-	elif fire:
-		# 炎弾: ゆらめく火の玉・橙
-		for i in 10:
-			var a := TAU * i / 10.0
-			var rr := 6.0 if i % 2 == 0 else 3.5
-			poly.append(Vector2(cos(a), sin(a)) * rr)
-		mcol = Color(1.0, 0.45, 0.1)
-		r = 5.0
 	else:
-		# 砲弾: 丸弾・赤橙(自機)/暗赤(敵)
+		# 砲弾: 丸弾・くすんだ赤茶(自機)/暗赤(敵)
 		for i in 12:
 			var a := TAU * i / 12.0
 			poly.append(Vector2(cos(a), sin(a)) * 6.0)
-		mcol = Color(1.0, 0.35, 0.1) if from_player else Color(0.75, 0.12, 0.12)
+		mcol = Color(0.72, 0.45, 0.32) if from_player else Color(0.6, 0.3, 0.28)
 		r = 6.0
 	# 暗い輪郭(視認性UP)
 	var outline := Polygon2D.new()
 	outline.polygon = _scaled(poly, 1.45)
-	outline.color = Color(0, 0, 0, 0.8)
+	outline.color = Color(0, 0, 0, 0.7)
 	add_child(outline)
 	var mesh := Polygon2D.new()
 	mesh.polygon = poly

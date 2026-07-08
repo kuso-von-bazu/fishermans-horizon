@@ -12,6 +12,7 @@ var control_enabled: bool = true
 var entanglers: Array = []   # #69/#72: 絡めてきた敵。討伐(無効化)まで鈍足
 var _ram_cd: float = 0.0
 var _wake: CPUParticles2D
+var _flame: CPUParticles2D   # #136: 炎上アニメ
 var _sc: float = 1.0
 var _body_pts: PackedVector2Array
 
@@ -246,6 +247,27 @@ func _build_visual() -> void:
 	wramp.set_color(1, Color(0.9, 0.97, 1.0, 0.0))
 	_wake.color_ramp = wramp
 	add_child(_wake)
+	# #136: 炎上アニメ(炎上中のみ噴く。船上で揺らめく炎)
+	_flame = CPUParticles2D.new()
+	_flame.amount = 22
+	_flame.lifetime = 0.7
+	_flame.emitting = false
+	_flame.position = Vector2(0, 0)
+	_flame.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	_flame.emission_rect_extents = Vector2(14.0 * sc, 22.0 * sc)
+	_flame.direction = Vector2(0, -1)
+	_flame.gravity = Vector2(0, -80)
+	_flame.spread = 20.0
+	_flame.initial_velocity_min = 20.0
+	_flame.initial_velocity_max = 50.0
+	_flame.scale_amount_min = 2.0
+	_flame.scale_amount_max = 5.0
+	var framp := Gradient.new()
+	framp.set_color(0, Color(1.0, 0.85, 0.35, 0.9))
+	framp.set_color(1, Color(0.7, 0.15, 0.05, 0.0))
+	_flame.color_ramp = framp
+	_flame.z_index = 5
+	add_child(_flame)
 	for side in [-1.0, 1.0]:
 		var spray := CPUParticles2D.new()
 		spray.amount = 16
@@ -303,6 +325,8 @@ func _physics_process(delta: float) -> void:
 	rotation += steer * turn_speed * steer_factor * delta
 	velocity = velocity.move_toward(forward() * throttle * eff_max, accel * delta)
 	move_and_slide()
+	if _flame:
+		_flame.emitting = GameState.burn_t > 0.0   # #136: 炎上中だけ炎
 	if _wake:
 		_wake.emitting = spd > max_speed * 0.15
 		# #132: バック時は船の前方に航跡が残る
