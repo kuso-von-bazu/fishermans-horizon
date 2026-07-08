@@ -490,11 +490,17 @@ func _spawn_escorts(center: Vector2, lord_id: String = "") -> Array:
 			if mid == "merman":
 				mid = "wyrm"
 			ids.append(mid)
+	# #62再: 取り巻きは主の前方(プレイヤー側)に盾として配置
+	var to_p: Vector2 = (player.global_position - center).normalized() if is_instance_valid(player) else Vector2.DOWN
+	var perp := to_p.rotated(PI / 2)
+	var i := 0
 	for mid in ids:
-		var off := Vector2.RIGHT.rotated(randf() * TAU) * randf_range(140.0, 260.0)
+		var side := -1.0 if i == 0 else 1.0
+		var off := to_p * randf_range(120.0, 190.0) + perp * side * randf_range(50.0, 110.0)
 		var e := _make_enemy("mob", mid, center + off)
 		e.is_escort = true
 		out.append(e)
+		i += 1
 	return out
 
 func _lord_alive() -> bool:

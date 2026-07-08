@@ -209,10 +209,12 @@ func _build_visual() -> void:
 	smoke.lifetime = 3.8
 	smoke.local_coords = false          # 世界座標に残す→船の後方へたなびく
 	smoke.position = Vector2(0, -6 * sc)
-	smoke.spread = 45.0
+	smoke.spread = 180.0
 	smoke.gravity = Vector2.ZERO
-	smoke.initial_velocity_min = 1.0    # ほぼ静止(その場で膨らむ)
-	smoke.initial_velocity_max = 4.0
+	smoke.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
+	smoke.emission_sphere_radius = 5.0 * sc
+	smoke.initial_velocity_min = 0.0    # 完全に静止=その場で膨らみ、船が進むと後方へ残る
+	smoke.initial_velocity_max = 0.0
 	smoke.scale_amount_min = 2.0
 	smoke.scale_amount_max = 4.5
 	var scurve := Curve.new()           # 時間経過で大きく広がる
