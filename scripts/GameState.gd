@@ -190,16 +190,16 @@ func damage_player(amount: float) -> void:
 		return   # #105: 寄港確定後は被弾しない
 	run_armor = maxf(run_armor - amount * (1.0 - damage_cut()), 0.0)
 	if at_sea and amount >= 3.0 and burn_t <= 0.0 and randf() < 0.12:
-		burn_t = 5.0
+		burn_t = 4.5
 		burn_dps = 2.5 + amount * 0.12
 		notice.emit("船が炎上! しばらくスリップダメージ")
 	stats_changed.emit()
 
-# #65: 確定炎上(ヒュドラの炎7way/レヴィアタンの薙ぎ払いなど)。必ずburn_tを起こす
+# #65: 確定炎上(ヒュドラの炎7way/レヴィアタンの薙ぎ払いなど)。必ずburn_tを起こす。#143: 4.5秒で解除
 func ignite(dps := 4.0) -> void:
 	if docking_locked:
 		return
-	burn_t = 5.0
+	burn_t = 4.5
 	burn_dps = dps
 	notice.emit("船が炎上! しばらくスリップダメージ")
 

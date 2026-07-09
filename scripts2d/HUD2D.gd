@@ -234,9 +234,9 @@ func update_bars() -> void:
 	if lbl_status:
 		var st: Array = []
 		if GameState.burn_t > 0.0:
-			st.append("🔥炎上中(あと%d秒)" % int(ceil(GameState.burn_t)))
+			st.append("炎上中(あと%d秒)" % int(ceil(GameState.burn_t)))
 		if GameState.poison_t > 0.0:
-			st.append("☠毒(あと%d秒)" % int(ceil(GameState.poison_t)))
+			st.append("毒(あと%d秒)" % int(ceil(GameState.poison_t)))
 		lbl_status.text = "  ".join(st)
 		lbl_status.visible = not st.is_empty()
 

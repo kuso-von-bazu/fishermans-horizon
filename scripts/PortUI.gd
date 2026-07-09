@@ -118,8 +118,8 @@ func _show_arrival_banner() -> void:
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl.anchor_left = 0.0
 	lbl.anchor_right = 1.0
-	lbl.anchor_top = 0.12
-	lbl.anchor_bottom = 0.12
+	lbl.anchor_top = 0.04
+	lbl.anchor_bottom = 0.04
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(lbl)
 	var tw := create_tween()

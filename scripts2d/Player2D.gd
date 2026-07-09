@@ -13,6 +13,7 @@ var entanglers: Array = []   # #69/#72: 絡めてきた敵。討伐(無効化)�
 var _ram_cd: float = 0.0
 var _wake: CPUParticles2D
 var _smoke: CPUParticles2D   # #131: 蒸気(移動方向と逆向きに流す)
+var _sprays: Array = []      # #144: 舷側のしぶき
 var _flame: CPUParticles2D   # #136: 炎上アニメ
 var _sc: float = 1.0
 var _body_pts: PackedVector2Array
@@ -216,11 +217,11 @@ func _build_visual() -> void:
 	smoke.emission_sphere_radius = 5.0 * sc
 	smoke.initial_velocity_min = 0.0    # 完全に静止=その場で膨らみ、船が進むと後方へ残る
 	smoke.initial_velocity_max = 0.0
-	smoke.scale_amount_min = 2.0
-	smoke.scale_amount_max = 4.5
-	var scurve := Curve.new()           # 時間経過で大きく広がる
-	scurve.add_point(Vector2(0.0, 0.5))
-	scurve.add_point(Vector2(1.0, 2.4))
+	smoke.scale_amount_min = 4.0        # #131再: 見やすい大きなドット
+	smoke.scale_amount_max = 8.0
+	var scurve := Curve.new()           # 時間経過でさらに大きく広がる
+	scurve.add_point(Vector2(0.0, 0.6))
+	scurve.add_point(Vector2(1.0, 2.6))
 	smoke.scale_amount_curve = scurve
 	var sramp := Gradient.new()         # 遠ざかるほど薄く消える
 	sramp.set_color(0, Color(0.88, 0.88, 0.9, 0.42))
@@ -268,19 +269,26 @@ func _build_visual() -> void:
 	_flame.color_ramp = framp
 	_flame.z_index = 5
 	add_child(_flame)
+	# 舷側のしぶき(#144: 経路に沿って残す=世界座標・ほぼ静止。バック時は非表示)
+	_sprays = []
 	for side in [-1.0, 1.0]:
 		var spray := CPUParticles2D.new()
 		spray.amount = 16
-		spray.lifetime = 0.8
+		spray.lifetime = 1.0
+		spray.local_coords = false
 		spray.position = Vector2(side * 12 * sc, -20 * sc)
-		spray.direction = Vector2(side, 0.4)
-		spray.spread = 30.0
-		spray.initial_velocity_min = 20.0
-		spray.initial_velocity_max = 46.0
+		spray.spread = 60.0
+		spray.gravity = Vector2.ZERO
+		spray.initial_velocity_min = 4.0
+		spray.initial_velocity_max = 12.0
 		spray.scale_amount_min = 1.5
 		spray.scale_amount_max = 3.5
-		spray.color = Color(0.95, 1.0, 1.0, 0.4)
+		var spr_ramp := Gradient.new()
+		spr_ramp.set_color(0, Color(0.95, 1.0, 1.0, 0.45))
+		spr_ramp.set_color(1, Color(0.95, 1.0, 1.0, 0.0))
+		spray.color_ramp = spr_ramp
 		add_child(spray)
+		_sprays.append(spray)
 
 func _ship_scale() -> float:
 	return clampf(0.9 + float(GameState.ship().armor) / 1500.0, 0.9, 1.8)
@@ -330,12 +338,15 @@ func _physics_process(delta: float) -> void:
 	if _smoke:
 		# #131: 蒸気は移動方向と逆向き(=船の後方)へ流す。世界座標の重力で押す
 		_smoke.gravity = -velocity * 0.7
+	var reversing := velocity.dot(forward()) < -1.0
 	if _wake:
 		_wake.emitting = spd > max_speed * 0.15
 		# #132: バック時は船の前方に航跡が残る
-		var reversing := velocity.dot(forward()) < -1.0
 		_wake.position = Vector2(0, -44 * _sc) if reversing else Vector2(0, 42 * _sc)
 		_wake.direction = Vector2(0, -1) if reversing else Vector2(0, 1)
+	# #144: 舷側しぶきは前進中のみ(バック時は非表示)
+	for spray in _sprays:
+		spray.emitting = spd > max_speed * 0.2 and not reversing
 	_handle_ram()
 
 func _handle_ram() -> void:

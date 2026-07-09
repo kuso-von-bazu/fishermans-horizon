@@ -200,6 +200,14 @@ func _tex_scale(t: Texture2D) -> float:
 func _update_facing(move_dir: Vector2) -> void:
 	if sprite == null or move_dir.length() < 0.01:
 		return
+	# #118: ケツァル等は常に正面(プレイヤー向き)固定で不自然な切替を防ぐ
+	if bool(def.get("always_front", false)):
+		if _facing != "front" and _tex_front != null:
+			_facing = "front"
+			sprite.texture = _tex_front
+			sprite.scale = Vector2.ONE * _tex_scale(_tex_front)
+			sprite.flip_h = false
+		return
 	var ny: float = move_dir.normalized().y
 	var want := "side"
 	if ny < -0.7:

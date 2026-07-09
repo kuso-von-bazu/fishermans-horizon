@@ -176,20 +176,22 @@ func _on_hit(body: Node) -> void:
 				if crit:
 					GameState.notice.emit("クリティカル!")   # #139: 命中時に表示
 				var ekind = body.get("kind")
+				var killed: bool = float(body.get("hp")) <= 0.0   # #116: とどめ判定
 				# #113/#117: 海賊船に確率で炎上(スリップ)。主・モブは生き物なので対象外
 				if pirate_burn > 0.0 and ekind == "pirate" and randf() < pirate_burn and body.has_method("ignite_slip"):
 					body.ignite_slip(dmg * 0.8)
 					_spawn_effect("fire", body.global_position)
-				# #115: 大砲/魚雷の着弾は派手な爆発。#116: 銛は主・モブに血しぶき
+				# #115: 大砲/魚雷の着弾は派手な爆発
 				if homing or (not falloff and not debuff and not fire):
 					_spawn_effect("explosion", body.global_position)
-				elif debuff and (ekind == "lord" or ekind == "mob"):
-					_spawn_effect("blood", body.global_position)
+				# #116再: 血しぶきは主・モブにとどめを刺したときのみ(大きめ)
+				if killed and (ekind == "lord" or ekind == "mob"):
+					_spawn_effect("blood_big", body.global_position)
 		queue_free()
 	elif not from_player and body.is_in_group("player"):
 		if fire:
-			GameState.apply_fire(dmg)
-			GameState.ignite(4.0)   # #65: ヒュドラの炎弾は被弾で必ず炎上
+			GameState.damage_player(_eff_dmg())   # #143: 通常ダメージ+炎上(永続チャンクなし)
+			GameState.ignite(4.0)   # #65: ヒュドラの炎弾は被弾で必ず炎上(4.5秒)
 		else:
 			GameState.damage_player(_eff_dmg())   # 敏捷カット込み
 			if burn_chance > 0.0 and randf() < burn_chance:
@@ -235,6 +237,13 @@ func _spawn_effect(kind: String, pos: Vector2) -> void:
 			p.scale_amount_min = 1.5
 			p.scale_amount_max = 3.0
 			p.color = Color(0.7, 0.05, 0.08)
+		"blood_big":   # #116再: とどめ用の大きな血しぶき
+			p.amount = 28
+			p.initial_velocity_min = 60.0
+			p.initial_velocity_max = 180.0
+			p.scale_amount_min = 3.5
+			p.scale_amount_max = 8.0
+			p.color = Color(0.65, 0.04, 0.06)
 	# 一定時間後に自動削除
 	var t := get_tree().create_timer(1.0)
 	t.timeout.connect(p.queue_free)
