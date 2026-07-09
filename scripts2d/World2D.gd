@@ -420,7 +420,7 @@ func _spawn_enemy() -> void:
 		id = Database.pick_mob(isle)   # #38: 島tierごとの出現割合
 	elif roll < 0.50:
 		# #73再: 海賊王。島の周り以外の全海域で出現。先の島ほど出やすい(始0.02/潮0.04/嵐0.08/果0.12)。同時1体
-		var king_rate := [0.02, 0.04, 0.08, 0.12][clampi(isle, 0, 3)]
+		var king_rate: float = [0.02, 0.04, 0.08, 0.12][clampi(isle, 0, 3)]
 		if not near_island and not _king_alive() and randf() < king_rate:
 			kind = "pirate"
 			id = "king"
