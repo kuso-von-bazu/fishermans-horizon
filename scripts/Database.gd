@@ -29,9 +29,11 @@ var combat_mobs := {
 	# #71: 嵐越え以降。merman=群れ+俊敏+好戦的, charybdis=渦潮+確率回避。#98再: マーマンHP350
 	"merman":        {"name": "マーマン",       "hp": 350, "dmg": 16, "cap": 2, "price": 304,  "ranged": false, "aerial": false, "speed": 13.0, "group": 3, "aggro": 1400.0, "face_left": true, "color": Color(0.25,0.55,0.4)},
 	"charybdis":     {"name": "カリュブディス", "hp": 900, "dmg": 28, "cap": 8, "price": 960, "ranged": true,  "aerial": false, "speed": 9.5,  "dodge": 0.333, "color": Color(0.15,0.3,0.45)},
-	# #72: 果ての島。tiamat=空中(魚雷ロック不可)+俊敏+高火力+炎上弾+低回避, dagon=触腕+絡め+毒+高速
-	"tiamat":        {"name": "ティアマット",   "hp": 1200, "dmg": 34, "cap": 10, "price": 1440, "ranged": true, "aerial": true, "speed": 16.0, "atk_cd": 1.0, "dodge": 0.15, "dodge_pass": true, "burn_chance": 0.6, "face_left": true, "color": Color(0.15,0.12,0.2)},
-	"dagon":         {"name": "ダゴン",         "hp": 1100, "dmg": 30, "cap": 9,  "price": 1280, "ranged": false, "aerial": false, "speed": 10.0, "reach": 2.5, "entangle": true, "poison": true, "color": Color(0.3,0.5,0.35)},
+	# #71: 嵐越え以降。amphiptere=空中(魚雷ロック不可)+近接のみ+高速で追尾(竜×蛇の有翼)
+	"amphiptere":    {"name": "アンフィプテレ", "hp": 780, "dmg": 32, "cap": 6, "price": 760, "ranged": false, "aerial": true, "speed": 15.0, "aggro": 1300.0, "color": Color(0.45,0.2,0.5)},
+	# #72再: 果ての島。tiamat=空中(魚雷ロック不可)+俊敏+高火力+炎上弾+低回避, dagon=触腕+絡め+毒+高速。強化
+	"tiamat":        {"name": "ティアマット",   "hp": 1600, "dmg": 42, "cap": 10, "price": 1440, "ranged": true, "aerial": true, "speed": 16.0, "atk_cd": 1.0, "dodge": 0.15, "dodge_pass": true, "burn_chance": 0.6, "zigzag": true, "face_left": true, "color": Color(0.15,0.12,0.2)},
+	"dagon":         {"name": "ダゴン",         "hp": 1500, "dmg": 40, "cap": 9,  "price": 1280, "ranged": false, "aerial": false, "speed": 10.0, "reach": 2.5, "entangle": true, "poison": true, "color": Color(0.3,0.5,0.35)},
 }
 
 # 島tierごとの戦闘モブ出現重み(#38/#69/#71/#72/#75)。
@@ -39,8 +41,8 @@ var combat_mobs := {
 var mob_weights := [
 	{"narwhal": 0.55, "seahunter": 0.25, "ornithocheirus": 0.15, "wyrm": 0.05},
 	{"wyrm": 0.45, "kraken": 0.35, "wyvern": 0.20},
-	{"kraken": 0.30, "wyvern": 0.25, "merman": 0.25, "charybdis": 0.20},                                  # #75: 嵐越え以降はワイアーム非出現
-	{"merman": 0.25, "charybdis": 0.25, "tiamat": 0.25, "dagon": 0.25},                                   # #75再: 果てはクラーケン/ワイバーンも非出現
+	{"kraken": 0.24, "wyvern": 0.20, "merman": 0.20, "charybdis": 0.18, "amphiptere": 0.18},              # #75/#71: 嵐越え以降はワイアーム非出現+アンフィプテレ
+	{"merman": 0.2, "charybdis": 0.2, "tiamat": 0.2, "dagon": 0.2, "amphiptere": 0.2},                    # #75再/#71: 果てはクラーケン/ワイバーンも非出現
 ]
 
 func pick_mob(tier: int) -> String:

@@ -30,6 +30,7 @@ var _shadow: Sprite2D
 var _flame: CPUParticles2D    # #136: 炎上(海賊)
 var _debuff_fx: CPUParticles2D # #137: デバフ表示
 var _debuff_fx_kind: String = ""
+var _dead: bool = false        # #148: 撃破処理の多重実行防止
 var _tex_side: Texture2D    # #26: 移動方向でドット絵を切替(横/正面/後ろ姿)
 var _tex_front: Texture2D
 var _tex_back: Texture2D
@@ -332,6 +333,10 @@ func _physics_process(delta: float) -> void:
 		# #118: ケツァル等は取り巻きを全滅させると引き撃ち(射程内では距離を取りつつ撃つ)
 		if bool(def.get("kite", false)) and _escorts_cleared() and dist < attack_range * 0.85:
 			move_dir = -to.normalized()
+		# #149: ティアマット等はプレイヤーを追いつつジグザグに移動
+		elif bool(def.get("zigzag", false)):
+			var perp := move_dir.rotated(PI / 2)
+			move_dir = (move_dir + perp * sin(_bob * 3.0) * 0.7).normalized()
 	else:
 		_wander_t -= delta
 		if _wander_t <= 0.0:
@@ -488,6 +493,9 @@ func _process(_d: float) -> void:
 	queue_redraw()   # ロックリング等の即時反映(軽量)
 
 func _die() -> void:
+	if _dead:
+		return   # #148: 同一フレームの多重ヒットで名声/首を重複取得しないよう1回だけ
+	_dead = true
 	match kind:
 		"mob":
 			if not GameState.add_cargo(id):
