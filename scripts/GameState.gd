@@ -124,7 +124,7 @@ func jobchange(m: Dictionary, job_id: String) -> void:
 	stats_changed.emit()
 
 # 帰港ごとの成長(ジョブの伸びに沿って+)
-const STAT_MAX := 70   # #140: 各パラメータの上限
+const STAT_MAX := 50   # #140再: 各パラメータの上限
 
 func grow_crew() -> void:
 	for m in crew:
