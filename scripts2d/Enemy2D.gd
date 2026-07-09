@@ -432,16 +432,18 @@ func _fire_weapon(wpn: String, eff_dmg: float, base_dir: Vector2, is_fire: bool)
 		"torpedo":
 			_shoot(base_dir, {"dmg": eff_dmg, "homing": true}, false, player)
 		_:
-			# #65: leviathan=全方向弾(radial)+追跡弾、hydra=炎7way+追跡弾、他主=way
-			if bool(def.get("radial", false)):
+			# #65再: leviathan=全方向弾(radial)+照準の密な3way(aim_tight)+追跡弾。hydra=炎7way+追跡弾。他主=way
+			var has_radial := bool(def.get("radial", false))
+			if has_radial:
 				var count := int(def.get("radial_count", 12))
 				for i in count:
 					_shoot(Vector2.RIGHT.rotated(TAU * i / count), {"dmg": eff_dmg}, is_fire)
-			else:
-				var way := int(def.get("way", 1))
-				for i in way:
-					var off: float = (float(i) - float(way - 1) / 2.0) * 0.20
-					_shoot(base_dir.rotated(off), {"dmg": eff_dmg}, is_fire)
+			# 照準の扇状弾(radialと併用可)。aim_tight=密な狭い扇
+			var way := int(def.get("way", 0 if has_radial else 1))
+			var spread_step: float = 0.10 if bool(def.get("aim_tight", false)) else 0.20
+			for i in way:
+				var off: float = (float(i) - float(way - 1) / 2.0) * spread_step
+				_shoot(base_dir.rotated(off), {"dmg": eff_dmg}, is_fire)
 			for h in int(def.get("homing_count", 1 if bool(def.get("homing", false)) else 0)):
 				_shoot(base_dir.rotated(randf_range(-0.3, 0.3)), {"dmg": eff_dmg * 0.8, "homing": true}, is_fire, player)
 
