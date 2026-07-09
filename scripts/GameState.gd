@@ -502,15 +502,20 @@ func equip_weapon(slot: int, wid: String) -> void:
 		weapons[slot] = wid
 		stats_changed.emit()
 
+func ship_trade_in() -> int:
+	# #51再: 下取りは現在の船の定価の80%
+	return int(float(ship().price) * 0.8)
+
+func ship_buy_cost(new_id: String) -> int:
+	# 差額。下取りが購入額を上回れば負(=返金)
+	return int(Database.ships[new_id].price) - ship_trade_in()
+
 func buy_ship(new_id: String) -> bool:
-	# 下取りは現在の船の定価の20%(#51)
-	var trade_in := int(float(ship().price) * 0.2)
-	var cost := int(Database.ships[new_id].price) - trade_in
-	cost = maxi(cost, 0)
-	if money < cost:
+	var cost := ship_buy_cost(new_id)   # #51再: 負なら返金
+	if cost > money:
 		notice.emit("資金が足りません")
 		return false
-	add_money(-cost)
+	add_money(-cost)   # costが負なら資金が増える(返金)
 	ship_id = new_id
 	# スロット数に武器配列を合わせる
 	var slots := int(ship().slots)
