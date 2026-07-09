@@ -135,6 +135,9 @@ func _ready() -> void:
 	var ps := get_tree().get_first_node_in_group("player")
 	if ps:
 		player = ps
+	# #150: 空中の敵は島の当たり判定を無視(島と重なって追う)
+	if aerial:
+		collision_mask = 0
 	# #136: 海賊の炎上 / #137: デバフのエフェクト用パーティクル
 	_flame = _make_particles(Color(1.0, 0.85, 0.35, 0.9), Color(0.7, 0.15, 0.05, 0.0))
 	add_child(_flame)
@@ -333,10 +336,13 @@ func _physics_process(delta: float) -> void:
 		# #118: ケツァル等は取り巻きを全滅させると引き撃ち(射程内では距離を取りつつ撃つ)
 		if bool(def.get("kite", false)) and _escorts_cleared() and dist < attack_range * 0.85:
 			move_dir = -to.normalized()
-		# #149: ティアマット等はプレイヤーを追いつつジグザグに移動
+		# #149再: ティアマット等はプレイヤーを追いつつ大きくジグザグに移動
 		elif bool(def.get("zigzag", false)):
 			var perp := move_dir.rotated(PI / 2)
-			move_dir = (move_dir + perp * sin(_bob * 3.0) * 0.7).normalized()
+			move_dir = (move_dir + perp * sin(_bob * 2.2) * 1.6).normalized()
+		# #150: 地上の敵は島を迂回して追う(島から離れる向きを混ぜる)
+		if not aerial:
+			move_dir = _avoid_islands(move_dir)
 	else:
 		_wander_t -= delta
 		if _wander_t <= 0.0:
@@ -460,6 +466,22 @@ func ignite_slip(amount: float) -> void:
 		sprite.modulate = Color(1.8, 0.9, 0.5)
 		var tw := create_tween()
 		tw.tween_property(sprite, "modulate", Color.WHITE, 0.3)
+
+# #150: 島を迂回するステアリング。近い島から離れる+接線方向を混ぜて回り込む
+func _avoid_islands(move_dir: Vector2) -> Vector2:
+	var result := move_dir
+	for isle in get_tree().get_nodes_in_group("island_body"):
+		if not is_instance_valid(isle):
+			continue
+		var away: Vector2 = global_position - isle.global_position
+		var d := away.length()
+		var avoid_r := 360.0 + _radius   # 島の実効半径+余白
+		if d < avoid_r and d > 1.0:
+			var strength: float = clampf(1.0 - d / avoid_r, 0.0, 1.0)
+			# 反発 + 接線(進行方向に近い側へ回り込む)
+			var tangent: float = 1.0 if move_dir.dot(away.rotated(PI / 2)) >= 0.0 else -1.0
+			result += (away.normalized() * 0.8 + away.rotated(PI / 2).normalized() * tangent * 0.9) * strength
+	return result.normalized()
 
 # #118: 取り巻きが全滅したか
 func _escorts_cleared() -> bool:

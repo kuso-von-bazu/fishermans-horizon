@@ -194,8 +194,16 @@ func show_tavern() -> void:
 		var j: Dictionary = GameState.jobs[m.job]
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 8)
-		var info := _p("%s [%s] 体%d 敏%d 射%d 知%d 視%d" % [m.name, j.name, m.hp, m.agi, m.sht, m.int_, m.vis])
+		# #140再: 上限(STAT_MAX)に達したパラメータは黄色で表示(RichTextLabel)
+		var info := RichTextLabel.new()
+		info.bbcode_enabled = true
+		info.fit_content = true
+		info.scroll_active = false
 		info.custom_minimum_size = Vector2(330, 0)
+		info.add_theme_font_size_override("normal_font_size", 18)
+		info.text = "%s [%s] %s %s %s %s %s" % [m.name, j.name,
+			_stat_bb("体", int(m.hp)), _stat_bb("敏", int(m.agi)), _stat_bb("射", int(m.sht)),
+			_stat_bb("知", int(m.int_)), _stat_bb("視", int(m.vis))]
 		row.add_child(info)
 		for jid in GameState.jobs:
 			if GameState.can_jobchange(m, jid):
@@ -385,6 +393,12 @@ func show_travel() -> void:
 			content.add_child(row)
 		else:
 			content.add_child(_p("・%s  [未開放 / 必要名声 %d]  方角:【%s】" % [isle.name, isle.fame_req, compass]))
+
+# #140再: パラメータ表記。上限到達で黄色に
+func _stat_bb(label: String, v: int) -> String:
+	if v >= GameState.STAT_MAX:
+		return "[color=yellow]%s%d[/color]" % [label, v]
+	return "%s%d" % [label, v]
 
 # ---------------- helpers ----------------
 func _item_name(id: String) -> String:

@@ -28,7 +28,7 @@ var combat_mobs := {
 	"wyvern":        {"name": "ワイバーン",     "hp": 800, "dmg": 26, "cap": 6, "price": 800, "ranged": true,  "aerial": false, "speed": 9.5,  "atk_cd": 1.1, "face_left": true, "color": Color(0.7,0.15,0.15)},
 	# #71: 嵐越え以降。merman=群れ+俊敏+好戦的, charybdis=渦潮+確率回避。#98再: マーマンHP350
 	"merman":        {"name": "マーマン",       "hp": 350, "dmg": 16, "cap": 2, "price": 304,  "ranged": false, "aerial": false, "speed": 13.0, "group": 3, "aggro": 1400.0, "face_left": true, "color": Color(0.25,0.55,0.4)},
-	"charybdis":     {"name": "カリュブディス", "hp": 900, "dmg": 28, "cap": 8, "price": 960, "ranged": true,  "aerial": false, "speed": 9.5,  "dodge": 0.333, "color": Color(0.15,0.3,0.45)},
+	"charybdis":     {"name": "カリュブディス", "hp": 900, "dmg": 28, "cap": 8, "price": 960, "ranged": true,  "aerial": false, "speed": 9.5,  "dodge": 0.333, "entangle": true, "color": Color(0.15,0.3,0.45)},
 	# #71: 嵐越え以降。amphiptere=空中(魚雷ロック不可)+近接のみ+高速で追尾(竜×蛇の有翼)
 	"amphiptere":    {"name": "アンフィプテレ", "hp": 780, "dmg": 32, "cap": 6, "price": 760, "ranged": false, "aerial": true, "speed": 15.0, "aggro": 1300.0, "color": Color(0.45,0.2,0.5)},
 	# #72再: 果ての島。tiamat=空中(魚雷ロック不可)+俊敏+高火力+炎上弾+低回避, dagon=触腕+絡め+毒+高速。強化
@@ -137,8 +137,10 @@ var ships := {
 	"cutter":   {"name": "外洋カッター",   "food": 260, "hold": 30,  "armor": 260,  "slots": 3, "range": 1, "speed": 12.0, "price": 9000,   "trade": 3500},
 	"corvette": {"name": "コルベット",     "food": 360, "hold": 40,  "armor": 480,  "slots": 4, "range": 2, "speed": 12.5, "price": 32000,  "trade": 12000},
 	"hunter_h": {"name": "猟特化フリゲート","food": 320, "hold": 32,  "armor": 600,  "slots": 4, "range": 2, "speed": 13.5, "price": 50000,  "trade": 18000},
-	"hauler":   {"name": "大型運搬艦",     "food": 420, "hold": 70,  "armor": 520,  "slots": 4, "range": 2, "speed": 11.0, "price": 50000,  "trade": 18000},
+	"hauler":   {"name": "大型運搬艦",     "food": 420, "hold": 70,  "armor": 720,  "slots": 4, "range": 2, "speed": 11.0, "price": 50000,  "trade": 18000},
 	"dread":    {"name": "弩級戦艦",       "food": 520, "hold": 60,  "armor": 1100, "slots": 4, "range": 3, "speed": 13.0, "price": 110000, "trade": 40000},
+	# #151: 巡洋戦艦。弩級と対。低装甲・高速・中型・後退が得意(reverse=後退速度倍率)
+	"cruiser":  {"name": "巡洋戦艦",       "food": 460, "hold": 45,  "armor": 780,  "slots": 4, "range": 3, "speed": 14.5, "price": 110000, "trade": 40000, "reverse": 0.9},
 }
 
 # ---------------------------------------------------------------------------

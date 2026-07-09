@@ -16,6 +16,7 @@ var _smoke: CPUParticles2D   # #131: 蒸気(移動方向と逆向きに流す)
 var _sprays: Array = []      # #144: 舷側のしぶき
 var _flame: CPUParticles2D   # #136: 炎上アニメ
 var _sc: float = 1.0
+var _half_w: float = 30.0    # #132/#144: 船の見た目の半幅(px)
 var _body_pts: PackedVector2Array
 
 func _ready() -> void:
@@ -147,6 +148,25 @@ const SHIP_MAPS := {
 		"...HggH...",
 		"....HH....",
 	],
+	# 巡洋戦艦: 細長く鋭い船体・単砲塔・後退が得意
+	"cruiser": [
+		"....HH....",
+		"...HhhH...",
+		"..HhWWhH..",
+		".HhGWWGhH.",
+		".HhDBBDhH.",
+		".HhDWWDhH.",
+		".HhDFFDhH.",
+		".HhDRRDhH.",
+		".HhDFFDhH.",
+		".HhDWWDhH.",
+		".HhGDDGhH.",
+		".HhDDDDhH.",
+		"..HhDDhH..",
+		"..HhWWhH..",
+		"...HhhH...",
+		"....HH....",
+	],
 	# 大型運搬艦: 幅広・積荷(黄)コンテナ・ずんぐり
 	"hauler": [
 		"..HHHHHHHH..",
@@ -192,6 +212,10 @@ func _build_ship_texture(with_ram: bool, ram_steel: bool) -> ImageTexture:
 func _build_visual() -> void:
 	var sc := _ship_scale()
 	_sc = sc
+	# #132/#144: 船の見た目の半幅(px)を算出して航跡幅・舷側しぶき位置に使う
+	var map: Array = SHIP_MAPS.get(GameState.ship_id, SHIP_MAP)
+	var mw: int = map[0].length()
+	_half_w = (float(mw) / 2.0 - 1.0) * 3.4 * sc
 	var with_ram: bool = GameState.ram_id != "none"
 	var sprite := Sprite2D.new()
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -234,11 +258,11 @@ func _build_visual() -> void:
 	_wake.amount = 70
 	_wake.lifetime = 3.2
 	_wake.local_coords = false
-	_wake.position = Vector2(0, 42 * sc)
+	_wake.position = Vector2(0, 54 * sc)   # #132: 船尾よりさらに後方(船体と重ねない)
 	_wake.spread = 12.0
 	_wake.gravity = Vector2.ZERO
 	_wake.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
-	_wake.emission_rect_extents = Vector2(11.0 * sc, 1.5)   # 船幅に応じた幅
+	_wake.emission_rect_extents = Vector2(_half_w, 1.5)   # #132: 船の横幅に合わせる
 	_wake.initial_velocity_min = 0.0    # その場に残す(経路に沿う)
 	_wake.initial_velocity_max = 3.0
 	_wake.scale_amount_min = 2.5
@@ -276,7 +300,7 @@ func _build_visual() -> void:
 		spray.amount = 16
 		spray.lifetime = 1.0
 		spray.local_coords = false
-		spray.position = Vector2(side * 12 * sc, -20 * sc)
+		spray.position = Vector2(side * _half_w, -10 * sc)   # #144: 船の左右の縁から
 		spray.spread = 60.0
 		spray.gravity = Vector2.ZERO
 		spray.initial_velocity_min = 4.0
@@ -320,7 +344,7 @@ func _physics_process(delta: float) -> void:
 	if Input.is_action_pressed("throttle_up"):
 		throttle += 1.0
 	if Input.is_action_pressed("throttle_down"):
-		throttle -= 0.6
+		throttle -= float(GameState.ship().get("reverse", 0.6))   # #151: 後退が得意な船(巡洋戦艦)は倍率大
 	if Input.is_action_pressed("turn_left"):
 		steer -= 1.0
 	if Input.is_action_pressed("turn_right"):
