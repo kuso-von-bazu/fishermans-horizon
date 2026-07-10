@@ -130,8 +130,13 @@ func grow_crew() -> void:
 	for m in crew:
 		var g: Dictionary = jobs[m.job].growth
 		for k in g:
-			if randf() < (0.5 + float(g[k]) * 0.18) * 0.8:   # #153: 成長速度を8割に
-				m[k] = mini(int(m[k]) + maxi(int(g[k]), 0), STAT_MAX)   # #140: 上限50
+			var cur := int(m[k])
+			# #153再: 30を超えると上限(50)に近づくほど伸びにくい
+			var falloff := 1.0
+			if cur > 30:
+				falloff = clampf(1.0 - float(cur - 30) / float(STAT_MAX - 30), 0.05, 1.0)
+			if randf() < (0.5 + float(g[k]) * 0.18) * 0.8 * falloff:   # #153: 成長速度8割+高値で逓減
+				m[k] = mini(cur + maxi(int(g[k]), 0), STAT_MAX)   # #140: 上限50
 
 func crew_wages() -> int:
 	# #125: 到達した島が増えるごとに賃金が少しずつ上昇(最遠到達島に比例)
