@@ -434,25 +434,28 @@ func _fire_weapon(wpn: String, eff_dmg: float, base_dir: Vector2, is_fire: bool)
 		_:
 			# #65再: leviathan=全方向弾(radial)+照準の密な3way(aim_tight)+追跡弾。hydra=炎7way+追跡弾。他主=way
 			var has_radial := bool(def.get("radial", false))
+			var dm := float(def.get("shot_dmg_mult", 1.0))       # #65: 攻撃力倍率
+			var ss := float(def.get("shot_speed_mult", 1.0))     # #65: 全方位/照準弾の弾速倍率
+			var hs := float(def.get("homing_speed_mult", 1.0))   # #65: 追跡弾の弾速倍率
 			if has_radial:
 				var count := int(def.get("radial_count", 12))
 				for i in count:
-					_shoot(Vector2.RIGHT.rotated(TAU * i / count), {"dmg": eff_dmg}, is_fire)
+					_shoot(Vector2.RIGHT.rotated(TAU * i / count), {"dmg": eff_dmg * dm, "speed_mult": ss}, is_fire)
 			# 照準の扇状弾(radialと併用可)。aim_tight=密な狭い扇
 			var way := int(def.get("way", 0 if has_radial else 1))
 			var spread_step: float = 0.10 if bool(def.get("aim_tight", false)) else 0.20
 			for i in way:
 				var off: float = (float(i) - float(way - 1) / 2.0) * spread_step
-				_shoot(base_dir.rotated(off), {"dmg": eff_dmg}, is_fire)
+				_shoot(base_dir.rotated(off), {"dmg": eff_dmg * dm, "speed_mult": ss}, is_fire)
 			for h in int(def.get("homing_count", 1 if bool(def.get("homing", false)) else 0)):
-				_shoot(base_dir.rotated(randf_range(-0.3, 0.3)), {"dmg": eff_dmg * 0.8, "homing": true}, is_fire, player)
+				_shoot(base_dir.rotated(randf_range(-0.3, 0.3)), {"dmg": eff_dmg * 0.8 * dm, "homing": true, "speed_mult": hs}, is_fire, player)
 
 func _shoot(d: Vector2, w: Dictionary, is_fire: bool, tgt: Node2D = null) -> void:
 	# #72: ティアマット等は遠隔弾に高確率の炎上を付与
 	if float(def.get("burn_chance", 0.0)) > 0.0 and not w.has("homing"):
 		w["burn_chance"] = float(def.get("burn_chance", 0.0))
-	# #65: レヴィアタン等は全方位/照準弾の弾速を落とす(追跡弾は対象外)
-	if float(def.get("shot_speed_mult", 1.0)) != 1.0 and not w.has("homing"):
+	# #65: 弾速倍率(_fire_weaponで明示指定済みならそのまま)
+	if not w.has("speed_mult") and float(def.get("shot_speed_mult", 1.0)) != 1.0 and not w.has("homing"):
 		w["speed_mult"] = float(def.get("shot_speed_mult", 1.0))
 	var proj := Area2D.new()
 	proj.set_script(preload("res://scripts2d/Projectile2D.gd"))

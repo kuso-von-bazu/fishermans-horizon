@@ -12,7 +12,9 @@ DST = os.path.join(SRC, "pixel")
 os.makedirs(DST, exist_ok=True)
 LONG = 48
 # #81: 大型ボスは高精細(ドット数多め)
-LONG_OVERRIDE = {"lord_leviathan.png": 128, "lord_hydra.png": 80, "lord_quetzal.png": 80}
+LONG_OVERRIDE = {"lord_leviathan.png": 200, "lord_leviathan_front.png": 200, "lord_leviathan_back.png": 200, "lord_hydra.png": 80, "lord_quetzal.png": 80}
+# #81: レヴィアタンは色数も増やしてより詳細に
+COLORS_OVERRIDE = {"lord_leviathan.png": 64, "lord_leviathan_front.png": 64, "lord_leviathan_back.png": 64}
 
 for f in sorted(os.listdir(SRC)):
     if not f.lower().endswith(".png"):
@@ -25,7 +27,7 @@ for f in sorted(os.listdir(SRC)):
     s = LONG_OVERRIDE.get(f, LONG) / max(w, h)
     small = im.resize((max(1, int(w * s)), max(1, int(h * s))), Image.LANCZOS)
     # 減色(アルファ保持): RGBを32色にパレット化
-    rgb = small.convert("RGB").quantize(colors=32, dither=Image.Dither.NONE).convert("RGB")
+    rgb = small.convert("RGB").quantize(colors=COLORS_OVERRIDE.get(f, 32), dither=Image.Dither.NONE).convert("RGB")
     out = Image.merge("RGBA", (*rgb.split(), small.split()[3]))
     # 半端なアルファを2値化(ドット絵らしく)
     a = out.split()[3].point(lambda v: 255 if v > 96 else 0)
