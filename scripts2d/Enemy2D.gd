@@ -336,10 +336,10 @@ func _physics_process(delta: float) -> void:
 		# #118: ケツァル等は取り巻きを全滅させると引き撃ち(射程内では距離を取りつつ撃つ)
 		if bool(def.get("kite", false)) and _escorts_cleared() and dist < attack_range * 0.85:
 			move_dir = -to.normalized()
-		# #149再: ティアマット等はプレイヤーを追いつつ大きくジグザグに移動
+		# #149再: ティアマット等はプレイヤーを追いつつさらに大きくジグザグに移動
 		elif bool(def.get("zigzag", false)):
 			var perp := move_dir.rotated(PI / 2)
-			move_dir = (move_dir + perp * sin(_bob * 2.2) * 1.6).normalized()
+			move_dir = (move_dir + perp * sin(_bob * 1.8) * 2.6).normalized()
 		# #150: 地上の敵は島を迂回して追う(島から離れる向きを混ぜる)
 		if not aerial:
 			move_dir = _avoid_islands(move_dir)
@@ -451,6 +451,9 @@ func _shoot(d: Vector2, w: Dictionary, is_fire: bool, tgt: Node2D = null) -> voi
 	# #72: ティアマット等は遠隔弾に高確率の炎上を付与
 	if float(def.get("burn_chance", 0.0)) > 0.0 and not w.has("homing"):
 		w["burn_chance"] = float(def.get("burn_chance", 0.0))
+	# #65: レヴィアタン等は全方位/照準弾の弾速を落とす(追跡弾は対象外)
+	if float(def.get("shot_speed_mult", 1.0)) != 1.0 and not w.has("homing"):
+		w["speed_mult"] = float(def.get("shot_speed_mult", 1.0))
 	var proj := Area2D.new()
 	proj.set_script(preload("res://scripts2d/Projectile2D.gd"))
 	get_parent().add_child(proj)

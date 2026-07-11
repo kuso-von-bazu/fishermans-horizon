@@ -30,7 +30,7 @@ var combat_mobs := {
 	"merman":        {"name": "マーマン",       "hp": 350, "dmg": 16, "cap": 2, "price": 304,  "ranged": false, "aerial": false, "speed": 13.0, "group": 3, "aggro": 1400.0, "face_left": true, "color": Color(0.25,0.55,0.4)},
 	"charybdis":     {"name": "カリュブディス", "hp": 900, "dmg": 28, "cap": 8, "price": 960, "ranged": true,  "aerial": false, "speed": 9.5,  "dodge": 0.333, "entangle": true, "color": Color(0.15,0.3,0.45)},
 	# #71: 嵐越え以降。amphiptere=空中(魚雷ロック不可)+近接のみ+高速で追尾(竜×蛇の有翼)
-	"amphiptere":    {"name": "アンフィプテレ", "hp": 780, "dmg": 32, "cap": 6, "price": 760, "ranged": false, "aerial": true, "speed": 15.0, "aggro": 1300.0, "color": Color(0.45,0.2,0.5)},
+	"amphiptere":    {"name": "アンフィプテレ", "hp": 780, "dmg": 32, "cap": 6, "price": 760, "ranged": false, "aerial": true, "speed": 15.0, "aggro": 1300.0, "face_left": true, "color": Color(0.45,0.2,0.5)},
 	# #72再: 果ての島。tiamat=空中(魚雷ロック不可)+俊敏+高火力+炎上弾+低回避, dagon=触腕+絡め+毒+高速。強化
 	"tiamat":        {"name": "ティアマット",   "hp": 1600, "dmg": 42, "cap": 10, "price": 1440, "ranged": true, "aerial": true, "speed": 16.0, "atk_cd": 1.0, "dodge": 0.25, "dodge_pass": true, "burn_chance": 0.6, "zigzag": true, "face_left": true, "color": Color(0.15,0.12,0.2)},
 	"dagon":         {"name": "ダゴン",         "hp": 1500, "dmg": 40, "cap": 9,  "price": 1280, "ranged": false, "aerial": false, "speed": 10.0, "reach": 2.5, "entangle": true, "poison": true, "color": Color(0.3,0.5,0.35)},
@@ -76,7 +76,7 @@ var lords := {
 	# #110/#111: ヒュドラ/ケツァル/レヴィアタンを強化。#65: 弾幕(way/homing_count/radial_count)と確定炎上(burn_fire)
 	"hydra":     {"name": "ヒュドラ",                 "hp": 3200, "dmg": 46, "cap": 12, "price": 2400, "bounty": 6000,  "fame": 25, "island": 2, "ranged": true,  "aerial": false, "pair": false, "speed": 8.5, "way": 7, "fire": true, "burn_fire": true, "homing_count": 2, "dir": 90, "lore": "旧人類が神を作り出す過程で生まれた失敗作。口から炎を吐いて攻撃してくる。"},
 	"quetzal":   {"name": "ケツァルコアトル",         "hp": 3600, "dmg": 50, "cap": 13, "price": 3000, "bounty": 8000,  "fame": 30, "island": 2, "ranged": true, "aerial": true,  "pair": false, "speed": 13.0, "way": 5, "homing_count": 2, "dodge": 0.12, "dodge_pass": true, "kite": true, "always_front": true, "dir": 270, "lore": "空中から攻撃してくるので、魚雷でのロックオンは不可能。旧人類がレヴィアタンへの対抗策として創造したが、彼らはそれぞれ空と海を荒らしまわるばかりであった。"},
-	"leviathan": {"name": "レヴィアタン",             "hp": 8500, "dmg": 62, "cap": 25, "price": 9999, "bounty": 50000, "fame": 60, "island": 3, "ranged": true,  "aerial": false, "pair": false, "speed": 9.5, "radial": true, "radial_count": 24, "way": 3, "aim_tight": true, "homing_count": 4, "dir": 180, "face_left": true, "lore": "旧人類が創り出した神。神の領域に達した旧人類のバイオテクノロジーは神をも創造したが、皮肉にもそれは人類種の天敵となり、残されたわずかな陸地を除いて人類の生存可能領域はなくなった。"},
+	"leviathan": {"name": "レヴィアタン",             "hp": 8500, "dmg": 62, "cap": 25, "price": 9999, "bounty": 50000, "fame": 60, "island": 3, "ranged": true,  "aerial": false, "pair": false, "speed": 9.5, "radial": true, "radial_count": 24, "way": 3, "aim_tight": true, "shot_speed_mult": 0.6, "homing_count": 4, "dir": 180, "face_left": true, "lore": "旧人類が創り出した神。神の領域に達した旧人類のバイオテクノロジーは神をも創造したが、皮肉にもそれは人類種の天敵となり、残されたわずかな陸地を除いて人類の生存可能領域はなくなった。"},
 }
 
 # 方位(度・北=0=-Z, 時計回り)を八方位の日本語に
@@ -140,7 +140,7 @@ var ships := {
 	"hauler":   {"name": "大型運搬艦",     "food": 420, "hold": 70,  "armor": 720,  "slots": 4, "range": 2, "speed": 11.0, "price": 50000,  "trade": 18000},
 	"dread":    {"name": "弩級戦艦",       "food": 520, "hold": 60,  "armor": 1100, "slots": 4, "range": 3, "speed": 13.0, "price": 110000, "trade": 40000},
 	# #151: 巡洋戦艦。弩級と対。低装甲・高速・中型・後退が得意(reverse=後退速度倍率)
-	"cruiser":  {"name": "巡洋戦艦",       "food": 460, "hold": 45,  "armor": 780,  "slots": 4, "range": 3, "speed": 14.5, "price": 110000, "trade": 40000, "reverse": 0.9},
+	"cruiser":  {"name": "巡洋戦艦",       "food": 460, "hold": 45,  "armor": 900,  "slots": 4, "range": 3, "speed": 14.5, "price": 110000, "trade": 40000, "reverse": 0.9},
 }
 
 # ---------------------------------------------------------------------------

@@ -262,8 +262,8 @@ func _physics_process(delta: float) -> void:
 	# #68: Rキーを5秒長押しで直近の島へ帰還。長押し中に装甲0なら大破(後段の装甲チェックで処理)
 	if Input.is_action_pressed("fast_return") and not _returning and not _food_dialog_open:
 		_return_hold += delta
-		hud.set_return_progress(_return_hold / 5.0)
-		if _return_hold >= 5.0:
+		hud.set_return_progress(_return_hold / 3.0)
+		if _return_hold >= 3.0:
 			_return_hold = 0.0
 			hud.set_return_progress(0.0)
 			GameState.notice.emit("%s へ帰還" % Database.island(GameState.current_island).name)

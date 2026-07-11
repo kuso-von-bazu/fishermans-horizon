@@ -19,10 +19,11 @@ var dir: Vector2 = Vector2.UP
 var from_player: bool = true
 var _t: float = 0.0
 var _travel: float = 0.0
+var _offscreen_t: float = 0.0   # #154: 画面外にいる時間
 
 func setup(p_dir: Vector2, w: Dictionary, p_target: Node2D = null) -> void:
 	dmg = float(w.get("dmg", 5))
-	speed = (70.0 + float(w.get("dmg", 5)) * 0.3) * K
+	speed = (70.0 + float(w.get("dmg", 5)) * 0.3) * K * float(w.get("speed_mult", 1.0))   # #65: 弾速倍率
 	slip = bool(w.get("slip", false))
 	debuff = bool(w.get("debuff", false))
 	homing = bool(w.get("homing", false))
@@ -148,6 +149,20 @@ func _physics_process(delta: float) -> void:
 		global_position += dir * speed * delta
 	_travel += speed * delta
 	life -= delta
+	# #154: 自機の弾は画面外に出てしばらくで消滅(離れすぎた敵に当てない)
+	if from_player:
+		var vp := get_viewport_rect().size
+		var cam := get_viewport().get_camera_2d()
+		if cam:
+			var rel := global_position - (cam.global_position - vp * 0.5)
+			var margin := 80.0
+			if rel.x < -margin or rel.y < -margin or rel.x > vp.x + margin or rel.y > vp.y + margin:
+				_offscreen_t += delta
+				if _offscreen_t > 0.35:
+					queue_free()
+					return
+			else:
+				_offscreen_t = 0.0
 	if life <= 0:
 		queue_free()
 

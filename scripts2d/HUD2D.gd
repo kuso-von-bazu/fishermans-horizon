@@ -77,7 +77,7 @@ func _build() -> void:
 	sonar.draw.connect(_draw_sonar)
 	root.add_child(sonar)
 	# #68: 帰還キーのヒント(ソナー下)。資金/名声と同じ見やすい白フォントに
-	lbl_return = _label("[R]長押し(5秒)で直近の島へ帰還", 17)
+	lbl_return = _label("[R]長押し(3秒)で直近の島へ帰還", 17)
 	lbl_return.anchor_left = 1.0
 	lbl_return.anchor_right = 1.0
 	lbl_return.offset_left = -350
@@ -376,10 +376,10 @@ func set_return_progress(t: float) -> void:
 	if lbl_return == null:
 		return
 	if t <= 0.0:
-		lbl_return.text = "[R]長押し(5秒)で直近の島へ帰還"
+		lbl_return.text = "[R]長押し(3秒)で直近の島へ帰還"
 		lbl_return.add_theme_color_override("font_color", Color.WHITE)
 	else:
-		var secs: float = ceil((1.0 - clampf(t, 0.0, 1.0)) * 5.0)
+		var secs: float = ceil((1.0 - clampf(t, 0.0, 1.0)) * 3.0)
 		var bars := int(clampf(t, 0.0, 1.0) * 10.0)
 		lbl_return.text = "帰還まで %d秒  [%s%s]" % [int(secs), "■".repeat(bars), "・".repeat(10 - bars)]
 		lbl_return.add_theme_color_override("font_color", Color(1.0, 0.85, 0.4))
