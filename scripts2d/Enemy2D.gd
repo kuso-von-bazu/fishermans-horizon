@@ -178,6 +178,36 @@ func _make_particles(c0: Color, c1: Color) -> CPUParticles2D:
 	p.z_index = 3
 	return p
 
+# #156: 薙ぎ払いの水しぶきエフェクト。攻撃方向へ扇状に飛沫を飛ばし、視覚的に薙ぎ払いを示す
+func _nagiharai_splash(dir: Vector2, reach: float) -> void:
+	var p := CPUParticles2D.new()
+	p.z_index = 4
+	p.emitting = true
+	p.one_shot = true
+	p.explosiveness = 0.9
+	p.amount = 40
+	p.lifetime = 0.5
+	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
+	p.emission_sphere_radius = _radius * 0.8
+	p.direction = dir
+	p.spread = 55.0   # 攻撃方向を中心に扇状
+	p.gravity = Vector2.ZERO
+	p.initial_velocity_min = reach * 1.6
+	p.initial_velocity_max = reach * 3.2
+	p.damping_min = reach * 2.0
+	p.damping_max = reach * 3.5
+	p.scale_amount_min = 4.0
+	p.scale_amount_max = 9.0
+	var g := Gradient.new()
+	g.set_color(0, Color(0.95, 0.98, 1.0, 0.95))    # 白い飛沫
+	g.set_color(1, Color(0.55, 0.75, 0.9, 0.0))     # 水色に消える
+	p.color_ramp = g
+	get_parent().add_child(p)
+	p.global_position = global_position + dir * _radius
+	# 一定時間後に自動破棄
+	var t := get_tree().create_timer(1.0)
+	t.timeout.connect(func(): if is_instance_valid(p): p.queue_free())
+
 func _load_tex() -> Texture2D:
 	# ドット絵版(#26)優先。なければ元画像。
 	var pixel := "res://assets/images/pixel/%s_%s.png" % [kind, id]
@@ -380,7 +410,9 @@ func _attack(delta: float, dist: float) -> void:
 	var melee_r: float = _radius + (12.0 if kind == "lord" else 9.0) * K * float(def.get("reach", 1.0))
 	if kind == "lord":
 		# #65: 全主が遠隔攻撃。近距離では従来の近接/固有技
-		if id == "leviathan" and dist <= melee_r * 1.4:
+		if id == "leviathan" and dist <= melee_r * 2.5:   # #156: 薙ぎ払いは通常近接の2.5倍の距離まで届く
+			var atk_dir := (player.global_position - global_position).normalized()
+			_nagiharai_splash(atk_dir, melee_r * 2.5)   # #156: 攻撃方向へしぶきエフェクト
 			_damage_player(eff_dmg * 1.3)
 			GameState.ignite(5.0)   # #65: 薙ぎ払いは必ず炎上
 			GameState.notice.emit("レヴィアタンの薙ぎ払い!")

@@ -34,6 +34,8 @@ var combat_mobs := {
 	# #72再: 果ての島。tiamat=空中(魚雷ロック不可)+俊敏+高火力+炎上弾+低回避, dagon=触腕+絡め+毒+高速。強化
 	"tiamat":        {"name": "ティアマット",   "hp": 1600, "dmg": 42, "cap": 10, "price": 1440, "ranged": true, "aerial": true, "speed": 16.0, "atk_cd": 1.0, "dodge": 0.25, "dodge_pass": true, "burn_chance": 0.6, "zigzag": true, "face_left": true, "color": Color(0.15,0.12,0.2)},
 	"dagon":         {"name": "ダゴン",         "hp": 1500, "dmg": 40, "cap": 9,  "price": 1280, "ranged": false, "aerial": false, "speed": 10.0, "reach": 2.5, "entangle": true, "poison": true, "color": Color(0.3,0.5,0.35)},
+	# #72再: ザッハーク。銀色の神々しい竜。空中(魚雷ロック不可)+俊敏+高火力、密度の高い3way弾(aim_tight)、攻撃回避率15%(回避時は弾が後方へ抜ける)
+	"zahhak":        {"name": "ザッハーク",     "hp": 1750, "dmg": 45, "cap": 10, "price": 1560, "ranged": true, "aerial": true, "speed": 17.0, "atk_cd": 0.95, "dodge": 0.15, "dodge_pass": true, "way": 3, "aim_tight": true, "zigzag": true, "face_left": true, "color": Color(0.82,0.85,0.92)},
 }
 
 # 島tierごとの戦闘モブ出現重み(#38/#69/#71/#72/#75)。
@@ -42,7 +44,7 @@ var mob_weights := [
 	{"narwhal": 0.55, "seahunter": 0.25, "ornithocheirus": 0.15, "wyrm": 0.05},
 	{"wyrm": 0.45, "kraken": 0.35, "wyvern": 0.20},
 	{"kraken": 0.24, "wyvern": 0.20, "merman": 0.20, "charybdis": 0.18, "amphiptere": 0.18},              # #75/#71: 嵐越え以降はワイアーム非出現+アンフィプテレ
-	{"merman": 0.2, "charybdis": 0.2, "tiamat": 0.2, "dagon": 0.2, "amphiptere": 0.2},                    # #75再/#71: 果てはクラーケン/ワイバーンも非出現
+	{"merman": 0.15, "charybdis": 0.15, "tiamat": 0.2, "dagon": 0.2, "amphiptere": 0.12, "zahhak": 0.18}, # #75再/#71: 果てはクラーケン/ワイバーンも非出現。#72再: ザッハーク追加
 ]
 
 func pick_mob(tier: int) -> String:
@@ -76,7 +78,8 @@ var lords := {
 	# #110/#111: ヒュドラ/ケツァル/レヴィアタンを強化。#65: 弾幕(way/homing_count/radial_count)と確定炎上(burn_fire)
 	"hydra":     {"name": "ヒュドラ",                 "hp": 3200, "dmg": 46, "cap": 12, "price": 2400, "bounty": 6000,  "fame": 25, "island": 2, "ranged": true,  "aerial": false, "pair": false, "speed": 8.5, "way": 7, "fire": true, "burn_fire": true, "homing_count": 2, "dir": 90, "lore": "旧人類が神を作り出す過程で生まれた失敗作。口から炎を吐いて攻撃してくる。"},
 	"quetzal":   {"name": "ケツァルコアトル",         "hp": 3600, "dmg": 50, "cap": 13, "price": 3000, "bounty": 8000,  "fame": 30, "island": 2, "ranged": true, "aerial": true,  "pair": false, "speed": 13.0, "way": 5, "homing_count": 2, "dodge": 0.12, "dodge_pass": true, "kite": true, "always_front": true, "dir": 270, "lore": "空中から攻撃してくるので、魚雷でのロックオンは不可能。旧人類がレヴィアタンへの対抗策として創造したが、彼らはそれぞれ空と海を荒らしまわるばかりであった。"},
-	"leviathan": {"name": "レヴィアタン",             "hp": 8500, "dmg": 62, "cap": 25, "price": 9999, "bounty": 50000, "fame": 60, "island": 3, "ranged": true,  "aerial": false, "pair": false, "speed": 9.5, "radial": true, "radial_count": 24, "way": 3, "aim_tight": true, "shot_speed_mult": 0.5, "homing_speed_mult": 0.7, "shot_dmg_mult": 0.7, "homing_count": 4, "dir": 180, "face_left": true, "lore": "旧人類が創り出した神。神の領域に達した旧人類のバイオテクノロジーは神をも創造したが、皮肉にもそれは人類種の天敵となり、残されたわずかな陸地を除いて人類の生存可能領域はなくなった。"},
+	# #155: 出現方角を果ての島の東(dir=90)へ。#65: 追跡弾速を変更前(1.0)の5割=0.5に
+	"leviathan": {"name": "レヴィアタン",             "hp": 8500, "dmg": 62, "cap": 25, "price": 9999, "bounty": 50000, "fame": 60, "island": 3, "ranged": true,  "aerial": false, "pair": false, "speed": 9.5, "radial": true, "radial_count": 24, "way": 3, "aim_tight": true, "shot_speed_mult": 0.5, "homing_speed_mult": 0.5, "shot_dmg_mult": 0.7, "homing_count": 4, "dir": 90, "face_left": true, "lore": "旧人類が創り出した神。神の領域に達した旧人類のバイオテクノロジーは神をも創造したが、皮肉にもそれは人類種の天敵となり、残されたわずかな陸地を除いて人類の生存可能領域はなくなった。"},
 }
 
 # 方位(度・北=0=-Z, 時計回り)を八方位の日本語に
@@ -134,13 +137,14 @@ var rams := {
 var ships := {
 	"raft":     {"name": "粗末な漁船",     "food": 100, "hold": 12,  "armor": 60,   "slots": 1, "range": 0, "speed": 11.0, "price": 0,     "trade": 0},
 	"skiff":    {"name": "武装スキフ",     "food": 140, "hold": 18,  "armor": 140,  "slots": 2, "range": 0, "speed": 11.5, "price": 1500,  "trade": 1000},
-	"cutter":   {"name": "外洋カッター",   "food": 260, "hold": 30,  "armor": 260,  "slots": 3, "range": 1, "speed": 12.0, "price": 9000,   "trade": 3500},
-	"corvette": {"name": "コルベット",     "food": 360, "hold": 40,  "armor": 480,  "slots": 4, "range": 2, "speed": 12.5, "price": 32000,  "trade": 12000},
-	"hunter_h": {"name": "猟特化フリゲート","food": 320, "hold": 32,  "armor": 600,  "slots": 4, "range": 2, "speed": 13.5, "price": 50000,  "trade": 18000},
-	"hauler":   {"name": "大型運搬艦",     "food": 420, "hold": 70,  "armor": 720,  "slots": 4, "range": 2, "speed": 11.0, "price": 50000,  "trade": 18000},
-	"dread":    {"name": "弩級戦艦",       "food": 520, "hold": 60,  "armor": 1100, "slots": 4, "range": 3, "speed": 13.0, "price": 110000, "trade": 40000},
+	# #157: 燃料(food)を共有者指定値に調整
+	"cutter":   {"name": "外洋カッター",   "food": 200, "hold": 30,  "armor": 260,  "slots": 3, "range": 1, "speed": 12.0, "price": 9000,   "trade": 3500},
+	"corvette": {"name": "コルベット",     "food": 300, "hold": 40,  "armor": 480,  "slots": 4, "range": 2, "speed": 12.5, "price": 32000,  "trade": 12000},
+	"hunter_h": {"name": "猟特化フリゲート","food": 250, "hold": 32,  "armor": 600,  "slots": 4, "range": 2, "speed": 13.5, "price": 50000,  "trade": 18000},
+	"hauler":   {"name": "大型運搬艦",     "food": 400, "hold": 70,  "armor": 720,  "slots": 4, "range": 2, "speed": 11.0, "price": 50000,  "trade": 18000},
+	"dread":    {"name": "弩級戦艦",       "food": 380, "hold": 60,  "armor": 1100, "slots": 4, "range": 3, "speed": 13.0, "price": 110000, "trade": 40000},
 	# #151: 巡洋戦艦。弩級と対。低装甲・高速・中型・後退が得意(reverse=後退速度倍率)
-	"cruiser":  {"name": "巡洋戦艦",       "food": 460, "hold": 45,  "armor": 900,  "slots": 4, "range": 3, "speed": 14.5, "price": 110000, "trade": 40000, "reverse": 0.9},
+	"cruiser":  {"name": "巡洋戦艦",       "food": 350, "hold": 45,  "armor": 900,  "slots": 4, "range": 3, "speed": 14.5, "price": 110000, "trade": 40000, "reverse": 0.9},
 }
 
 # ---------------------------------------------------------------------------

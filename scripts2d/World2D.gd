@@ -470,12 +470,12 @@ func _king_alive() -> bool:
 	return false
 
 # #62: 主の取り巻き。戦闘モブ2体を主の周囲に出現させる(#67: 上限・デスポーン免除)
-# #119: レヴィアタンはカリュブディス/ティアマット/ダゴンから2種。#120: マーマンは取り巻きにしない
+# #119再: レヴィアタンはザッハーク/ティアマット/ダゴンから2種。#120: マーマンは取り巻きにしない
 func _spawn_escorts(center: Vector2, lord_id: String = "") -> Array:
 	var out: Array = []
 	var ids: Array = []
 	if lord_id == "leviathan":
-		var pool := ["charybdis", "tiamat", "dagon"]
+		var pool := ["zahhak", "tiamat", "dagon"]
 		pool.shuffle()
 		ids = [pool[0], pool[1]]
 	elif lord_id == "hydra" or lord_id == "quetzal":
@@ -949,6 +949,7 @@ func _maybe_screenshot() -> void:
 			var lineup := [
 				["pirate", "king"], ["mob", "kraken"], ["mob", "wyvern"],
 				["mob", "merman"], ["mob", "charybdis"], ["mob", "tiamat"], ["mob", "dagon"],
+				["mob", "zahhak"],
 			]
 			for i in lineup.size():
 				var x := (float(i) - (lineup.size() - 1) / 2.0) * 260.0
