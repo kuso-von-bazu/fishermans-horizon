@@ -370,7 +370,7 @@ func _physics_process(delta: float) -> void:
 		# #149再: ティアマット等はプレイヤーを追いつつさらに大きくジグザグに移動
 		elif bool(def.get("zigzag", false)):
 			var perp := move_dir.rotated(PI / 2)
-			move_dir = (move_dir + perp * sin(_bob * 1.8) * 2.6).normalized()
+			move_dir = (move_dir + perp * sin(_bob * 1.8) * 4.2).normalized()
 		# #150: 地上の敵は島を迂回して追う(島から離れる向きを混ぜる)
 		if not aerial:
 			move_dir = _avoid_islands(move_dir)
@@ -392,6 +392,8 @@ func _physics_process(delta: float) -> void:
 		var melee_r: float = _radius + (12.0 if kind == "lord" else 9.0) * K * float(def.get("reach", 1.0))
 		if kind == "lord" and dist > melee_r:
 			velocity = move_dir * eff_speed * 0.75
+		elif kind == "mob" and bool(def.get("zigzag", false)) and dist > melee_r:
+			velocity = move_dir * eff_speed * 0.85   # #149再: ティアマット等は移動(ジグザグ)しながら遠隔攻撃
 		else:
 			velocity = velocity.move_toward(Vector2.ZERO, eff_speed)
 		_attack(delta, dist)

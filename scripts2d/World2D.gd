@@ -483,9 +483,7 @@ func _spawn_escorts(center: Vector2, lord_id: String = "") -> Array:
 	var out: Array = []
 	var ids: Array = []
 	if lord_id == "leviathan":
-		var pool := ["zahhak", "tiamat", "dagon"]
-		pool.shuffle()
-		ids = [pool[0], pool[1]]
+		ids = ["zahhak", "tiamat", "dagon"]   # #119再: 3種を1匹ずつ
 	elif lord_id == "hydra" or lord_id == "quetzal":
 		# #141再: カリュブディス1体+アンフィプテレ1体
 		ids = ["charybdis", "amphiptere"]
@@ -504,8 +502,8 @@ func _spawn_escorts(center: Vector2, lord_id: String = "") -> Array:
 	var perp := to_p.rotated(PI / 2)
 	var i := 0
 	for mid in ids:
-		var side := -1.0 if i == 0 else 1.0
-		var off := to_p * randf_range(120.0, 190.0) + perp * side * randf_range(50.0, 110.0)
+		var side := float(i) - float(ids.size() - 1) / 2.0   # #119再: 取り巻きを中央対称に配置(2体でも3体でも均等に)
+		var off := to_p * randf_range(120.0, 190.0) + perp * side * randf_range(80.0, 120.0)
 		var e := _make_enemy("mob", mid, center + off)
 		e.is_escort = true
 		out.append(e)
