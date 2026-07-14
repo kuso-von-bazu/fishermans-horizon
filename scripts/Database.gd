@@ -34,7 +34,7 @@ var combat_mobs := {
 	# #72再: 果ての島。tiamat=空中(魚雷ロック不可)+俊敏+高火力+炎上弾+低回避, dagon=触腕+絡め+毒+高速。強化
 	# #167: ティアマットの遠隔弾はヒュドラの炎弾と同じ見た目(fire_look。挙動はburn_chance据え置き)
 	"tiamat":        {"name": "ティアマット",   "hp": 1600, "dmg": 42, "cap": 10, "price": 1440, "ranged": true, "aerial": true, "speed": 16.0, "atk_cd": 1.0, "dodge": 0.25, "dodge_pass": true, "burn_chance": 0.6, "fire_look": true, "zigzag": true, "face_left": true, "color": Color(0.15,0.12,0.2)},
-	"dagon":         {"name": "ダゴン",         "hp": 1500, "dmg": 40, "cap": 9,  "price": 1280, "ranged": false, "aerial": false, "speed": 10.0, "reach": 2.5, "entangle": true, "poison": true, "color": Color(0.3,0.5,0.35)},
+	"dagon":         {"name": "ダゴン",         "hp": 1500, "dmg": 40, "cap": 9,  "price": 1280, "ranged": false, "aerial": false, "speed": 12.5, "reach": 2.5, "entangle": true, "poison": true, "color": Color(0.3,0.5,0.35)},
 	# #72再: ザッハーク。銀色の神々しい竜。空中(魚雷ロック不可)+俊敏+高火力、密度の高い3way弾(aim_tight)、攻撃回避率15%(回避時は弾が後方へ抜ける)。#72再々: ギザギザ移動廃止+より積極的に遠隔(atk_cd短縮/range_mult延長)
 	"zahhak":        {"name": "ザッハーク",     "hp": 1750, "dmg": 45, "cap": 10, "price": 1560, "ranged": true, "aerial": true, "speed": 17.0, "atk_cd": 0.7, "range_mult": 1.3, "dodge": 0.15, "dodge_pass": true, "way": 3, "aim_tight": true, "face_left": true, "color": Color(0.82,0.85,0.92)},
 }
@@ -81,7 +81,7 @@ var lords := {
 	# #111再: HP4500。#65再: 5wayを狭い扇(aim_tight)+黄色い楕円弾、追跡弾は扇状に広がってから急加速(spread_homing)
 	"quetzal":   {"name": "ケツァルコアトル",         "hp": 4500, "dmg": 50, "cap": 13, "price": 3000, "bounty": 8000,  "fame": 30, "island": 2, "ranged": true, "aerial": true,  "pair": false, "speed": 13.0, "way": 5, "aim_tight": true, "aim_shape": "ellipse", "aim_color": Color(0.95,0.85,0.2), "homing_count": 2, "spread_homing": true, "dodge": 0.12, "dodge_pass": true, "kite": true, "always_front": true, "dir": 270, "lore": "空中から攻撃してくるので、魚雷でのロックオンは不可能。旧人類がレヴィアタンへの対抗策として創造したが、彼らはそれぞれ空と海を荒らしまわるばかりであった。"},
 	# #155: 出現方角を果ての島の東(dir=90)。#65: 追跡弾速0.5。#110再: 速度10.5。#163: range_mult=1.6でより遠距離から。#65再: 照準3wayを緑の楕円弾に、追跡弾は扇状に広がってから急加速(spread_homing)。#112再: 説明文(バイオテクノロジー→テクノロジー)
-	"leviathan": {"name": "レヴィアタン",             "hp": 8500, "dmg": 62, "cap": 25, "price": 9999, "bounty": 50000, "fame": 60, "island": 3, "ranged": true,  "aerial": false, "pair": false, "speed": 10.5, "range_mult": 1.6, "spawn_dist_mult": 1.4, "radial": true, "radial_count": 24, "way": 3, "aim_tight": true, "aim_shape": "ellipse", "aim_color": Color(0.35,0.95,0.4), "shot_speed_mult": 0.5, "homing_speed_mult": 0.5, "shot_dmg_mult": 0.7, "homing_count": 4, "spread_homing": true, "dir": 90, "face_left": true, "lore": "旧人類が創り出した神。神の領域に達した旧人類のテクノロジーは神をも創造したが、皮肉にもそれは人類種の天敵となり、残されたわずかな陸地を除いて人類の生存可能領域はなくなった。"},
+	"leviathan": {"name": "レヴィアタン",             "hp": 8500, "dmg": 62, "cap": 25, "price": 9999, "bounty": 50000, "fame": 60, "island": 3, "ranged": true,  "aerial": false, "pair": false, "speed": 10.5, "range_mult": 1.6, "spawn_dist_mult": 1.4, "radial": true, "radial_count": 24, "way": 3, "aim_tight": true, "aim_shape": "ellipse", "aim_color": Color(0.35,0.95,0.4), "shot_speed_mult": 0.8, "homing_speed_mult": 0.5, "shot_dmg_mult": 0.7, "homing_count": 4, "spread_homing": true, "dir": 90, "face_left": true, "lore": "旧人類が創り出した神。神の領域に達した旧人類のテクノロジーは神をも創造したが、皮肉にもそれは人類種の天敵となり、残されたわずかな陸地を除いて人類の生存可能領域はなくなった。"},
 }
 
 # 方位(度・北=0=-Z, 時計回り)を八方位の日本語に
@@ -127,10 +127,11 @@ var weapons := {
 
 var rams := {
 	"none":  {"name": "なし",       "dmg": 0,   "price": 0},
-	"iron":  {"name": "鉄製衝角",   "dmg": 40,  "price": 600},
-	"steel": {"name": "鋼鉄衝角",   "dmg": 90,  "price": 2000},
+	# #170: 衝角の攻撃力を全体的に強化
+	"iron":  {"name": "鉄製衝角",   "dmg": 65,  "price": 600},
+	"steel": {"name": "鋼鉄衝角",   "dmg": 150,  "price": 2000},
 	# #102: 嵐越え(tier>=2)以降の上位衝角
-	"tungsten": {"name": "超硬タングステン衝角", "dmg": 180, "price": 7000, "tier": 2},
+	"tungsten": {"name": "超硬タングステン衝角", "dmg": 300, "price": 7000, "tier": 2},
 }
 
 # ---------------------------------------------------------------------------

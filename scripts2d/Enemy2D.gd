@@ -410,7 +410,7 @@ func _check_offscreen_despawn(delta: float) -> void:
 		return
 	var vp: Vector2 = get_viewport_rect().size
 	var rel: Vector2 = global_position - (cam.global_position - vp * 0.5)
-	var m := 140.0
+	var m := 360.0   # #166再: 消滅する距離を少し離す(画面外の余白を広げる)
 	if rel.x < -m or rel.y < -m or rel.x > vp.x + m or rel.y > vp.y + m:
 		_offscreen_t += delta
 		if _offscreen_t > 6.0:
