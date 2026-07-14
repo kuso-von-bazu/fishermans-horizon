@@ -523,7 +523,9 @@ func _lord_spawn_pos(id: String) -> Vector2:
 	var ipos := island_pos(GameState.current_island)
 	var deg: float = float(Database.lords.get(id, {}).get("dir", 0)) + randf_range(-15.0, 15.0)
 	var a := deg_to_rad(deg)
-	return ipos + Vector2(sin(a), -cos(a)) * randf_range(320.0, 430.0) * K
+	# #155再: spawn_dist_mult で出現沖合の距離を延長(レヴィアタンは少し遠く)
+	var dmult: float = float(Database.lords.get(id, {}).get("spawn_dist_mult", 1.0))
+	return ipos + Vector2(sin(a), -cos(a)) * randf_range(320.0, 430.0) * K * dmult
 
 func _make_enemy(kind: String, id: String, pos: Vector2) -> CharacterBody2D:
 	var e := CharacterBody2D.new()
@@ -775,7 +777,7 @@ func _guide_world_pos() -> Variant:
 	var ld: Dictionary = Database.lords[lid]
 	var ipos := island_pos(int(ld.island))
 	var a := deg_to_rad(float(ld.get("dir", 0)))
-	return ipos + Vector2(sin(a), -cos(a)) * 375.0 * K
+	return ipos + Vector2(sin(a), -cos(a)) * 375.0 * K * float(ld.get("spawn_dist_mult", 1.0))   # #155再
 
 # ---------------- 食料半減の選択(#17/#23) ----------------
 # #24: 船の隠しrange値でなく、仕様どおり「燃料積載で次の島に到達できるか」で判定。
