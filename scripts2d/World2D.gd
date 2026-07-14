@@ -174,6 +174,13 @@ func _enter_dock(island_id: int, do_reset := true) -> void:
 func _on_set_sail() -> void:
 	port_ui.close()
 	phase = "sea"
+	# #168: 燃料費(初回出港を除き、船の定価の0.5%・粗末な漁船は5)を徴収
+	if GameState.has_departed:
+		var fuel := GameState.fuel_cost()
+		if fuel > 0:
+			GameState.add_money(-mini(fuel, GameState.money))
+			GameState.notice.emit("燃料費 %d を支払った" % fuel)
+	GameState.has_departed = true
 	# クルーの賃金(#39): 出港ごとに支払い
 	var wages := GameState.crew_wages()
 	if wages > 0:
@@ -281,6 +288,7 @@ func _physics_process(delta: float) -> void:
 	_update_boss_bgm()
 	if hud:
 		hud.update_bars()
+	_check_victory()   # #159: 画面外でレヴィアタンを倒しても確実に毎フレーム勝利判定
 	# 強制帰還・食料選択(#17/#23)
 	if GameState.run_armor <= 0.0:
 		_forced_return("船が大破!", true)
@@ -347,9 +355,9 @@ func _update_spawns(delta: float) -> void:
 	for r in relics_world.duplicate():
 		if player.global_position.distance_to(r.global_position) > 360 * K:
 			r.queue_free()
-	# #69他再修正: 主以外の敵は遠く離れたらデスポーンして枠を空ける(#67: 主と取り巻きは免除)
+	# #69他再修正: 主以外の敵は遠く離れたらデスポーンして枠を空ける(#67/#166: 主・取り巻き・海賊王は免除)
 	for e in enemies.duplicate():
-		if is_instance_valid(e) and e.kind != "lord" and not e.is_escort and player.global_position.distance_to(e.global_position) > 400 * K:
+		if is_instance_valid(e) and e.kind != "lord" and not e.is_escort and not (e.kind == "pirate" and e.id == "king") and player.global_position.distance_to(e.global_position) > 400 * K:
 			e.queue_free()
 	spawn_timer -= delta
 	if spawn_timer > 0:

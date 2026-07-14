@@ -14,6 +14,10 @@ var falloff: bool = false   # #63: ガトリング系は距離で威力減衰
 var pirate_burn: float = 0.0   # #113/#117: 海賊船に炎上(スリップ)させる確率
 var burn_chance: float = 0.0   # #72: 自機を炎上させる確率(ティアマット等)
 var crit: bool = false         # #139: クリティカル(命中時にメッセージ)
+var fire_look: bool = false    # #167: 見た目だけ炎弾(挙動は通常)
+var shape: String = ""         # #65再: "ellipse"等の弾形状指定
+var bcolor: Color = Color(0, 0, 0, 0)   # #65再: 弾のカスタム色(alpha>0で有効)
+var spread_homing: bool = false   # #65再: 発射後に扇状へ広がってから急加速して追尾
 var target: Node2D = null
 var dir: Vector2 = Vector2.UP
 var from_player: bool = true
@@ -31,8 +35,15 @@ func setup(p_dir: Vector2, w: Dictionary, p_target: Node2D = null) -> void:
 	pirate_burn = float(w.get("pirate_burn", 0.0))
 	burn_chance = float(w.get("burn_chance", 0.0))
 	crit = bool(w.get("crit", false))
+	fire_look = bool(w.get("fire_look", false))
+	shape = str(w.get("shape", ""))
+	bcolor = w.get("bcolor", Color(0, 0, 0, 0))
+	spread_homing = bool(w.get("spread_homing", false))
 	target = p_target
 	dir = p_dir.normalized()
+	# #158: 敵の遠隔弾は距離が離れても消えないよう寿命を延長(引き撃ち対策)
+	if not from_player and not homing:
+		life = 9.0
 	# 見た目/当たり判定は全フラグ確定後に構築(add_child直後の_readyでは間に合わないため#78のバグ修正)
 	_build_visual()
 
@@ -42,7 +53,7 @@ func _build_visual() -> void:
 	var mcol := Color.WHITE
 	var r := 4.0
 	# #78再: 形・色の区別は維持。彩度を下げてシックな配色に。炎だけは火の玉状で例外
-	if fire:
+	if fire or fire_look:   # #167: fire_look=見た目だけ炎弾
 		# #78: 炎弾は火の玉状(進行方向=局所-Yが太く、後方が細い涙滴)。外=橙赤/内=黄の2色
 		var drop := PackedVector2Array([
 			Vector2(0, -9), Vector2(6, -4), Vector2(4.5, 2), Vector2(1.5, 11),
@@ -69,7 +80,14 @@ func _build_visual() -> void:
 		add_child(colf)
 		body_entered.connect(_on_hit)
 		return
-	if homing:
+	if shape == "ellipse":
+		# #65再: 細長い楕円弾(長軸=進行方向=プレイヤー向き)。色はbcolorで指定
+		for i in 16:
+			var a := TAU * i / 16.0
+			poly.append(Vector2(cos(a) * 3.4, sin(a) * 8.0))
+		mcol = bcolor if bcolor.a > 0.0 else Color(0.8, 0.8, 0.8)
+		r = 5.0
+	elif homing:
 		# 魚雷: 細長いカプセル型(尾びれ付き)・くすんだ緑
 		poly = PackedVector2Array([
 			Vector2(-3, -9), Vector2(0, -12), Vector2(3, -9), Vector2(3, 7),
@@ -133,7 +151,18 @@ func _scaled(poly: PackedVector2Array, s: float) -> PackedVector2Array:
 
 func _physics_process(delta: float) -> void:
 	_t += delta
-	if homing:
+	if homing and spread_homing:
+		# #65再: 前半は低速で初期方向(扇状)へ広がり、後半で急加速しながら船へ追尾
+		if _t < 0.55:
+			global_position += dir * speed * 0.32 * delta
+		else:
+			var acc: float = speed * lerpf(0.6, 2.4, minf((_t - 0.55) / 0.5, 1.0))
+			if is_instance_valid(target):
+				var tt: Vector2 = target.global_position - global_position
+				dir = dir.lerp(tt.normalized(), 7.0 * delta).normalized()
+			global_position += dir * acc * delta
+		rotation = dir.angle() + PI / 2
+	elif homing:
 		# #30再: 発射直後から急加速して直進し、敵に近づくほど弧を描いて追尾(蛇行なし)
 		var accel_speed: float = speed * lerpf(0.45, 1.9, minf(_t / 0.5, 1.0))
 		if is_instance_valid(target):

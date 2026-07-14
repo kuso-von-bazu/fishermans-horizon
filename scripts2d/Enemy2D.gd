@@ -43,6 +43,7 @@ var escorts: Array = []       # #118: この主の取り巻き参照(全滅で�
 var _bob: float = 0.0
 var _radius: float = 40.0
 var locked: bool = false   # 魚雷ロック対象の表示(#16)
+var _offscreen_t: float = 0.0   # #166: 画面外にいる時間(モブ/海賊は一定時間で消滅し枠を空ける)
 
 func setup(p_kind: String, p_id: String) -> void:
 	kind = p_kind
@@ -73,7 +74,7 @@ func setup(p_kind: String, p_id: String) -> void:
 		rng = 95.0   # #86: 主はさらに遠距離から射撃
 	elif bool(def.get("ranged", false)):
 		rng = 68.0   # #87: 遠隔モブもより遠距離から
-	attack_range = rng * K * float(def.get("reach", 1.0))
+	attack_range = rng * K * float(def.get("reach", 1.0)) * float(def.get("range_mult", 1.0))   # #163/#72: より遠距離から遠隔
 	# #55: 海賊は高頻度射撃。#70: ワイアーム等は def の atk_cd を優先
 	var cd_default := 0.55 if kind == "pirate" else 1.4
 	attack_cd = float(def.get("atk_cd", cd_default))
@@ -395,6 +396,27 @@ func _physics_process(delta: float) -> void:
 			velocity = velocity.move_toward(Vector2.ZERO, eff_speed)
 		_attack(delta, dist)
 	move_and_slide()
+	_check_offscreen_despawn(delta)
+
+# #166: 戦闘モブ・海賊は画面外に一定時間出ると消滅して出現枠を空ける。
+# 近海の主・主の取り巻き・海賊王は対象外。
+func _check_offscreen_despawn(delta: float) -> void:
+	if kind == "lord" or is_escort:
+		return
+	if kind == "pirate" and id == "king":
+		return
+	var cam := get_viewport().get_camera_2d()
+	if cam == null:
+		return
+	var vp: Vector2 = get_viewport_rect().size
+	var rel: Vector2 = global_position - (cam.global_position - vp * 0.5)
+	var m := 140.0
+	if rel.x < -m or rel.y < -m or rel.x > vp.x + m or rel.y > vp.y + m:
+		_offscreen_t += delta
+		if _offscreen_t > 6.0:
+			queue_free()
+	else:
+		_offscreen_t = 0.0
 
 func _attack(delta: float, dist: float) -> void:
 	_atk_timer -= delta
@@ -410,12 +432,14 @@ func _attack(delta: float, dist: float) -> void:
 	var melee_r: float = _radius + (12.0 if kind == "lord" else 9.0) * K * float(def.get("reach", 1.0))
 	if kind == "lord":
 		# #65: 全主が遠隔攻撃。近距離では従来の近接/固有技
-		if id == "leviathan" and dist <= melee_r * 2.5:   # #156: 薙ぎ払いは通常近接の2.5倍の距離まで届く
+		if id == "leviathan" and dist <= melee_r:   # #156再: 薙ぎ払いのヒット距離は通常の近接攻撃と同じに戻す
 			var atk_dir := (player.global_position - global_position).normalized()
-			_nagiharai_splash(atk_dir, melee_r * 2.5)   # #156: 攻撃方向へしぶきエフェクト
+			_nagiharai_splash(atk_dir, melee_r)   # #156: 攻撃方向へしぶきエフェクト
 			_damage_player(eff_dmg * 1.3)
 			GameState.ignite(5.0)   # #65: 薙ぎ払いは必ず炎上
 			GameState.notice.emit("レヴィアタンの薙ぎ払い!")
+			if randf() < 0.4:   # #161: 近接圏でも時折遠隔攻撃を織り交ぜる
+				_ranged_attack(false)
 		elif dist <= melee_r:
 			_damage_player(eff_dmg)
 		else:
@@ -473,19 +497,40 @@ func _fire_weapon(wpn: String, eff_dmg: float, base_dir: Vector2, is_fire: bool)
 				var count := int(def.get("radial_count", 12))
 				for i in count:
 					_shoot(Vector2.RIGHT.rotated(TAU * i / count), {"dmg": eff_dmg * dm, "speed_mult": ss}, is_fire)
-			# 照準の扇状弾(radialと併用可)。aim_tight=密な狭い扇
+			# 照準の扇状弾(radialと併用可)。aim_tight=密な狭い扇。#65再: aim_shape/aim_colorで楕円弾など見た目指定
 			var way := int(def.get("way", 0 if has_radial else 1))
 			var spread_step: float = 0.10 if bool(def.get("aim_tight", false)) else 0.20
+			var aim_shape := str(def.get("aim_shape", ""))
+			var aim_color = def.get("aim_color", null)
 			for i in way:
 				var off: float = (float(i) - float(way - 1) / 2.0) * spread_step
-				_shoot(base_dir.rotated(off), {"dmg": eff_dmg * dm, "speed_mult": ss}, is_fire)
-			for h in int(def.get("homing_count", 1 if bool(def.get("homing", false)) else 0)):
-				_shoot(base_dir.rotated(randf_range(-0.3, 0.3)), {"dmg": eff_dmg * 0.8 * dm, "homing": true, "speed_mult": hs}, is_fire, player)
+				var w := {"dmg": eff_dmg * dm, "speed_mult": ss}
+				if aim_shape != "":
+					w["shape"] = aim_shape
+				if aim_color != null:
+					w["bcolor"] = aim_color
+				_shoot(base_dir.rotated(off), w, is_fire)
+			# #65再: spread_homing=発射後に扇状(左右)へ広がってから急加速して追尾
+			var spread_h := bool(def.get("spread_homing", false))
+			var hc := int(def.get("homing_count", 1 if bool(def.get("homing", false)) else 0))
+			for h in hc:
+				var hd: Vector2
+				if spread_h and hc > 1:
+					hd = base_dir.rotated((float(h) - float(hc - 1) / 2.0) * 0.5)
+				else:
+					hd = base_dir.rotated(randf_range(-0.3, 0.3))
+				var wh := {"dmg": eff_dmg * 0.8 * dm, "homing": true, "speed_mult": hs}
+				if spread_h:
+					wh["spread_homing"] = true
+				_shoot(hd, wh, is_fire, player)
 
 func _shoot(d: Vector2, w: Dictionary, is_fire: bool, tgt: Node2D = null) -> void:
 	# #72: ティアマット等は遠隔弾に高確率の炎上を付与
 	if float(def.get("burn_chance", 0.0)) > 0.0 and not w.has("homing"):
 		w["burn_chance"] = float(def.get("burn_chance", 0.0))
+	# #167: ティアマット等は弾の見た目だけヒュドラの炎弾と同じに(挙動はburn_chanceのまま)
+	if bool(def.get("fire_look", false)) and not w.has("homing"):
+		w["fire_look"] = true
 	# #65: 弾速倍率(_fire_weaponで明示指定済みならそのまま)
 	if not w.has("speed_mult") and float(def.get("shot_speed_mult", 1.0)) != 1.0 and not w.has("homing"):
 		w["speed_mult"] = float(def.get("shot_speed_mult", 1.0))

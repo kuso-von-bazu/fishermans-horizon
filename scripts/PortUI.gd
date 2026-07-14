@@ -8,6 +8,7 @@ var panel: PanelContainer
 var content: VBoxContainer
 var header: Label
 var _root: Control
+var _toast_box: VBoxContainer   # #160: トーストを縦に積んで重ならないようにする
 
 func _ready() -> void:
 	layer = 20
@@ -89,6 +90,17 @@ func open(arrival := false) -> void:
 func _show_toast(text: String) -> void:
 	if _root == null or text.strip_edges() == "":
 		return
+	# #160: トーストは専用VBoxに積み上げて、連続表示でも重ならないようにする
+	if _toast_box == null or not is_instance_valid(_toast_box):
+		_toast_box = VBoxContainer.new()
+		_toast_box.anchor_left = 0.0
+		_toast_box.anchor_right = 1.0
+		_toast_box.anchor_top = 0.78
+		_toast_box.anchor_bottom = 0.92
+		_toast_box.alignment = BoxContainer.ALIGNMENT_END
+		_toast_box.add_theme_constant_override("separation", 4)
+		_toast_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_root.add_child(_toast_box)
 	var lbl := Label.new()
 	lbl.text = text
 	lbl.add_theme_font_size_override("font_size", 22)
@@ -96,12 +108,8 @@ func _show_toast(text: String) -> void:
 	lbl.add_theme_constant_override("outline_size", 5)
 	lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl.anchor_left = 0.0
-	lbl.anchor_right = 1.0
-	lbl.anchor_top = 0.86
-	lbl.anchor_bottom = 0.86
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_root.add_child(lbl)
+	_toast_box.add_child(lbl)
 	var tw := create_tween()
 	tw.tween_interval(1.8)
 	tw.tween_property(lbl, "modulate:a", 0.0, 0.8)

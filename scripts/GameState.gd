@@ -144,6 +144,8 @@ func crew_wages() -> int:
 	for iid in visited_islands:
 		reached = maxi(reached, int(iid))
 	var mult := 1.0 + 0.25 * float(reached)
+	if reached >= 3:
+		mult += 0.75   # #125再: 果ての島到達後はさらに賃金上昇
 	var total := 0.0
 	for m in crew:
 		total += float(jobs[m.job].wage) * mult
@@ -259,6 +261,13 @@ var visited_islands: Array[int] = [0]    # 実際に寄港して到達した島(
 var defeated_lords: Array[String] = []   # 討伐済みで賞金未受領
 var claimed_lords: Array[String] = []    # 賞金受領済み
 var guide_target: Dictionary = {}        # #60/#61: ソナーガイド {"kind":"island"|"lord","id":...}
+var has_departed: bool = false            # #168: 一度でも出港したか(初回出港のみ燃料費無料)
+
+# #168: 出港時に徴収する燃料費。船の定価の0.5%(小数点以下切り上げ)。粗末な漁船は5固定
+func fuel_cost() -> int:
+	if ship_id == "raft":
+		return 5
+	return int(ceil(float(ship().price) * 0.005))
 
 # --- 航海中ランタイム値(出港でリセット) ---
 var run_food: float = 0.0
@@ -287,6 +296,7 @@ func reset_all() -> void:
 	defeated_lords = []
 	claimed_lords = []
 	guide_target = {}
+	has_departed = false   # #168
 	fire_burn = 0.0
 	crew = []
 	harpoon_debuff = "slip"
@@ -306,7 +316,7 @@ func save_game() -> void:
 		"current_island": current_island,
 		"unlocked_islands": unlocked_islands, "visited_islands": visited_islands,
 		"defeated_lords": defeated_lords, "claimed_lords": claimed_lords,
-		"guide_target": guide_target,
+		"guide_target": guide_target, "has_departed": has_departed,
 	}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f:
@@ -341,6 +351,7 @@ func load_game() -> bool:
 	defeated_lords.assign(data.get("defeated_lords", []))
 	claimed_lords.assign(data.get("claimed_lords", []))
 	guide_target = data.get("guide_target", {})
+	has_departed = bool(data.get("has_departed", true))   # #168: 既存セーブは出港済み扱い
 	# 辞書の数値はJSONでfloat化するのでintへ戻す
 	cargo = _to_int_dict(data.get("cargo", {}))
 	heads = _to_int_dict(data.get("heads", {}))

@@ -17,6 +17,7 @@ var _sprays: Array = []      # #144: 舷側のしぶき
 var _flame: CPUParticles2D   # #136: 炎上アニメ
 var _sc: float = 1.0
 var _half_w: float = 30.0    # #132/#144: 船の見た目の半幅(px)
+var _half_h: float = 42.0    # #164: 船の見た目の半高(px)。航跡を船尾に隙間なく出すため
 var _body_pts: PackedVector2Array
 
 func _ready() -> void:
@@ -108,8 +109,8 @@ const SHIP_MAPS := {
 		".HhDWWDhH.",
 		".HhDDDDhH.",
 		"..HhDDhH..",
-		"..HhhhH...",
-		"...HHH....",
+		"...HhhH...",
+		"....HH....",
 	],
 	# コルベット: 軍艦・双煙突・舷側砲
 	"corvette": [
@@ -182,6 +183,34 @@ const SHIP_MAPS := {
 		".HhhDDDDhhH.",
 		"..HHHHHHHH..",
 	],
+	# #162: 弩級戦艦。より戦艦らしく=中心線に主砲塔3基(前/中/後)・艦橋・煙突を配した細長い装甲艦
+	"dread": [
+		"......HHHH......",
+		".....HhhhhH.....",
+		"....HhDDDDhH....",
+		"...HhDDDDDDhH...",
+		"..HhDDGGGGDDhH..",
+		"..HhDGWWWWGDhH..",
+		"..HhDDGGGGDDhH..",
+		"..HhDDDBBDDDhH..",
+		"..HhDDGBBGDDhH..",
+		"..HhDDDGGDDDhH..",
+		"..HhDDDGGDDDhH..",
+		"..HhDDGGGGDDhH..",
+		"..HhDGWWWWGDhH..",
+		"..HhDDGGGGDDhH..",
+		"..HhDDDBBDDDhH..",
+		"..HhDDGGGGDDhH..",
+		"..HhDGWWWWGDhH..",
+		"..HhDDGGGGDDhH..",
+		"..HhDDDDDDDDhH..",
+		".HhhDDDDDDDDhhH.",
+		".HhDDDDDDDDDDhH.",
+		"..HhhDDDDDDhhH..",
+		"...HhhDDDDhhH...",
+		"....HhhhhhhH....",
+		".....HHHHHH.....",
+	],
 }
 
 func _build_ship_texture(with_ram: bool, ram_steel: bool) -> ImageTexture:
@@ -216,6 +245,8 @@ func _build_visual() -> void:
 	var map: Array = SHIP_MAPS.get(GameState.ship_id, SHIP_MAP)
 	var mw: int = map[0].length()
 	_half_w = (float(mw) / 2.0 - 1.0) * 3.4 * sc
+	# #164: 実際の船体の半高(px)。透明パディング1px分を除いて船尾に隙間なく航跡を出す
+	_half_h = (float(map.size()) / 2.0 - 1.0) * 3.4 * sc
 	var with_ram: bool = GameState.ram_id != "none"
 	var sprite := Sprite2D.new()
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -258,7 +289,7 @@ func _build_visual() -> void:
 	_wake.amount = 70
 	_wake.lifetime = 3.2
 	_wake.local_coords = false
-	_wake.position = Vector2(0, 54 * sc)   # #132: 船尾よりさらに後方(船体と重ねない)
+	_wake.position = Vector2(0, _half_h)   # #164: 船尾に隙間なく(実際の船体半高)
 	_wake.spread = 12.0
 	_wake.gravity = Vector2.ZERO
 	_wake.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
@@ -315,7 +346,9 @@ func _build_visual() -> void:
 		_sprays.append(spray)
 
 func _ship_scale() -> float:
-	return clampf(0.9 + float(GameState.ship().armor) / 1500.0, 0.9, 1.8)
+	# #151再: 巡洋戦艦は見た目・当たり判定を一回り大きく
+	var extra: float = 1.15 if GameState.ship_id == "cruiser" else 1.0
+	return clampf(0.9 + float(GameState.ship().armor) / 1500.0, 0.9, 1.8) * extra
 
 func rebuild_visual() -> void:
 	for c in get_children():
@@ -366,7 +399,7 @@ func _physics_process(delta: float) -> void:
 	if _wake:
 		_wake.emitting = spd > max_speed * 0.15
 		# #132: バック時は船の前方に航跡が残る
-		_wake.position = Vector2(0, -44 * _sc) if reversing else Vector2(0, 42 * _sc)
+		_wake.position = Vector2(0, -_half_h) if reversing else Vector2(0, _half_h)   # #164: 船尾に密着
 		_wake.direction = Vector2(0, -1) if reversing else Vector2(0, 1)
 	# #144: 舷側しぶきは前進中のみ(バック時は非表示)
 	for spray in _sprays:
