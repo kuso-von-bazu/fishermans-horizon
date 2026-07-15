@@ -252,6 +252,7 @@ func _build_visual() -> void:
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	sprite.texture = _build_ship_texture(with_ram, GameState.ram_id == "steel")
 	sprite.scale = Vector2.ONE * 3.4 * sc
+	sprite.z_index = 2   # #164再: 船体を航跡・煙より前面に描画し、重なりの不自然さをなくす
 	add_child(sprite)
 	# 衝突形状
 	var col := CollisionShape2D.new()

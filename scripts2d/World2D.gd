@@ -580,6 +580,8 @@ func _update_weapons(delta: float) -> void:
 			slot_cooldowns[i] -= delta
 	if GameState.docking_locked:
 		return   # #101: 大破/寄港確定後は攻撃不可(討伐・賞金取得を防ぐ)
+	if _food_dialog_open:
+		return   # #24再: 食料選択ダイアログを開いている間はクリックしても射撃しない
 	var slots := int(GameState.ship().slots)
 	if Input.is_action_pressed("fire_primary"):
 		for i in slots:

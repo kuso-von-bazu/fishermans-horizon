@@ -12,9 +12,10 @@ DST = os.path.join(SRC, "pixel")
 os.makedirs(DST, exist_ok=True)
 LONG = 48
 # #81: 大型ボスは高精細(ドット数多め)
-LONG_OVERRIDE = {"lord_leviathan.png": 200, "lord_leviathan_front.png": 200, "lord_leviathan_back.png": 200, "lord_hydra.png": 80, "lord_quetzal.png": 80}
-# #81: レヴィアタンは色数も増やしてより詳細に
-COLORS_OVERRIDE = {"lord_leviathan.png": 64, "lord_leviathan_front.png": 64, "lord_leviathan_back.png": 64}
+# #173: ケツァルコアトルもドット数・色数を増やして精細に(front/backも)
+LONG_OVERRIDE = {"lord_leviathan.png": 200, "lord_leviathan_front.png": 200, "lord_leviathan_back.png": 200, "lord_hydra.png": 80, "lord_quetzal.png": 140, "lord_quetzal_front.png": 140, "lord_quetzal_back.png": 140}
+# #81: レヴィアタンは色数も増やしてより詳細に。#173: ケツァルも増色
+COLORS_OVERRIDE = {"lord_leviathan.png": 64, "lord_leviathan_front.png": 64, "lord_leviathan_back.png": 64, "lord_quetzal.png": 56, "lord_quetzal_front.png": 56, "lord_quetzal_back.png": 56}
 
 for f in sorted(os.listdir(SRC)):
     if not f.lower().endswith(".png"):

@@ -28,9 +28,10 @@ var combat_mobs := {
 	"wyvern":        {"name": "ワイバーン",     "hp": 800, "dmg": 26, "cap": 6, "price": 800, "ranged": true,  "aerial": false, "speed": 9.5,  "atk_cd": 1.1, "face_left": true, "color": Color(0.7,0.15,0.15)},
 	# #71: 嵐越え以降。merman=群れ+俊敏+好戦的, charybdis=渦潮+確率回避。#98再: マーマンHP350
 	"merman":        {"name": "マーマン",       "hp": 350, "dmg": 16, "cap": 2, "price": 304,  "ranged": false, "aerial": false, "speed": 13.0, "group": 3, "aggro": 1400.0, "face_left": true, "color": Color(0.25,0.55,0.4)},
-	"charybdis":     {"name": "カリュブディス", "hp": 900, "dmg": 28, "cap": 8, "price": 960, "ranged": true,  "aerial": false, "speed": 9.5,  "dodge": 0.333, "entangle": true, "color": Color(0.15,0.3,0.45)},
+	# #71再: カリュブディスの能力を全体的に強化
+	"charybdis":     {"name": "カリュブディス", "hp": 1250, "dmg": 37, "cap": 8, "price": 960, "ranged": true,  "aerial": false, "speed": 11.0,  "dodge": 0.4, "entangle": true, "color": Color(0.15,0.3,0.45)},
 	# #71: 嵐越え以降。amphiptere=空中(魚雷ロック不可)+近接のみ+高速で追尾(竜×蛇の有翼)
-	"amphiptere":    {"name": "アンフィプテレ", "hp": 780, "dmg": 32, "cap": 6, "price": 760, "ranged": false, "aerial": true, "speed": 15.0, "aggro": 1300.0, "face_left": true, "color": Color(0.45,0.2,0.5)},
+	"amphiptere":    {"name": "アンフィプテレ", "hp": 780, "dmg": 32, "cap": 6, "price": 760, "ranged": false, "aerial": true, "speed": 18.5, "aggro": 1300.0, "face_left": true, "color": Color(0.45,0.2,0.5)},
 	# #72再: 果ての島。tiamat=空中(魚雷ロック不可)+俊敏+高火力+炎上弾+低回避, dagon=触腕+絡め+毒+高速。強化
 	# #167: ティアマットの遠隔弾はヒュドラの炎弾と同じ見た目(fire_look。挙動はburn_chance据え置き)
 	"tiamat":        {"name": "ティアマット",   "hp": 1600, "dmg": 42, "cap": 10, "price": 1440, "ranged": true, "aerial": true, "speed": 16.0, "atk_cd": 0.7, "range_mult": 1.3, "dodge": 0.25, "dodge_pass": true, "burn_chance": 0.6, "fire_look": true, "zigzag": true, "face_left": true, "color": Color(0.15,0.12,0.2)},
@@ -81,7 +82,7 @@ var lords := {
 	# #111再: HP4500。#65再: 5wayを狭い扇(aim_tight)+黄色い楕円弾、追跡弾は扇状に広がってから急加速(spread_homing)
 	"quetzal":   {"name": "ケツァルコアトル",         "hp": 4500, "dmg": 50, "cap": 13, "price": 3000, "bounty": 8000,  "fame": 30, "island": 2, "ranged": true, "aerial": true,  "pair": false, "speed": 13.0, "way": 5, "aim_tight": true, "aim_shape": "ellipse", "aim_color": Color(0.95,0.85,0.2), "homing_count": 2, "spread_homing": true, "dodge": 0.12, "dodge_pass": true, "kite": true, "always_front": true, "dir": 270, "lore": "空中から攻撃してくるので、魚雷でのロックオンは不可能。旧人類がレヴィアタンへの対抗策として創造したが、彼らはそれぞれ空と海を荒らしまわるばかりであった。"},
 	# #155: 出現方角を果ての島の東(dir=90)。#65: 追跡弾速0.5。#110再: 速度10.5。#163: range_mult=1.6でより遠距離から。#65再: 照準3wayを緑の楕円弾に、追跡弾は扇状に広がってから急加速(spread_homing)。#112再: 説明文(バイオテクノロジー→テクノロジー)
-	"leviathan": {"name": "レヴィアタン",             "hp": 8500, "dmg": 62, "cap": 25, "price": 9999, "bounty": 50000, "fame": 60, "island": 3, "ranged": true,  "aerial": false, "pair": false, "speed": 10.5, "range_mult": 1.6, "spawn_dist_mult": 1.75, "radial": true, "radial_count": 24, "way": 3, "aim_tight": true, "aim_shape": "ellipse", "aim_color": Color(0.35,0.95,0.4), "shot_speed_mult": 0.8, "homing_speed_mult": 0.5, "shot_dmg_mult": 0.7, "homing_count": 4, "spread_homing": true, "dir": 90, "face_left": true, "lore": "旧人類が創り出した神。神の領域に達した旧人類のテクノロジーは神をも創造したが、皮肉にもそれは人類種の天敵となり、残されたわずかな陸地を除いて人類の生存可能領域はなくなった。"},
+	"leviathan": {"name": "レヴィアタン",             "hp": 8500, "dmg": 50, "cap": 25, "price": 9999, "bounty": 50000, "fame": 60, "island": 3, "ranged": true,  "aerial": false, "pair": false, "speed": 10.5, "range_mult": 1.6, "spawn_dist_mult": 1.75, "radial": true, "radial_count": 24, "way": 3, "aim_tight": true, "aim_shape": "ellipse", "aim_color": Color(0.35,0.95,0.4), "shot_speed_mult": 0.8, "homing_speed_mult": 0.5, "shot_dmg_mult": 0.7, "homing_count": 4, "spread_homing": true, "dir": 90, "face_left": true, "lore": "旧人類が創り出した神。神の領域に達した旧人類のテクノロジーは神をも創造したが、皮肉にもそれは人類種の天敵となり、残されたわずかな陸地を除いて人類の生存可能領域はなくなった。"},
 }
 
 # 方位(度・北=0=-Z, 時計回り)を八方位の日本語に
@@ -140,14 +141,14 @@ var rams := {
 var ships := {
 	"raft":     {"name": "粗末な漁船",     "food": 100, "hold": 12,  "armor": 60,   "slots": 1, "range": 0, "speed": 11.0, "price": 0,     "trade": 0},
 	"skiff":    {"name": "武装スキフ",     "food": 140, "hold": 18,  "armor": 140,  "slots": 2, "range": 0, "speed": 11.5, "price": 1500,  "trade": 1000},
-	# #157再: 燃料(food)を共有者指定値に調整
-	"cutter":   {"name": "外洋カッター",   "food": 180, "hold": 30,  "armor": 260,  "slots": 3, "range": 1, "speed": 12.0, "price": 9000,   "trade": 3500},
-	"corvette": {"name": "コルベット",     "food": 250, "hold": 40,  "armor": 480,  "slots": 4, "range": 2, "speed": 12.5, "price": 32000,  "trade": 12000},
-	"hunter_h": {"name": "猟特化フリゲート","food": 210, "hold": 32,  "armor": 600,  "slots": 4, "range": 2, "speed": 13.5, "price": 50000,  "trade": 18000},
-	"hauler":   {"name": "大型運搬艦",     "food": 330, "hold": 70,  "armor": 720,  "slots": 4, "range": 2, "speed": 11.0, "price": 50000,  "trade": 18000},
-	"dread":    {"name": "弩級戦艦",       "food": 300, "hold": 60,  "armor": 1100, "slots": 4, "range": 3, "speed": 13.0, "price": 110000, "trade": 40000},
+	# #157再々: 燃料(food)を共有者指定値に再調整
+	"cutter":   {"name": "外洋カッター",   "food": 160, "hold": 30,  "armor": 260,  "slots": 3, "range": 1, "speed": 12.0, "price": 9000,   "trade": 3500},
+	"corvette": {"name": "コルベット",     "food": 220, "hold": 40,  "armor": 480,  "slots": 4, "range": 2, "speed": 12.5, "price": 32000,  "trade": 12000},
+	"hunter_h": {"name": "猟特化フリゲート","food": 190, "hold": 32,  "armor": 600,  "slots": 4, "range": 2, "speed": 13.5, "price": 50000,  "trade": 18000},
+	"hauler":   {"name": "大型運搬艦",     "food": 300, "hold": 70,  "armor": 720,  "slots": 4, "range": 2, "speed": 11.0, "price": 50000,  "trade": 18000},
+	"dread":    {"name": "弩級戦艦",       "food": 250, "hold": 60,  "armor": 1100, "slots": 4, "range": 3, "speed": 13.0, "price": 110000, "trade": 40000},
 	# #151: 巡洋戦艦。弩級と対。低装甲・高速・中型・後退が得意(reverse=後退速度倍率)
-	"cruiser":  {"name": "巡洋戦艦",       "food": 260, "hold": 45,  "armor": 900,  "slots": 4, "range": 3, "speed": 14.5, "price": 110000, "trade": 40000, "reverse": 0.9},
+	"cruiser":  {"name": "巡洋戦艦",       "food": 220, "hold": 45,  "armor": 900,  "slots": 4, "range": 3, "speed": 14.5, "price": 110000, "trade": 40000, "reverse": 0.9},
 }
 
 # ---------------------------------------------------------------------------
@@ -155,9 +156,10 @@ var ships := {
 # ---------------------------------------------------------------------------
 var islands := [
 	{"id": 0, "name": "始まりの島",   "fame_req": 0,   "price_mult": 1.0, "pos": Vector3(0, 0, 0),       "spawn": ["sardine","mackerel"], "lords": ["sawshark","dumbo"]},
-	{"id": 1, "name": "潮鳴りの島",   "fame_req": 12,   "price_mult": 1.6, "pos": Vector3(900, 0, -300),  "spawn": ["bonito","squid","mackerel"], "lords": ["whale","walrus"]},   # #57再: 元の距離に戻す
-	{"id": 2, "name": "嵐越えの島",   "fame_req": 45,  "price_mult": 2.4, "pos": Vector3(1500, 0, 600),  "spawn": ["octopus","squid","bonito"], "lords": ["hydra","quetzal"]},
-	{"id": 3, "name": "果ての島",     "fame_req": 120,  "price_mult": 3.6, "pos": Vector3(2400, 0, -200), "spawn": ["octopus","bonito"], "lords": ["leviathan"]},
+	# #174: 次の島到達に必要な名声を全体的に少し上げる
+	{"id": 1, "name": "潮鳴りの島",   "fame_req": 18,   "price_mult": 1.6, "pos": Vector3(900, 0, -300),  "spawn": ["bonito","squid","mackerel"], "lords": ["whale","walrus"]},   # #57再: 元の距離に戻す
+	{"id": 2, "name": "嵐越えの島",   "fame_req": 60,  "price_mult": 2.4, "pos": Vector3(1500, 0, 600),  "spawn": ["octopus","squid","bonito"], "lords": ["hydra","quetzal"]},
+	{"id": 3, "name": "果ての島",     "fame_req": 155,  "price_mult": 3.6, "pos": Vector3(2400, 0, -200), "spawn": ["octopus","bonito"], "lords": ["leviathan"]},
 ]
 
 func island(idx: int) -> Dictionary:

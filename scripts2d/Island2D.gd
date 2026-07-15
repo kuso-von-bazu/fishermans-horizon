@@ -55,25 +55,35 @@ func _coast(base_r: float, wobble: float, seed_off: int, points: int = 28) -> Pa
 		pts.append(Vector2(cos(a), sin(a)) * r)
 	return pts
 
+# #172: 島ごとに配色・植生・地形を変える(0南国/1涼しい岩場/2火山/3寒冷)
+const PALETTES := [
+	{"shallow": Color(0.55,0.82,0.87,0.45), "sand": Color(0.90,0.83,0.62), "grass": Color(0.44,0.64,0.36), "grass2": Color(0.33,0.52,0.30), "mtn": Color(0.52,0.48,0.44), "peak": Color(0.72,0.70,0.66), "tree": Color(0.25,0.55,0.25), "trunk": Color(0.45,0.32,0.18), "trees": 5, "wob": 0.16},
+	{"shallow": Color(0.45,0.72,0.85,0.45), "sand": Color(0.80,0.79,0.70), "grass": Color(0.36,0.56,0.40), "grass2": Color(0.23,0.41,0.31), "mtn": Color(0.45,0.46,0.50), "peak": Color(0.66,0.68,0.72), "tree": Color(0.20,0.45,0.34), "trunk": Color(0.38,0.30,0.22), "trees": 7, "wob": 0.20},
+	{"shallow": Color(0.50,0.58,0.66,0.45), "sand": Color(0.58,0.50,0.42), "grass": Color(0.46,0.44,0.31), "grass2": Color(0.31,0.27,0.21), "mtn": Color(0.40,0.26,0.22), "peak": Color(0.80,0.36,0.18), "tree": Color(0.32,0.40,0.22), "trunk": Color(0.32,0.24,0.16), "trees": 3, "wob": 0.24},
+	{"shallow": Color(0.60,0.74,0.84,0.45), "sand": Color(0.83,0.85,0.88), "grass": Color(0.62,0.66,0.68), "grass2": Color(0.47,0.52,0.56), "mtn": Color(0.55,0.57,0.62), "peak": Color(0.93,0.95,0.99), "tree": Color(0.42,0.52,0.50), "trunk": Color(0.40,0.36,0.30), "trees": 2, "wob": 0.18},
+]
+
 func _draw() -> void:
-	# 浅瀬(にじみ)→砂浜→緑地→深緑→山 …すべて不規則な海岸線(#41)
-	draw_colored_polygon(_coast(132, 0.16, 1), Color(0.55, 0.82, 0.87, 0.45))
-	draw_colored_polygon(_coast(112, 0.15, 1), Color(0.90, 0.83, 0.62))
-	draw_colored_polygon(_coast(86, 0.17, 3), Color(0.44, 0.64, 0.36))
-	draw_colored_polygon(_coast(52, 0.22, 5), Color(0.33, 0.52, 0.30))
+	var p: Dictionary = PALETTES[clampi(island_id, 0, PALETTES.size() - 1)]
+	var wob: float = p.wob
+	# 浅瀬(にじみ)→砂浜→緑地→深緑→山 …すべて不規則な海岸線(#41)。#172: 島ごとに配色・輪郭のゆらぎを変える
+	draw_colored_polygon(_coast(132, wob, 1), p.shallow)
+	draw_colored_polygon(_coast(112, wob * 0.9, 1), p.sand)
+	draw_colored_polygon(_coast(86, wob, 3), p.grass)
+	draw_colored_polygon(_coast(52, wob * 1.3, 5), p.grass2)
 	# 山(頂と影)
-	draw_circle(Vector2(-12, -12), 22, Color(0.52, 0.48, 0.44))
-	draw_circle(Vector2(-16, -16), 10, Color(0.72, 0.70, 0.66))
-	# ヤシの木(海岸ぞいに数本)
+	draw_circle(Vector2(-12, -12), 22, p.mtn)
+	draw_circle(Vector2(-16, -16), 10, p.peak)
+	# 樹木(海岸ぞいに数本。島ごとに本数・色が異なる)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = island_id * 31 + 7
-	for t in 5:
+	for t in int(p.trees):
 		var a := rng.randf() * TAU
-		var p := Vector2(cos(a), sin(a)) * rng.randf_range(58.0, 88.0)
-		draw_line(p, p + Vector2(2, -9), Color(0.45, 0.32, 0.18), 3.0)
+		var pt := Vector2(cos(a), sin(a)) * rng.randf_range(58.0, 88.0)
+		draw_line(pt, pt + Vector2(2, -9), p.trunk, 3.0)
 		for f in 5:
 			var fa := TAU * f / 5.0 + rng.randf() * 0.5
-			draw_line(p + Vector2(2, -9), p + Vector2(2, -9) + Vector2(cos(fa), sin(fa) * 0.6) * 9.0, Color(0.25, 0.55, 0.25), 2.0)
+			draw_line(pt + Vector2(2, -9), pt + Vector2(2, -9) + Vector2(cos(fa), sin(fa) * 0.6) * 9.0, p.tree, 2.0)
 	# 港町(桟橋+家々)
 	draw_rect(Rect2(78, -8, 52, 16), Color(0.5, 0.36, 0.22))
 	for h in 3:
