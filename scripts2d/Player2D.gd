@@ -283,6 +283,7 @@ func _build_visual() -> void:
 	sramp.set_color(0, Color(0.88, 0.88, 0.9, 0.42))
 	sramp.set_color(1, Color(0.9, 0.9, 0.92, 0.0))
 	smoke.color_ramp = sramp
+	smoke.z_index = 3   # #164再2: 煙は船体より前面に描画(船体z=2の上)
 	add_child(smoke)
 	_smoke = smoke
 	# 航跡(#132再: ほぼ静止した泡を世界座標に残し、通過経路に沿って残す)
