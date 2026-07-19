@@ -216,7 +216,7 @@ func _on_hit(body: Node) -> void:
 			if res == 2:
 				return   # #111: 回避(弾は後方へそのまま通過)
 			if res == 0:
-				Audio.play("sfx_enemy_hit", -9.0)
+				Audio.play("sfx_enemy_hit", -13.0)   # #47再: 与ダメ音を少し小さく
 				if crit:
 					GameState.notice.emit("クリティカル!")   # #139: 命中時に表示
 				var ekind = body.get("kind")

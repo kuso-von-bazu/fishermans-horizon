@@ -13,6 +13,7 @@ var _button: Button
 var _continue_button: Button
 var _bg: ColorRect
 var _art: TextureRect
+var _logo: TextureRect   # #175: タイトルロゴ(錨・船・大砲・羅針盤の紋章)
 
 func _ready() -> void:
 	layer = 30
@@ -50,6 +51,16 @@ func _build() -> void:
 	vb.alignment = BoxContainer.ALIGNMENT_CENTER
 	vb.add_theme_constant_override("separation", 18)
 	margin.add_child(vb)
+
+	# #175: ロゴ画像があれば紋章として最上部に表示(文字タイトルは冗長になるので隠す)
+	if ResourceLoader.exists("res://assets/images/logo.png"):
+		_logo = TextureRect.new()
+		_logo.texture = load("res://assets/images/logo.png")
+		_logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		_logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		_logo.custom_minimum_size = Vector2(620, 349)
+		_logo.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		vb.add_child(_logo)
 
 	_title = Label.new()
 	_title.text = "Fisherman's Horizon"
@@ -100,6 +111,10 @@ func show_title() -> void:
 	if _art:
 		_art.modulate = Color(1, 1, 1, 0.45)
 	_title.add_theme_color_override("font_color", Color(0.9, 0.95, 1.0))
+	# #175: ロゴがあれば紋章を表示し文字タイトルは隠す
+	if _logo:
+		_logo.visible = true
+		_title.visible = false
 	if _continue_button:
 		_continue_button.visible = GameState.has_save()   # #93: セーブがある時のみ
 	visible = true
@@ -114,6 +129,10 @@ func show_victory() -> void:
 	if _art:
 		_art.modulate = Color(0.85, 0.7, 0.45, 0.25)
 	_title.add_theme_color_override("font_color", Color(0.95, 0.85, 0.55))
+	# #175: 勝利画面ではロゴを隠して文字タイトル(到達!)を見せる
+	if _logo:
+		_logo.visible = false
+	_title.visible = true
 	if _continue_button:
 		_continue_button.visible = false   # 勝利画面では非表示
 	visible = true

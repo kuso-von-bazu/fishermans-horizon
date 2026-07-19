@@ -60,7 +60,7 @@ const PALETTES := [
 	{"shallow": Color(0.55,0.82,0.87,0.45), "sand": Color(0.90,0.83,0.62), "grass": Color(0.44,0.64,0.36), "grass2": Color(0.33,0.52,0.30), "mtn": Color(0.52,0.48,0.44), "peak": Color(0.72,0.70,0.66), "tree": Color(0.25,0.55,0.25), "trunk": Color(0.45,0.32,0.18), "trees": 5, "wob": 0.16},
 	{"shallow": Color(0.45,0.72,0.85,0.45), "sand": Color(0.80,0.79,0.70), "grass": Color(0.36,0.56,0.40), "grass2": Color(0.23,0.41,0.31), "mtn": Color(0.45,0.46,0.50), "peak": Color(0.66,0.68,0.72), "tree": Color(0.20,0.45,0.34), "trunk": Color(0.38,0.30,0.22), "trees": 7, "wob": 0.20},
 	{"shallow": Color(0.50,0.58,0.66,0.45), "sand": Color(0.58,0.50,0.42), "grass": Color(0.46,0.44,0.31), "grass2": Color(0.31,0.27,0.21), "mtn": Color(0.40,0.26,0.22), "peak": Color(0.80,0.36,0.18), "tree": Color(0.32,0.40,0.22), "trunk": Color(0.32,0.24,0.16), "trees": 3, "wob": 0.24},
-	{"shallow": Color(0.60,0.74,0.84,0.45), "sand": Color(0.83,0.85,0.88), "grass": Color(0.62,0.66,0.68), "grass2": Color(0.47,0.52,0.56), "mtn": Color(0.55,0.57,0.62), "peak": Color(0.93,0.95,0.99), "tree": Color(0.42,0.52,0.50), "trunk": Color(0.40,0.36,0.30), "trees": 2, "wob": 0.18},
+	{"shallow": Color(0.60,0.74,0.84,0.45), "sand": Color(0.83,0.85,0.88), "grass": Color(0.62,0.66,0.68), "grass2": Color(0.47,0.52,0.56), "mtn": Color(0.55,0.57,0.62), "peak": Color(0.93,0.95,0.99), "tree": Color(0.24,0.40,0.32), "trunk": Color(0.34,0.26,0.18), "trees": 3, "wob": 0.18, "conifer": true},
 ]
 
 func _draw() -> void:
@@ -77,13 +77,28 @@ func _draw() -> void:
 	# 樹木(海岸ぞいに数本。島ごとに本数・色が異なる)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = island_id * 31 + 7
+	var conifer := bool(p.get("conifer", false))
 	for t in int(p.trees):
 		var a := rng.randf() * TAU
 		var pt := Vector2(cos(a), sin(a)) * rng.randf_range(58.0, 88.0)
-		draw_line(pt, pt + Vector2(2, -9), p.trunk, 3.0)
-		for f in 5:
-			var fa := TAU * f / 5.0 + rng.randf() * 0.5
-			draw_line(pt + Vector2(2, -9), pt + Vector2(2, -9) + Vector2(cos(fa), sin(fa) * 0.6) * 9.0, p.tree, 2.0)
+		if conifer:
+			# #172再: 果ての島は針葉樹(モミの木)。細い幹＋積み重ねた三角の樹冠
+			draw_line(pt, pt + Vector2(0, -8), p.trunk, 2.0)
+			var top := pt + Vector2(0, -8)
+			for tier in 3:
+				var ty := top.y + tier * 7.0        # 上段ほど小さく、下へずらして重ねる
+				var w := 5.0 + tier * 3.0
+				var h := 9.0
+				draw_colored_polygon(PackedVector2Array([
+					Vector2(top.x, ty),
+					Vector2(top.x - w, ty + h),
+					Vector2(top.x + w, ty + h),
+				]), p.tree)
+		else:
+			draw_line(pt, pt + Vector2(2, -9), p.trunk, 3.0)
+			for f in 5:
+				var fa := TAU * f / 5.0 + rng.randf() * 0.5
+				draw_line(pt + Vector2(2, -9), pt + Vector2(2, -9) + Vector2(cos(fa), sin(fa) * 0.6) * 9.0, p.tree, 2.0)
 	# 港町(桟橋+家々)
 	draw_rect(Rect2(78, -8, 52, 16), Color(0.5, 0.36, 0.22))
 	for h in 3:

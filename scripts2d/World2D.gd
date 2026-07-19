@@ -624,7 +624,7 @@ func _crewed(w: Dictionary) -> Dictionary:
 	return w2
 
 func _fire_aim(w: Dictionary) -> void:
-	Audio.play(w.get("sfx", "sfx_gun"), -4.0, randf_range(0.95, 1.05))
+	Audio.play(w.get("sfx", "sfx_gun"), -8.0, randf_range(0.95, 1.05))   # #47再: 攻撃音を少し小さく
 	var dir := (get_global_mouse_position() - player.global_position).normalized()
 	var proj := Area2D.new()
 	proj.set_script(ProjectileScript)
@@ -634,7 +634,7 @@ func _fire_aim(w: Dictionary) -> void:
 	proj.setup(dir, _crewed(w))
 
 func _fire_torpedo(w: Dictionary) -> void:
-	Audio.play("sfx_torpedo", -4.0)
+	Audio.play("sfx_torpedo", -8.0)   # #47再: 攻撃音を少し小さく
 	var dir: Vector2 = player.forward()
 	if lock_target and is_instance_valid(lock_target):
 		dir = (lock_target.global_position - player.global_position).normalized()
