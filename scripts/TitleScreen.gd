@@ -49,7 +49,7 @@ func _build() -> void:
 
 	var vb := VBoxContainer.new()
 	vb.alignment = BoxContainer.ALIGNMENT_CENTER
-	vb.add_theme_constant_override("separation", 18)
+	vb.add_theme_constant_override("separation", 14)
 	margin.add_child(vb)
 
 	# #175: ロゴ画像があれば紋章として最上部に表示(文字タイトルは冗長になるので隠す)
@@ -58,9 +58,12 @@ func _build() -> void:
 		_logo.texture = load("res://assets/images/logo.png")
 		_logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		_logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		_logo.custom_minimum_size = Vector2(620, 349)
 		_logo.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		vb.add_child(_logo)
+		# #175再: フルスクリーン(論理縦720)でも下部のBGM表記が見切れないよう
+		# ロゴ高さを画面の高さに追従させる(画面縦の約34%上限)。リサイズにも対応。
+		_fit_logo()
+		get_viewport().size_changed.connect(_fit_logo)
 
 	_title = Label.new()
 	_title.text = "Fisherman's Horizon"
@@ -102,6 +105,17 @@ func _build() -> void:
 	credit.add_theme_color_override("font_color", Color(0.75, 0.82, 0.9))
 	credit.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(credit)
+
+func _fit_logo() -> void:
+	# #175再: ロゴ高さを画面縦に追従(約30%、160〜300pxに制限)。横は元画像比を維持。
+	if not _logo:
+		return
+	var vp := get_viewport()
+	if vp == null:
+		return
+	var h := clampf(vp.get_visible_rect().size.y * 0.30, 160.0, 300.0)
+	var aspect := 1672.0 / 941.0   # 生成ロゴの縦横比
+	_logo.custom_minimum_size = Vector2(h * aspect, h)
 
 func show_title() -> void:
 	_title.text = "Fisherman's Horizon"
