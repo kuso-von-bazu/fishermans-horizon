@@ -605,6 +605,7 @@ func _die() -> void:
 	if _dead:
 		return   # #148: 同一フレームの多重ヒットで名声/首を重複取得しないよう1回だけ
 	_dead = true
+	GameState.record_kill(kind, id)   # #177: 討伐記録(モブ・海賊のみ加算)
 	match kind:
 		"mob":
 			if not GameState.add_cargo(id):

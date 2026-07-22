@@ -260,6 +260,7 @@ var unlocked_islands: Array[int] = [0]   # 名声で入港可能になった島
 var visited_islands: Array[int] = [0]    # 実際に寄港して到達した島(ファストトラベル可・Issue #19)
 var defeated_lords: Array[String] = []   # 討伐済みで賞金未受領
 var claimed_lords: Array[String] = []    # 賞金受領済み
+var kills: Dictionary = {}                # #177: 討伐記録 "kind:id" -> 討伐数(999カンスト)
 var guide_target: Dictionary = {}        # #60/#61: ソナーガイド {"kind":"island"|"lord","id":...}
 var has_departed: bool = false            # #168: 一度でも出港したか(初回出港のみ燃料費無料)
 
@@ -295,6 +296,7 @@ func reset_all() -> void:
 	visited_islands = [0]
 	defeated_lords = []
 	claimed_lords = []
+	kills = {}
 	guide_target = {}
 	has_departed = false   # #168
 	fire_burn = 0.0
@@ -316,6 +318,7 @@ func save_game() -> void:
 		"current_island": current_island,
 		"unlocked_islands": unlocked_islands, "visited_islands": visited_islands,
 		"defeated_lords": defeated_lords, "claimed_lords": claimed_lords,
+		"kills": kills,
 		"guide_target": guide_target, "has_departed": has_departed,
 	}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
@@ -355,6 +358,7 @@ func load_game() -> bool:
 	# 辞書の数値はJSONでfloat化するのでintへ戻す
 	cargo = _to_int_dict(data.get("cargo", {}))
 	heads = _to_int_dict(data.get("heads", {}))
+	kills = _to_int_dict(data.get("kills", {}))   # #177: 討伐記録
 	crew = []
 	for c in data.get("crew", []):
 		crew.append({
@@ -453,6 +457,17 @@ func add_cargo(id: String, cap_needed: int = -1) -> bool:
 func add_head(pirate_id: String) -> void:
 	heads[pirate_id] = int(heads.get(pirate_id, 0)) + 1
 	stats_changed.emit()
+
+# #177: 討伐記録。戦闘モブ・海賊の討伐数を種別+idで加算(999カンスト)
+func record_kill(kind: String, id: String) -> void:
+	if kind != "mob" and kind != "pirate":
+		return
+	var key := "%s:%s" % [kind, id]
+	kills[key] = mini(int(kills.get(key, 0)) + 1, 999)
+
+# #177: 討伐数の取得(未討伐は0)
+func kill_count(kind: String, id: String) -> int:
+	return int(kills.get("%s:%s" % [kind, id], 0))
 
 func add_relic(value: int) -> void:
 	relics += value

@@ -61,6 +61,7 @@ func _build() -> void:
 	tabs.add_child(_btn("酒場", show_tavern))
 	tabs.add_child(_btn("造船所", show_shipyard))
 	tabs.add_child(_btn("航路", show_travel))
+	tabs.add_child(_btn("討伐記録", show_bestiary))   # #177
 
 	var sep := HSeparator.new()
 	vb.add_child(sep)
@@ -268,6 +269,57 @@ func show_tavern() -> void:
 					GameState.notice.emit("%s へのガイドを設定(ソナー外周の赤い印)" % lname)
 				show_tavern()))
 		content.add_child(row)
+
+# ---------------- 討伐記録(#177) ----------------
+func show_bestiary() -> void:
+	_refresh_header()
+	_clear()
+	content.add_child(_h("討伐記録 — 戦闘モブ・海賊の図鑑(討伐数は999でカンスト)", 22))
+	var known := 0
+	for e in Database.bestiary:
+		if GameState.kill_count(e.kind, e.id) > 0:
+			known += 1
+	content.add_child(_p("発見: %d / %d 種  ※討伐したことがない敵は ？ で表示" % [known, Database.bestiary.size()]))
+	for e in Database.bestiary:
+		var cnt: int = GameState.kill_count(e.kind, e.id)
+		var d: Dictionary = Database.enemy_def(e.kind, e.id)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 12)
+		if cnt > 0:
+			row.add_child(_portrait(e.id, 72))
+			var stat := "HP:%d  攻撃:%d" % [int(d.get("hp", 0)), int(d.get("dmg", 0))]
+			if d.has("speed"):
+				stat += "  速度:%d" % int(d.get("speed", 0))
+			if e.kind == "pirate":
+				stat += "  賞金:%d" % int(d.get("bounty", 0))
+			var info := _p("%s  討伐数:%d\n%s\n%s" % [str(d.get("name", "?")), cnt, stat, str(e.get("desc", ""))])
+			info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			info.custom_minimum_size = Vector2(500, 0)
+			info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			row.add_child(info)
+		else:
+			row.add_child(_unknown_portrait(72))
+			var info := _p("？？？\n未討伐")
+			info.custom_minimum_size = Vector2(500, 0)
+			row.add_child(info)
+		content.add_child(row)
+
+# #177: 未討伐の敵の枠(「？」を表示)
+func _unknown_portrait(h: float) -> Control:
+	var holder := PanelContainer.new()
+	holder.custom_minimum_size = Vector2(h * 1.7, h)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.10, 0.12, 0.15, 0.8)
+	sb.set_corner_radius_all(6)
+	holder.add_theme_stylebox_override("panel", sb)
+	var q := Label.new()
+	q.text = "？"
+	q.add_theme_font_size_override("font_size", 40)
+	q.add_theme_color_override("font_color", Color(0.5, 0.55, 0.6))
+	q.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	q.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	holder.add_child(q)
+	return holder
 
 # ---------------- 造船所 ----------------
 func show_shipyard() -> void:

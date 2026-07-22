@@ -899,6 +899,7 @@ func _maybe_screenshot() -> void:
 	var want_boss := false
 	var want_food := false
 	var want_tavern := false
+	var want_bestiary := false
 	var want_guide := false
 	var want_bullets := false
 	for a in args:
@@ -909,6 +910,7 @@ func _maybe_screenshot() -> void:
 			want_boss = a.find("boss") != -1
 			want_food = a.find("food") != -1
 			want_tavern = a.find("tavern") != -1
+			want_bestiary = a.find("bestiary") != -1
 			want_guide = a.find("guide") != -1
 			want_bullets = a.find("bullets") != -1
 	if not want_shot:
@@ -973,6 +975,12 @@ func _maybe_screenshot() -> void:
 		port_ui.open()
 		if want_tavern:
 			port_ui.show_tavern()
+		if want_bestiary:   # #177: 討伐記録タブの確認(一部を討伐済みにして表示)
+			GameState.record_kill("mob", "narwhal")
+			GameState.record_kill("mob", "charybdis")
+			GameState.record_kill("mob", "charybdis")
+			GameState.record_kill("pirate", "king")
+			port_ui.show_bestiary()
 		await get_tree().create_timer(0.3).timeout
 	await RenderingServer.frame_post_draw
 	var img := get_viewport().get_texture().get_image()
