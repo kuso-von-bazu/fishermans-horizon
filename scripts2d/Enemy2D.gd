@@ -88,6 +88,7 @@ func _ready() -> void:
 		"pirate": target_w = clampf(85.0 + max_hp * 0.05, 95.0, 160.0)
 		"mob": target_w = clampf(52.0 + max_hp * 0.06, 55.0, 120.0)   # #33: 小さめ(#69以降の強モブは大きめ)
 		"lord": target_w = clampf(110.0 + max_hp * 0.05, 140.0, 380.0)
+	target_w *= float(def.get("size_mult", 1.0))   # #180: 個別の見た目サイズ調整(当たり判定も連動)
 	_radius = target_w * 0.40
 	_target_w = target_w
 	attack_range += _radius

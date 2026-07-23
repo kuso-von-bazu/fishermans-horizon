@@ -21,7 +21,7 @@ var combat_mobs := {
 	# #96再: 販売額は従前(初期値)の約2割引き。#26再: face_left=元画像が左向き→反転条件を逆に
 	"narwhal":       {"name": "ユニコーン",     "hp": 110, "dmg": 6,  "cap": 3, "price": 120, "ranged": false, "aerial": false, "speed": 8.0,  "face_left": true, "color": Color(0.85,0.85,0.9)},
 	"seahunter":     {"name": "シーハンター",   "hp": 250, "dmg": 12,  "cap": 4, "price": 256, "ranged": false, "aerial": false, "speed": 9.0,  "face_left": true, "color": Color(0.2,0.2,0.25)},
-	"ornithocheirus":{"name": "オルニケイトス", "hp": 160, "dmg": 11, "cap": 3, "price": 224, "ranged": false, "aerial": true,  "speed": 21.0, "dodge": 0.10, "dodge_pass": true, "color": Color(0.7,0.6,0.4)},
+	"ornithocheirus":{"name": "オルニケイトス", "hp": 160, "dmg": 11, "cap": 3, "price": 224, "ranged": false, "aerial": true,  "speed": 21.0, "dodge": 0.10, "dodge_pass": true, "face_left": true, "color": Color(0.7,0.6,0.4)},
 	"wyrm":          {"name": "ワイアーム",     "hp": 400, "dmg": 18, "cap": 4, "price": 400, "ranged": true,  "aerial": false, "speed": 7.0,  "atk_cd": 0.8, "face_left": true, "color": Color(0.6,0.2,0.2)},
 	# #69: 潮鳴り以降の強モブ。reach=触腕の射程倍率, entangle=被弾で討伐まで鈍足
 	"kraken":        {"name": "クラーケン",     "hp": 700, "dmg": 24, "cap": 6, "price": 720,  "ranged": false, "aerial": false, "speed": 8.5,  "reach": 2.2, "entangle": true, "color": Color(0.5,0.2,0.45)},
@@ -35,7 +35,7 @@ var combat_mobs := {
 	# #72再: 果ての島。tiamat=空中(魚雷ロック不可)+俊敏+高火力+炎上弾+低回避, dagon=触腕+絡め+毒+高速。強化
 	# #167: ティアマットの遠隔弾はヒュドラの炎弾と同じ見た目(fire_look。挙動はburn_chance据え置き)
 	"tiamat":        {"name": "ティアマット",   "hp": 1350, "dmg": 33, "cap": 10, "price": 1440, "ranged": true, "aerial": true, "speed": 14.5, "atk_cd": 0.7, "range_mult": 1.3, "dodge": 0.20, "dodge_pass": true, "burn_chance": 0.6, "fire_look": true, "zigzag": true, "face_left": true, "color": Color(0.15,0.12,0.2)},
-	"dagon":         {"name": "ダゴン",         "hp": 1250, "dmg": 34, "cap": 9,  "price": 1280, "ranged": false, "aerial": false, "speed": 12.5, "reach": 2.5, "entangle": true, "poison": true, "color": Color(0.3,0.5,0.35)},
+	"dagon":         {"name": "ダゴン",         "hp": 1250, "dmg": 34, "cap": 9,  "price": 1280, "ranged": false, "aerial": false, "speed": 12.5, "reach": 2.5, "entangle": true, "poison": true, "size_mult": 0.85, "color": Color(0.3,0.5,0.35)},
 	# #72再: ザッハーク。銀色の神々しい竜。空中(魚雷ロック不可)+俊敏+高火力、密度の高い3way弾(aim_tight)、攻撃回避率15%(回避時は弾が後方へ抜ける)。#72再々: ギザギザ移動廃止+より積極的に遠隔(atk_cd短縮/range_mult延長)
 	"zahhak":        {"name": "ザッハーク",     "hp": 1480, "dmg": 30, "cap": 10, "price": 1560, "ranged": true, "aerial": true, "speed": 15.5, "atk_cd": 0.95, "range_mult": 1.3, "dodge": 0.15, "dodge_pass": true, "way": 3, "aim_tight": true, "shot_speed_mult": 0.8, "face_left": true, "color": Color(0.82,0.85,0.92)},
 }
