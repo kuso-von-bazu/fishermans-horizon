@@ -102,9 +102,9 @@ func dir_vec(deg: float) -> Vector3:
 var pirates := {
 	# #66: wpn=遠隔攻撃の種類(gatling=連射弾/cannon=砲弾/torpedo=追尾魚雷/all=全部+衝角)
 	# #66: 中はガトリング3連+大砲、大はガトリング3連+追尾魚雷を同時に撃つ(volley)
-	# #179: 海賊船の元画像は左向き→face_leftで反転条件をそろえる(向きが逆だった件)
-	"raider":   {"name": "海賊(小)", "hp": 220, "dmg": 11,  "bounty": 90,  "fame": 1, "ranged": true, "wpn": "gatling", "face_left": true, "color": Color(0.4,0.3,0.2)},
-	"corsair":  {"name": "海賊(中)", "hp": 450, "dmg": 16, "bounty": 220, "fame": 2, "ranged": true, "volley": ["gatling", "cannon"], "face_left": true,  "color": Color(0.35,0.25,0.15)},
+	# #179再: 大/海賊王は元画像が左向き→face_leftで反転。小/中は元から正しい向きなので付けない
+	"raider":   {"name": "海賊(小)", "hp": 220, "dmg": 11,  "bounty": 90,  "fame": 1, "ranged": true, "wpn": "gatling", "color": Color(0.4,0.3,0.2)},
+	"corsair":  {"name": "海賊(中)", "hp": 450, "dmg": 16, "bounty": 220, "fame": 2, "ranged": true, "volley": ["gatling", "cannon"],  "color": Color(0.35,0.25,0.15)},
 	"dread":    {"name": "海賊(大)", "hp": 900, "dmg": 24, "bounty": 500, "fame": 4, "ranged": true, "volley": ["gatling", "torpedo"], "face_left": true, "color": Color(0.25,0.18,0.1)},
 	# #73: レアスポーンの強敵。かつてFisherman's Horizonを目指し、心折れて海賊に落ちた男。
 	# hp/dmgは出現海域(island)に応じてEnemy2Dで強化。
