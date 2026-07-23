@@ -306,7 +306,7 @@ func take_hit(amount: float, slip: bool, debuff: bool, no_dodge: bool = false) -
 		_debuff_stacks += 1
 		_debuff_t = 4.5 * GameState.debuff_dur_mult()
 		if _debuff_kind == "slip":
-			_slip += amount * (0.45 + 0.25 * _debuff_power)
+			_slip += amount * (0.65 + 0.40 * _debuff_power)   # #37再々: 毒を強化
 	# 被弾フラッシュ
 	if sprite:
 		sprite.modulate = Color(2.2, 1.2, 1.2)
@@ -360,7 +360,7 @@ func _physics_process(delta: float) -> void:
 		_aggro = true
 	var eff_speed := speed
 	if _debuff_kind == "speed":
-		eff_speed *= 1.0 - 0.4 * clampf(_debuff_power, 0.0, 1.0)   # #91/#114 鈍化(重ねがけで増加/減衰)
+		eff_speed *= 1.0 - 0.55 * clampf(_debuff_power, 0.0, 1.0)   # #37再々: 鈍化を強化   # #91/#114 鈍化(重ねがけで増加/減衰)
 	var move_dir: Vector2
 	if _aggro:
 		move_dir = to.normalized()

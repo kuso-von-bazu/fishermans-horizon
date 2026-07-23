@@ -14,6 +14,8 @@ var _ram_cd: float = 0.0
 var _wake: CPUParticles2D
 var _smoke: CPUParticles2D   # #131: 蒸気(移動方向と逆向きに流す)
 var _sprays: Array = []      # #144: 舷側のしぶき
+var _dmg_smokes: Array = []  # #178: 損傷時の黒煙(複数個所)
+var _dmg_state: int = -1     # #178: 0=無/1=小(装甲1/4未満)/2=大(大破)。差分更新用
 var _flame: CPUParticles2D   # #136: 炎上アニメ
 var _sc: float = 1.0
 var _half_w: float = 30.0    # #132/#144: 船の見た目の半幅(px)
@@ -347,12 +349,48 @@ func _build_visual() -> void:
 		add_child(spray)
 		_sprays.append(spray)
 
+	# #178: 損傷時の黒煙(装甲1/4未満で小さな黒煙・大破で大きな黒煙)。船の複数個所から噴く。
+	_dmg_smokes = []
+	var dmg_pts := [
+		Vector2(-_half_w * 0.30, -_half_h * 0.55),  # 船首寄り
+		Vector2( _half_w * 0.35, -_half_h * 0.05),  # 中央右舷
+		Vector2(-_half_w * 0.10,  _half_h * 0.45),  # 船尾寄り
+	]
+	for p in dmg_pts:
+		var ds := CPUParticles2D.new()
+		ds.amount = 18
+		ds.lifetime = 1.8
+		ds.emitting = false
+		ds.local_coords = false            # 世界座標に残す→船が進むと後方へたなびく
+		ds.position = p
+		ds.spread = 30.0
+		ds.direction = Vector2(0, -1)      # 上へ立ち上る
+		ds.gravity = Vector2(0, -30)
+		ds.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
+		ds.emission_sphere_radius = 3.0 * _sc
+		ds.initial_velocity_min = 6.0
+		ds.initial_velocity_max = 16.0
+		ds.scale_amount_min = 2.0
+		ds.scale_amount_max = 4.5
+		var dcurve := Curve.new()          # 立ち上りながら膨らむ
+		dcurve.add_point(Vector2(0.0, 0.7))
+		dcurve.add_point(Vector2(1.0, 2.2))
+		ds.scale_amount_curve = dcurve
+		var dramp := Gradient.new()        # 黒煙(濃い黒→薄れて消える)
+		dramp.set_color(0, Color(0.12, 0.12, 0.13, 0.75))
+		dramp.set_color(1, Color(0.18, 0.18, 0.2, 0.0))
+		ds.color_ramp = dramp
+		ds.z_index = 4
+		add_child(ds)
+		_dmg_smokes.append(ds)
+
 func _ship_scale() -> float:
 	# #151再: 巡洋戦艦は見た目・当たり判定を一回り大きく
 	var extra: float = 1.15 if GameState.ship_id == "cruiser" else 1.0
 	return clampf(0.9 + float(GameState.ship().armor) / 1500.0, 0.9, 1.8) * extra
 
 func rebuild_visual() -> void:
+	_dmg_state = -1   # #178: 損傷煙の状態を作り直し後に再評価させる
 	for c in get_children():
 		c.queue_free()
 	max_speed = float(GameState.ship().speed) * K
@@ -394,6 +432,24 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	if _flame:
 		_flame.emitting = GameState.burn_t > 0.0   # #136: 炎上中だけ炎
+	# #178: 損傷黒煙。装甲1/4未満で小さな黒煙、大破(装甲0)で大きな黒煙を複数個所から。
+	if _dmg_smokes.size() > 0:
+		var frac := GameState.run_armor / maxf(GameState.max_armor(), 1.0)
+		var st := 2 if GameState.run_armor <= 0.0 else (1 if frac < 0.25 else 0)
+		if st != _dmg_state:
+			_dmg_state = st
+			for ds in _dmg_smokes:
+				ds.emitting = st != 0
+				if st == 2:      # 大破=大きな黒煙
+					ds.amount = 26
+					ds.scale_amount_min = 4.0
+					ds.scale_amount_max = 8.0
+					ds.initial_velocity_max = 22.0
+				else:            # 小さな黒煙(st==1)。st==0はemitting=falseなので値は不問
+					ds.amount = 18
+					ds.scale_amount_min = 2.0
+					ds.scale_amount_max = 4.5
+					ds.initial_velocity_max = 16.0
 	if _smoke:
 		# #131: 蒸気は移動方向と逆向き(=船の後方)へ流す。世界座標の重力で押す
 		_smoke.gravity = -velocity * 0.7
