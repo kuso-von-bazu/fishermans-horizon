@@ -237,7 +237,7 @@ func show_tavern() -> void:
 		hrow.add_child(dsc)
 		content.add_child(hrow)
 	if GameState.current_island >= 2:
-		content.add_child(_p("※この港は契約金3倍(水夫を除く)だが、他の港より格段に強力なクルーを雇用できる(初期能力の上乗せ4倍)"))
+		content.add_child(_p("※この港は契約金3倍(水夫を除く)だが、他の港より格段に強力なクルーを雇用できる"))
 	content.add_child(_p("効果: 体力=燃料減少↓ 敏捷=被ダメ減 射撃=威力↑ 知力=デバフ強化 視力=ロック距離↑"))
 
 	content.add_child(_p(""))
@@ -274,12 +274,12 @@ func show_tavern() -> void:
 func show_bestiary() -> void:
 	_refresh_header()
 	_clear()
-	content.add_child(_h("討伐記録 — 戦闘モブ・海賊の図鑑(討伐数は999でカンスト)", 22))
+	content.add_child(_h("討伐記録", 22))
 	var known := 0
 	for e in Database.bestiary:
 		if GameState.kill_count(e.kind, e.id) > 0:
 			known += 1
-	content.add_child(_p("発見: %d / %d 種  ※討伐したことがない敵は ？ で表示" % [known, Database.bestiary.size()]))
+	content.add_child(_p("討伐: %d / %d 種" % [known, Database.bestiary.size()]))
 	for e in Database.bestiary:
 		var cnt: int = GameState.kill_count(e.kind, e.id)
 		var d: Dictionary = Database.enemy_def(e.kind, e.id)
@@ -420,7 +420,7 @@ func show_travel() -> void:
 	_refresh_header()
 	_clear()
 	content.add_child(_h("航路 — 既知の島へファストトラベル", 22))
-	content.add_child(_p("到達済みの島へ移動できます(帰りのモブ襲撃なし)。未到達の島へは方角を頼りに自力で航行してください。"))
+	content.add_child(_p("到達済みの島へ移動できます。未到達の島へは方角を頼りに自力で航行してください。"))
 	var here: Vector3 = Database.island(GameState.current_island).pos
 	for isle in Database.islands:
 		if isle.id == GameState.current_island:
