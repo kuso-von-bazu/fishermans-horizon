@@ -31,7 +31,7 @@ var combat_mobs := {
 	# #71再: カリュブディスの能力を全体的に強化
 	"charybdis":     {"name": "カリュブディス", "hp": 1050, "dmg": 31, "cap": 8, "price": 960, "ranged": true,  "aerial": false, "speed": 11.0,  "dodge": 0.20, "entangle": true, "color": Color(0.15,0.3,0.45)},
 	# #71: 嵐越え以降。amphiptere=空中(魚雷ロック不可)+近接のみ+高速で追尾(竜×蛇の有翼)
-	"amphiptere":    {"name": "アンフィプテレ", "hp": 780, "dmg": 32, "cap": 6, "price": 760, "ranged": false, "aerial": true, "speed": 17.0, "aggro": 1300.0, "dodge": 0.10, "dodge_pass": true, "face_left": true, "color": Color(0.45,0.2,0.5)},
+	"amphiptere":    {"name": "アンフィプテレ", "hp": 780, "dmg": 32, "cap": 6, "price": 760, "ranged": false, "aerial": true, "speed": 19.0, "aggro": 1300.0, "dodge": 0.10, "dodge_pass": true, "face_left": true, "color": Color(0.45,0.2,0.5)},
 	# #72再: 果ての島。tiamat=空中(魚雷ロック不可)+俊敏+高火力+炎上弾+低回避, dagon=触腕+絡め+毒+高速。強化
 	# #167: ティアマットの遠隔弾はヒュドラの炎弾と同じ見た目(fire_look。挙動はburn_chance据え置き)
 	"tiamat":        {"name": "ティアマット",   "hp": 1350, "dmg": 33, "cap": 10, "price": 1440, "ranged": true, "aerial": true, "speed": 14.5, "atk_cd": 0.7, "range_mult": 1.3, "dodge": 0.20, "dodge_pass": true, "burn_chance": 0.6, "fire_look": true, "zigzag": true, "face_left": true, "color": Color(0.15,0.12,0.2)},
