@@ -159,7 +159,10 @@ func _crew_sum(stat: String) -> int:
 
 # --- クルー効果 ---
 func food_drain_mult() -> float:   # 体力+料理人: 燃料(食料)減少を低下
-	var m := 1.0 / (1.0 + 0.02 * _crew_sum("hp"))
+	# #183: 体力10までは線形、10超はlog逓減(体力を伸ばしても燃料減少効果が頭打ちに近づく)
+	var h := float(_crew_sum("hp"))
+	var eff := h if h <= 10.0 else 10.0 + log(1.0 + (h - 10.0))
+	var m := 1.0 / (1.0 + 0.02 * eff)
 	for c in crew:
 		if c.job == "cook":
 			m *= 0.85

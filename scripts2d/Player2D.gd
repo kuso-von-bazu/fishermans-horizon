@@ -282,23 +282,95 @@ const SHIP_MAPS := {
 	],
 }
 
+# #185: 装備武器を甲板上に小さく表現するドット絵(魚雷は表現しない)。bow=上=銃口。
+# B=筐体 b=銃身 s=細身シャフト m=銃口 I=砲口 t=真鍮の銛先
+const WPN_PIX := {
+	"B": Color(0.15, 0.16, 0.19), "b": Color(0.28, 0.30, 0.34),
+	"s": Color(0.58, 0.60, 0.66), "m": Color(0.45, 0.46, 0.50),
+	"I": Color(0.60, 0.62, 0.68), "t": Color(0.78, 0.62, 0.32),
+}
+const WPN_MAPS := {
+	# ガトリング: 3連の細い銃身
+	"gatling": [
+		"m.m.m",
+		"b.b.b",
+		"b.b.b",
+		"BBBBB",
+		"BBBBB",
+		".BBB.",
+		".BBB.",
+	],
+	# 大砲: 太い単装砲身
+	"cannon": [
+		"..I..",
+		".bbb.",
+		".bbb.",
+		".bbb.",
+		"BBBBB",
+		"BBBBB",
+		".BBB.",
+	],
+	# 銛: 細長い銛と銛先(かえし)+発射架
+	"harpoon": [
+		"..t..",
+		".ttt.",
+		"..s..",
+		"..s..",
+		"..s..",
+		".BBB.",
+		".BBB.",
+	],
+}
+
+func _weapon_texture(wid: String) -> ImageTexture:
+	var m: Array = WPN_MAPS.get(wid, [])
+	if m.is_empty():
+		return null
+	var ww: int = m[0].length()
+	var wh := m.size()
+	var img := Image.create(ww, wh, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	for y in wh:
+		var row: String = m[y]
+		for x in ww:
+			var ch := row[x]
+			if WPN_PIX.has(ch):
+				img.set_pixel(x, y, WPN_PIX[ch])
+	return ImageTexture.create_from_image(img)
+
 func _build_ship_texture(with_ram: bool, ram_steel: bool) -> ImageTexture:
 	var map: Array = SHIP_MAPS.get(GameState.ship_id, SHIP_MAP)   # #130: 船ごとの絵
 	var w: int = map[0].length()
 	var h := map.size()
-	var ram_rows := 17 if with_ram else 0   # #36再: より細長く鋭角に
+	# #36再2: 衝角のサイズを船体に比例させる。船幅(実際の最大ビーム)を走査。
+	var beam := 0
+	for row in map:
+		var lo := -1
+		var hi := -1
+		for x in w:
+			if row[x] != ".":
+				if lo < 0:
+					lo = x
+				hi = x
+		if lo >= 0:
+			beam = maxi(beam, hi - lo + 1)
+	# 長さ≈船長の1/4、根元の全幅≈船幅の2/3(=半幅は船幅の1/3)、先端へ向け鋭く逓減
+	var ram_rows := int(round(float(h) / 4.0)) if with_ram else 0
 	var img := Image.create(w, h + ram_rows, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
-	# 衝角(#36/#43): 船首(進行方向)に細長く鋭い二等辺三角形
+	# 衝角(#36/#43): 船首(進行方向)に船幅比例の鋭い二等辺三角形。縁を暗くして立体感を出す
 	if with_ram:
 		var rc := Color(0.78, 0.82, 0.88) if ram_steel else Color(0.5, 0.46, 0.4)
+		var rc_edge := rc.darkened(0.28)
 		var cx := w / 2
+		var base_half := float(beam) / 3.0
 		for ry in ram_rows:
-			# ry=0(先端)は幅0、根元でも幅2程度の鋭角(細長い)
-			var half: int = int(floor(float(ry) / float(ram_rows - 1) * 3.0))
+			var t: float = float(ry) / float(maxi(ram_rows - 1, 1))   # 0=先端 .. 1=根元
+			var half: int = int(round(base_half * pow(t, 1.4)))        # 先端へ鋭く(鋭角)
 			for x in range(cx - half, cx + half + 1):
 				if x >= 0 and x < w:
-					img.set_pixel(x, ry, rc)
+					var edge: bool = half >= 2 and (x == cx - half or x == cx + half)
+					img.set_pixel(x, ry, rc_edge if edge else rc)
 	for y in h:
 		var row: String = map[y]
 		for x in w:
@@ -313,7 +385,13 @@ func _build_visual() -> void:
 	# #132/#144: 船の見た目の半幅(px)を算出して航跡幅・舷側しぶき位置に使う
 	var map: Array = SHIP_MAPS.get(GameState.ship_id, SHIP_MAP)
 	var mw: int = map[0].length()
-	_half_w = (float(mw) / 2.0 - 1.0) * PIX_SCALE * sc
+	# #130再: 透明パディングを除いた実際の船体の縁を走査し、舷側しぶき/航跡を船体の縁に密着させる
+	var half_cols := 0.0
+	for row in map:
+		for x in mw:
+			if row[x] != ".":
+				half_cols = maxf(half_cols, absf(float(x) + 0.5 - float(mw) / 2.0))
+	_half_w = half_cols * PIX_SCALE * sc
 	# #164: 実際の船体の半高(px)。透明パディング1px分を除いて船尾に隙間なく航跡を出す
 	_half_h = (float(map.size()) / 2.0 - 1.0) * PIX_SCALE * sc
 	var with_ram: bool = GameState.ram_id != "none"
@@ -451,6 +529,28 @@ func _build_visual() -> void:
 		add_child(ds)
 		_dmg_smokes.append(ds)
 
+	# #185: 装備中の武器を甲板上に小さく表現(魚雷は表現しない)。船首→船尾に沿って配置。
+	var shown: Array = []
+	for wid in GameState.weapons:
+		if wid == null:
+			continue
+		var ws := str(wid)
+		if ws != "" and ws != "torpedo" and WPN_MAPS.has(ws):
+			shown.append(ws)
+	var n := shown.size()
+	for i in n:
+		var wtex := _weapon_texture(shown[i])
+		if wtex == null:
+			continue
+		var wsp := Sprite2D.new()
+		wsp.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		wsp.texture = wtex
+		wsp.scale = Vector2.ONE * PIX_SCALE * sc * 0.62   # 船と比べて小さめ
+		var fy: float = -0.5 if n == 1 else lerpf(-0.52, 0.42, float(i) / float(n - 1))
+		wsp.position = Vector2(0, fy * _half_h)   # 中心線に沿って甲板上へ
+		wsp.z_index = 3   # 船体(z=2)より前面
+		add_child(wsp)
+
 func _ship_scale() -> float:
 	# #151再: 巡洋戦艦は見た目・当たり判定を一回り大きく
 	var extra: float = 1.15 if GameState.ship_id == "cruiser" else 1.0
@@ -496,7 +596,14 @@ func _physics_process(delta: float) -> void:
 	var steer_factor: float = clampf(spd / maxf(eff_max, 1.0), 0.2, 1.0)
 	rotation += steer * turn_speed * steer_factor * delta
 	velocity = velocity.move_toward(forward() * throttle * eff_max, accel * delta)
+	# #184: 高速な敵に押し出されて最高速度を超えて飛ばされるのを防ぐ。
+	# 実移動量を「意図した速度×delta」に制限(低速時のみ僅かな押し出しを許容し、めり込みからは徐々に脱出)。
+	var pre_pos := global_position
 	move_and_slide()
+	var moved := global_position - pre_pos
+	var max_step := maxf(velocity.length() * delta, 12.0 * delta)
+	if moved.length() > max_step:
+		global_position = pre_pos + moved.normalized() * max_step
 	if _flame:
 		_flame.emitting = GameState.burn_t > 0.0   # #136: 炎上中だけ炎
 	# #178: 損傷黒煙。装甲1/4未満で小さな黒煙、大破(装甲0)で大きな黒煙を複数個所から。
