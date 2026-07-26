@@ -137,6 +137,10 @@ func _ready() -> void:
 	var ps := get_tree().get_first_node_in_group("player")
 	if ps:
 		player = ps
+		# #184: プレイヤーと敵は物理的にすり抜ける(押し出しでプレイヤーが最高速度超で飛ばされるバグ防止)。
+		# 衝角はPlayer2D側の近接判定で当てる。
+		if ps is CollisionObject2D:
+			(ps as CollisionObject2D).add_collision_exception_with(self)
 	# #150: 空中の敵は島の当たり判定を無視(島と重なって追う)
 	if aerial:
 		collision_mask = 0

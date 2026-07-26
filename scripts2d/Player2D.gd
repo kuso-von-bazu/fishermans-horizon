@@ -71,23 +71,23 @@ const PIX_SCALE := 2.27
 # #130: 船ごとに描き分けたドット絵(見た目を差別化)。未定義はSHIP_MAP(弩級)。
 # #130再: 船ごとに船らしいドット絵へ描き分け(ドット数を増やして精細化)。bow=上。
 const SHIP_MAPS := {
-	# 粗末な漁船: 木を組んだ筏(古木・小屋付き)
+	# #186: 粗末な漁船=小さな漁船(尖った船首・小屋・漁具の網)。木の筏から刷新。
 	"raft": [
-		"...............",
-		"....HDPDPDH....",
-		"..HDPDPDPDPDH..",
-		".HPDPDPDPDPDPH.",
-		".HPDPDPDPDPDPH.",
-		".HPDPDPDPDPDPH.",
-		".HPDPDWWWDPDPH.",
-		".HPDPDDBDDPDPH.",
-		".HPDPDDDDDPDPH.",
-		".HPDPDPDPDPDPH.",
-		".HPDPDPDPDPDPH.",
-		".HPDPDPDPDPDPH.",
-		"..HDPDPDPDPDH..",
-		"....HDPDPDH....",
-		"...............",
+		".......H.......",
+		"......HhH......",
+		".....HhDhH.....",
+		"....HhDDDhH....",
+		"...HhDDDDDhH...",
+		"..HhDDDDDDDhH..",
+		"..HhDWWWWWDhH..",
+		"..HhDWBBBWDhH..",
+		"..HhDWWWWWDhH..",
+		"..HhDDDDDDDhH..",
+		"..HhDDPPPDDhH..",
+		"..HhDDDDDDDhH..",
+		"...HhDDDDDhH...",
+		"....HhhhhhH....",
+		".....HHHHH.....",
 	],
 	# 武装スキフ: 尖った船首・前部砲・船橋・小煙突
 	"skiff": [
@@ -354,29 +354,33 @@ func _build_ship_texture(with_ram: bool, ram_steel: bool) -> ImageTexture:
 				hi = x
 		if lo >= 0:
 			beam = maxi(beam, hi - lo + 1)
-	# 長さ≈船長の1/4、根元の全幅≈船幅の2/3(=半幅は船幅の1/3)、先端へ向け鋭く逓減
-	var ram_rows := int(round(float(h) / 4.0)) if with_ram else 0
-	var img := Image.create(w, h + ram_rows, false, Image.FORMAT_RGBA8)
+	# #36再3: 衝角=細長い二等辺三角形。長さ≈船長の1/4、根元の全幅≈船幅の1/2(半幅=船幅の1/4)。
+	# 底辺を船首にめり込ませ、船のグラフィックを手前(上書き)に描いて一体的に見せる。
+	var ram_extend := int(round(float(h) / 4.0)) if with_ram else 0   # 船首から前方へ突き出す長さ(≈船長の1/4)
+	var embed := int(round(float(h) / 6.0)) if with_ram else 0         # 船体へめり込む深さ(幅広の根元を船内へ隠す)
+	var img := Image.create(w, h + ram_extend, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
-	# 衝角(#36/#43): 船首(進行方向)に船幅比例の鋭い二等辺三角形。縁を暗くして立体感を出す
+	# 衝角を先に描画(このあと船を上書き=船が手前に来る)
 	if with_ram:
 		var rc := Color(0.78, 0.82, 0.88) if ram_steel else Color(0.5, 0.46, 0.4)
 		var rc_edge := rc.darkened(0.28)
 		var cx := w / 2
-		var base_half := float(beam) / 3.0
-		for ry in ram_rows:
-			var t: float = float(ry) / float(maxi(ram_rows - 1, 1))   # 0=先端 .. 1=根元
-			var half: int = int(round(base_half * pow(t, 1.4)))        # 先端へ鋭く(鋭角)
+		var base_half := float(beam) / 4.0          # 根元の半幅=船幅の1/4(全幅=1/2)
+		var ram_len := ram_extend + embed
+		for ry in ram_len:
+			var t: float = float(ry) / float(maxi(ram_len - 1, 1))   # 0=先端 .. 1=根元(船体内)
+			var half: int = int(round(base_half * pow(t, 1.25)))      # 細長い二等辺三角形(先端へ鋭角)
 			for x in range(cx - half, cx + half + 1):
 				if x >= 0 and x < w:
 					var edge: bool = half >= 2 and (x == cx - half or x == cx + half)
 					img.set_pixel(x, ry, rc_edge if edge else rc)
+	# 船体(衝角の根元を覆う=一体化。船の全景を優先表示)
 	for y in h:
 		var row: String = map[y]
 		for x in w:
 			var ch := row[x]
 			if PIX.has(ch):
-				img.set_pixel(x, y + ram_rows, PIX[ch])
+				img.set_pixel(x, y + ram_extend, PIX[ch])
 	return ImageTexture.create_from_image(img)
 
 func _build_visual() -> void:
@@ -596,14 +600,9 @@ func _physics_process(delta: float) -> void:
 	var steer_factor: float = clampf(spd / maxf(eff_max, 1.0), 0.2, 1.0)
 	rotation += steer * turn_speed * steer_factor * delta
 	velocity = velocity.move_toward(forward() * throttle * eff_max, accel * delta)
-	# #184: 高速な敵に押し出されて最高速度を超えて飛ばされるのを防ぐ。
-	# 実移動量を「意図した速度×delta」に制限(低速時のみ僅かな押し出しを許容し、めり込みからは徐々に脱出)。
-	var pre_pos := global_position
+	# #184再: 敵とはすり抜ける(Enemy2D側でcollision_exception)ので、押し出しによる加速は起きない。
+	# velocityはmove_towardで最高速度以下に保たれるため、船が本来の速度を超えることはない。
 	move_and_slide()
-	var moved := global_position - pre_pos
-	var max_step := maxf(velocity.length() * delta, 12.0 * delta)
-	if moved.length() > max_step:
-		global_position = pre_pos + moved.normalized() * max_step
 	if _flame:
 		_flame.emitting = GameState.burn_t > 0.0   # #136: 炎上中だけ炎
 	# #178: 損傷黒煙。装甲1/4未満で小さな黒煙、大破(装甲0)で大きな黒煙を複数個所から。
@@ -646,17 +645,26 @@ func _handle_ram() -> void:
 	var rd := float(Database.rams[GameState.ram_id].dmg)
 	if rd <= 0.0 or velocity.length() < 3.0 * K:
 		return
-	for i in get_slide_collision_count():
-		var col = get_slide_collision(i).get_collider()
-		if col and col.is_in_group("enemy") and col.has_method("take_hit"):
-			if col.get("aerial") == true:
-				continue   # #56: 空中の敵(オルニケイトス等)に衝角は届かない
-			var ram_dmg := rd * (0.5 + velocity.length() / maxf(max_speed, 1.0))
-			col.take_hit(ram_dmg, false, false)
-			# #54: 突撃の手応え(通知+ノックバック+強い音)
-			GameState.notice.emit("衝角の一撃! %d ダメージ" % int(ram_dmg))
-			if col is CharacterBody2D:
-				col.velocity += velocity.normalized() * 220.0
-			Audio.play("sfx_cannon", -6.0, 1.3)
-			_ram_cd = 0.8
-			return
+	# #184再: 敵とは物理的にすり抜けるため、衝角は近接判定で当てる(進行方向=前方の敵のみ突く)。
+	var reach := 28.0 * _sc
+	var vdir := velocity.normalized()
+	for e in get_tree().get_nodes_in_group("enemy"):
+		if not is_instance_valid(e) or not e.has_method("take_hit"):
+			continue
+		if e.get("aerial") == true:
+			continue   # #56: 空中の敵(オルニケイトス等)に衝角は届かない
+		var to: Vector2 = e.global_position - global_position
+		var er: float = float(e.get("_radius")) if e.get("_radius") != null else 30.0
+		if to.length() > reach + er:
+			continue
+		if vdir.dot(to.normalized()) < 0.3:
+			continue   # 前方(突撃方向)にいる敵だけを衝角で突く
+		var ram_dmg := rd * (0.5 + velocity.length() / maxf(max_speed, 1.0))
+		e.take_hit(ram_dmg, false, false)
+		# #54: 突撃の手応え(通知+ノックバック+強い音)
+		GameState.notice.emit("衝角の一撃! %d ダメージ" % int(ram_dmg))
+		if e is CharacterBody2D:
+			e.velocity += velocity.normalized() * 220.0
+		Audio.play("sfx_cannon", -6.0, 1.3)
+		_ram_cd = 0.8
+		return
