@@ -300,12 +300,15 @@ func take_hit(amount: float, slip: bool, debuff: bool, no_dodge: bool = false) -
 		return 2 if bool(def.get("dodge_pass", false)) else 1
 	# #128: 遠隔攻撃を受けたら視界外でも即座に発見状態になり追ってくる
 	_aggro = true
+	# #188: 番い(ギガントセイウチ)は片方が攻撃されると、もう片方も気づいて襲ってくる
+	if is_instance_valid(pair_partner):
+		pair_partner._aggro = true
 	var mult := 1.25 if _debuff_t > 0.0 else 1.0
 	hp -= amount * mult
 	if slip and kind == "pirate":
 		_slip += amount * 0.6
 	# #37再: 銛デバフは主+戦闘モブに有効(海賊は無効)。#114: 複数ヒットで減衰しつつ増加、最後のヒットから4.5秒
-	if debuff and (kind == "lord" or kind == "mob"):
+	if debuff and (kind == "lord" or kind == "mob") and not bool(def.get("no_debuff", false)):   # #187: 幽霊船は銛デバフ無効
 		_debuff_kind = GameState.harpoon_debuff
 		_debuff_power += 0.6 * pow(0.55, float(_debuff_stacks))
 		_debuff_stacks += 1
@@ -370,7 +373,9 @@ func _physics_process(delta: float) -> void:
 	if _aggro:
 		move_dir = to.normalized()
 		# #118: ケツァル等は取り巻きを全滅させると引き撃ち(射程内では距離を取りつつ撃つ)
-		if bool(def.get("kite", false)) and _escorts_cleared() and dist < attack_range * 0.85:
+		# #187: kite_hp指定時はHPが一定割合以下になってから引き撃ちを試みる(幽霊船=2/3以下)
+		var kite_ok: bool = hp / maxf(max_hp, 1.0) <= float(def.get("kite_hp", 1.0))
+		if bool(def.get("kite", false)) and kite_ok and _escorts_cleared() and dist < attack_range * 0.85:
 			move_dir = -to.normalized()
 		# #149再: ティアマット等はプレイヤーを追いつつさらに大きくジグザグに移動
 		elif bool(def.get("zigzag", false)):
@@ -477,6 +482,13 @@ func _ranged_attack(is_fire: bool) -> void:
 	if _debuff_kind == "atk":
 		eff_dmg *= 1.0 - 0.35 * clampf(_debuff_power, 0.0, 1.0)   # #91/#114
 	var base_dir := (player.global_position - global_position).normalized()
+	# #187: volley_pool から volley_pick 個をランダムに選んで同時発射(幽霊船=3種中2種)
+	if def.has("volley_pool"):
+		var pool: Array = (def.volley_pool as Array).duplicate()
+		pool.shuffle()
+		for i in mini(int(def.get("volley_pick", 2)), pool.size()):
+			_fire_weapon(str(pool[i]), eff_dmg, base_dir, is_fire)
+		return
 	# #66: volley=複数武器を同時発射(海賊中/大)
 	if def.has("volley"):
 		for wp in def.volley:

@@ -482,6 +482,8 @@ func _king_alive() -> bool:
 func _spawn_escorts(center: Vector2, lord_id: String = "") -> Array:
 	var out: Array = []
 	var ids: Array = []
+	if bool(Database.lords.get(lord_id, {}).get("no_escort", false)):
+		return out   # #187: 幽霊船など取り巻きを持たない主
 	if lord_id == "leviathan":
 		ids = ["zahhak", "tiamat", "dagon"]   # #119再: 3種を1匹ずつ
 	elif lord_id == "hydra" or lord_id == "quetzal":
