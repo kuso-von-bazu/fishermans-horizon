@@ -35,6 +35,7 @@ var _tex_side: Texture2D    # #26: 移動方向でドット絵を切替(横/正�
 var _tex_front: Texture2D
 var _tex_back: Texture2D
 var _facing: String = "side"
+var _facing_cd: float = 0.0   # #187再: 向き切替のクールダウン(パタつき防止)
 var _target_w: float = 90.0
 var player: Node2D
 var pair_partner: Node = null
@@ -249,11 +250,20 @@ func _update_facing(move_dir: Vector2) -> void:
 			sprite.flip_h = false
 		return
 	var ny: float = move_dir.normalized().y
-	var want := "side"
-	if ny < -0.7:
-		want = "back"    # 北へ=画面奥へ→後ろ姿
-	elif ny > 0.7:
-		want = "front"   # 南へ=画面手前へ→正面
+	# #187再: ヒステリシス。今の向きから抜けるには大きく傾く必要があり、境界付近でのパタつきを防ぐ
+	var want := _facing
+	match _facing:
+		"back":
+			if ny > -0.45:
+				want = "front" if ny > 0.7 else "side"
+		"front":
+			if ny < 0.45:
+				want = "back" if ny < -0.7 else "side"
+		_:
+			if ny < -0.7:
+				want = "back"    # 北へ=画面奥へ→後ろ姿
+			elif ny > 0.7:
+				want = "front"   # 南へ=画面手前へ→正面
 	var t: Texture2D = _tex_side
 	match want:
 		"back":
@@ -263,8 +273,10 @@ func _update_facing(move_dir: Vector2) -> void:
 	if t == null:
 		want = "side"
 		t = _tex_side
-	if want != _facing and t != null:
+	# #187再: 切替直後は一定時間ロックして、瞬時に何度も切り替わる不自然さをなくす
+	if want != _facing and t != null and _facing_cd <= 0.0:
 		_facing = want
+		_facing_cd = 0.45
 		sprite.texture = t
 		# #26再: 幅でなく最長辺で正規化し、横向きと同じ表示サイズに揃える(縦長の正面ビューが巨大化しないように)
 		sprite.scale = Vector2.ONE * _tex_scale(t)
@@ -272,11 +284,17 @@ func _update_facing(move_dir: Vector2) -> void:
 			_shadow.texture = t
 			_shadow.scale = sprite.scale * 0.9
 	# 左右反転は横向きのときだけ。#26再: 元画像が左向きの種は反転条件を逆に
-	if absf(move_dir.x) > 0.1:
+	# #187再: 不感帯を広げ(0.1→0.3)、反転もクールダウン中は据え置いてパタつきを防ぐ
+	if _facing != "side":
+		sprite.flip_h = false   # 正面/後ろ姿は反転しない(従来動作)
+	elif absf(move_dir.normalized().x) > 0.3:
 		var face_left := bool(def.get("face_left", false))
-		sprite.flip_h = _facing == "side" and ((move_dir.x < 0.0) != face_left)
-		if _shadow:
-			_shadow.flip_h = sprite.flip_h
+		var want_flip: bool = (move_dir.x < 0.0) != face_left
+		if want_flip != sprite.flip_h and _facing_cd <= 0.0:
+			sprite.flip_h = want_flip
+			_facing_cd = 0.45
+	if _shadow:
+		_shadow.flip_h = sprite.flip_h
 
 func _placeholder(c: Color) -> Texture2D:
 	var img := Image.create(64, 40, false, Image.FORMAT_RGBA8)
@@ -334,6 +352,8 @@ func _physics_process(delta: float) -> void:
 		if hp <= 0:
 			_die()
 			return
+	if _facing_cd > 0.0:
+		_facing_cd -= delta   # #187再: 向き切替クールダウン
 	if _debuff_t > 0.0:
 		_debuff_t -= delta
 		if _debuff_t <= 0.0:
@@ -370,6 +390,7 @@ func _physics_process(delta: float) -> void:
 	if _debuff_kind == "speed":
 		eff_speed *= 1.0 - 0.55 * clampf(_debuff_power, 0.0, 1.0)   # #37再々: 鈍化を強化   # #91/#114 鈍化(重ねがけで増加/減衰)
 	var move_dir: Vector2
+	var face_dir := Vector2.ZERO   # #187再: 見た目の向きを別管理(引き撃ち中は常にプレイヤーの逆を向く)
 	if _aggro:
 		move_dir = to.normalized()
 		# #118: ケツァル等は取り巻きを全滅させると引き撃ち(射程内では距離を取りつつ撃つ)
@@ -377,6 +398,8 @@ func _physics_process(delta: float) -> void:
 		var kite_ok: bool = hp / maxf(max_hp, 1.0) <= float(def.get("kite_hp", 1.0))
 		if bool(def.get("kite", false)) and kite_ok and _escorts_cleared() and dist < attack_range * 0.85:
 			move_dir = -to.normalized()
+			# 島の迂回で進行方向が揺れても、見た目はプレイヤーの真逆で固定する
+			face_dir = -to.normalized()
 		# #149再: ティアマット等はプレイヤーを追いつつさらに大きくジグザグに移動
 		elif bool(def.get("zigzag", false)):
 			var perp := move_dir.rotated(PI / 2)
@@ -392,7 +415,7 @@ func _physics_process(delta: float) -> void:
 		move_dir = _wander_dir
 		eff_speed *= 0.3
 	# スプライトの向き(#26: 横/正面/後ろ姿の切替+左右反転)
-	_update_facing(move_dir)
+	_update_facing(face_dir if face_dir != Vector2.ZERO else move_dir)
 	if not _aggro:
 		velocity = move_dir * eff_speed
 	elif dist > attack_range:
