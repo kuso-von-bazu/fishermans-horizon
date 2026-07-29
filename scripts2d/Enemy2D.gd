@@ -333,6 +333,10 @@ func take_hit(amount: float, slip: bool, debuff: bool, no_dodge: bool = false) -
 		_debuff_t = 4.5 * GameState.debuff_dur_mult()
 		if _debuff_kind == "slip":
 			_slip += amount * (0.65 + 0.40 * _debuff_power)   # #37再々: 毒を強化
+	elif debuff and bool(def.get("no_debuff", false)):
+		# #187再2: 無効だと分かるように表示(頻繁に出しすぎないよう時々)
+		if randf() < 0.34:
+			GameState.notice.emit("%s には銛のデバフが効かない!" % def.name)
 	# 被弾フラッシュ
 	if sprite:
 		sprite.modulate = Color(2.2, 1.2, 1.2)
@@ -655,7 +659,8 @@ func _die() -> void:
 			GameState.add_fame(int(def.get("fame", 1)))
 			GameState.notice.emit("%s を撃退(首を確保 / 名声+%d)" % [def.name, int(def.get("fame", 1))])
 		"lord":
-			if GameState.free_hold() >= int(def.cap):
+			# #187再2: 幽霊船など no_cargo の主は漁獲物にならない(魚倉を消費しない)
+			if not bool(def.get("no_cargo", false)) and GameState.free_hold() >= int(def.cap):
 				GameState.add_cargo(id, int(def.cap))
 			var is_pair: bool = bool(def.get("pair", false))
 			var partner_alive: bool = is_pair and is_instance_valid(pair_partner) and not pair_partner.is_queued_for_deletion()
