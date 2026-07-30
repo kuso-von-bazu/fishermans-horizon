@@ -11,6 +11,7 @@ var turn_speed: float = 1.2
 var control_enabled: bool = true
 var entanglers: Array = []   # #69/#72: 絡めてきた敵。討伐(無効化)まで鈍足
 var _ram_cd: float = 0.0
+var _bump_cd: float = 0.0   # #193: 障害物の接触ダメージのクールダウン
 var _wake: CPUParticles2D
 var _smoke: CPUParticles2D   # #131: 蒸気(移動方向と逆向きに流す)
 var _sprays: Array = []      # #144: 舷側のしぶき
@@ -579,6 +580,8 @@ func add_entangler(e: Node) -> void:
 func _physics_process(delta: float) -> void:
 	if _ram_cd > 0.0:
 		_ram_cd -= delta
+	if _bump_cd > 0.0:
+		_bump_cd -= delta
 	if not control_enabled:
 		velocity = velocity.move_toward(Vector2.ZERO, accel * delta)
 		move_and_slide()
@@ -603,6 +606,7 @@ func _physics_process(delta: float) -> void:
 	# #184再: 敵とはすり抜ける(Enemy2D側でcollision_exception)ので、押し出しによる加速は起きない。
 	# velocityはmove_towardで最高速度以下に保たれるため、船が本来の速度を超えることはない。
 	move_and_slide()
+	_check_obstacle_bump()   # #193: 岩礁・流氷に接触で小ダメージ(障害物は壊れない)
 	if _flame:
 		_flame.emitting = GameState.burn_t > 0.0   # #136: 炎上中だけ炎
 	# #178: 損傷黒煙。装甲1/4未満で小さな黒煙、大破(装甲0)で大きな黒煙を複数個所から。
@@ -636,6 +640,28 @@ func _physics_process(delta: float) -> void:
 	for spray in _sprays:
 		spray.emitting = spd > max_speed * 0.2 and not reversing
 	_handle_ram()
+
+# #193: 海上の障害物(岩礁/流氷)への接触判定。障害物は消滅せず、船だけが小ダメージを受ける。
+# 擦り続けている間ずっと減り続けないよう、接触ダメージにはクールダウンを置く。
+func _check_obstacle_bump() -> void:
+	if _bump_cd > 0.0:
+		return
+	if GameState.docking_locked:
+		return
+	for i in get_slide_collision_count():
+		var c := get_slide_collision(i)
+		var o := c.get_collider()
+		if o == null or not (o is Node) or not (o as Node).is_in_group("obstacle"):
+			continue
+		# 勢いよくぶつかるほど痛い。粗末な漁船でも弩級戦艦でも「かすり傷」で収まるよう装甲比で決める
+		var impact: float = clampf(velocity.length() / maxf(max_speed, 1.0), 0.0, 1.0)
+		var dmg: float = clampf(GameState.max_armor() * 0.012, 3.0, 20.0) * (0.6 + 0.8 * impact)
+		GameState.damage_player(dmg)
+		var nm := "流氷" if str(o.get("kind")) == "ice" else "岩礁"
+		GameState.notice.emit("%s に接触! %d ダメージ" % [nm, int(dmg)])
+		Audio.play("sfx_hit", -6.0, 0.8)
+		_bump_cd = 1.2
+		return
 
 func _handle_ram() -> void:
 	if _ram_cd > 0.0:

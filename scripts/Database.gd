@@ -26,6 +26,9 @@ var combat_mobs := {
 	# #69: 潮鳴り以降の強モブ。reach=触腕の射程倍率, entangle=被弾で討伐まで鈍足
 	"kraken":        {"name": "クラーケン",     "hp": 700, "dmg": 24, "cap": 6, "price": 720,  "ranged": false, "aerial": false, "speed": 8.5,  "reach": 2.2, "entangle": true, "color": Color(0.5,0.2,0.45)},
 	"wyvern":        {"name": "ワイバーン",     "hp": 800, "dmg": 26, "cap": 6, "price": 800, "ranged": true,  "aerial": false, "speed": 9.5,  "atk_cd": 1.1, "face_left": true, "color": Color(0.7,0.15,0.15)},
+	# #190: 月下の島の強モブ。starfish=回転しながら星形弾を多数ばら撒く, zaratan=離れた距離から波の範囲近接
+	"starfish":      {"name": "オニヒトデ",     "hp": 620, "dmg": 20, "cap": 5, "price": 640, "ranged": true,  "aerial": false, "speed": 6.0,  "atk_cd": 1.7, "spin": 2.2, "scatter": 12, "star_shot": true, "way": 0, "shot_dmg_mult": 0.42, "shot_speed_mult": 0.75, "color": Color(0.75,0.3,0.35)},
+	"zaratan":       {"name": "ザラタン",       "hp": 900, "dmg": 28, "cap": 6, "price": 720, "ranged": false, "aerial": false, "speed": 8.0,  "atk_cd": 1.9, "reach": 3.0, "wave_melee": true, "color": Color(0.55,0.35,0.25)},
 	# #71: 嵐越え以降。merman=群れ+俊敏+好戦的, charybdis=渦潮+確率回避。#98再: マーマンHP350
 	"merman":        {"name": "マーマン",       "hp": 350, "dmg": 16, "cap": 2, "price": 304,  "ranged": false, "aerial": false, "speed": 13.0, "group": 3, "aggro": 1400.0, "face_left": true, "color": Color(0.25,0.55,0.4)},
 	# #71再: カリュブディスの能力を全体的に強化
@@ -45,7 +48,8 @@ var combat_mobs := {
 var mob_weights := [
 	{"narwhal": 0.55, "seahunter": 0.25, "ornithocheirus": 0.15, "wyrm": 0.05},
 	{"wyrm": 0.45, "kraken": 0.35, "wyvern": 0.20},
-	{"kraken": 0.24, "wyvern": 0.20, "merman": 0.20, "charybdis": 0.18, "amphiptere": 0.18},              # #75/#71: 嵐越え以降はワイアーム非出現+アンフィプテレ
+	{"kraken": 0.22, "wyvern": 0.18, "starfish": 0.32, "zaratan": 0.28},                                  # #190: 月下の島。オニヒトデ/ザラタンが主役
+	{"kraken": 0.18, "wyvern": 0.16, "merman": 0.18, "charybdis": 0.16, "amphiptere": 0.16, "starfish": 0.08, "zaratan": 0.08},   # #75/#71: 嵐越え以降はワイアーム非出現+アンフィプテレ
 	{"merman": 0.15, "charybdis": 0.15, "tiamat": 0.2, "dagon": 0.2, "amphiptere": 0.12, "zahhak": 0.18}, # #75再/#71: 果てはクラーケン/ワイバーンも非出現。#72再: ザッハーク追加
 ]
 
@@ -77,15 +81,19 @@ var lords := {
 	"dumbo":     {"name": "ウミダンボ",               "hp": 1000, "dmg": 18, "cap": 9,  "price": 1000, "bounty": 2000,  "fame": 10, "island": 0, "ranged": true, "aerial": false, "pair": false, "speed": 7.5, "way": 1, "dir": 135, "lore": "大きな耳で器用に泳ぐ。旧大陸が極度の海面上昇で沈没していく中、海に適応した象。"},   # #189: 3way→1way
 	"whale":     {"name": "ヒゲマッコウナガスクジラ", "hp": 1640, "dmg": 27, "cap": 14, "price": 1800, "bounty": 3500,  "fame": 16, "island": 1, "ranged": true, "aerial": false, "pair": false, "speed": 8.5, "way": 3, "homing": true, "dir": 45, "face_left": true, "lore": "富栄養化の影響で体長は50メートルにも達する。"},
 	"walrus":    {"name": "ギガントセイウチ",         "hp": 870,  "dmg": 24, "cap": 7,  "price": 1200, "bounty": 4000,  "fame": 18, "island": 1, "ranged": true, "aerial": false, "pair": true, "speed": 8.5,  "way": 3, "dir": 225, "lore": "おしどり夫婦でいつも夫婦で行動している。"},
+	# #190: 月下の島の主。aspidochelone=高速回転しつつ弾をばら撒きながら体当たり(charge_cycleで緩急)
+	"aspidochelone": {"name": "アスピドケロン",       "hp": 2400, "dmg": 38, "cap": 12, "price": 2000, "bounty": 5000,  "fame": 22, "island": 2, "ranged": true,  "aerial": false, "pair": false, "speed": 13.5, "atk_cd": 0.6, "spin": 5.0, "scatter": 7, "way": 0, "shot_dmg_mult": 0.5, "shot_speed_mult": 0.8, "charge_cycle": true, "melee_mult": 1.4, "dir": 180, "color": Color(0.35,0.5,0.4), "lore": "島と間違えて上陸した船乗りが、目を覚ましたアスピドケロンに食べられたという伝説がある。"},
+	# #190: legion=小魚の群れが大魚の陣形。被弾で陣形が縮み(shrink_hp)、複数箇所(multi_origin)から小型弾を大量発射
+	"legion":    {"name": "レギオン",                 "hp": 2600, "dmg": 30, "cap": 13, "price": 2200, "bounty": 5500,  "fame": 24, "island": 2, "ranged": true,  "aerial": false, "pair": false, "speed": 10.5, "atk_cd": 0.9, "multi_origin": 4, "way": 2, "aim_tight": true, "scatter": 4, "small_shot": true, "shot_dmg_mult": 0.32, "shot_speed_mult": 0.85, "shrink_hp": 0.45, "dir": 315, "color": Color(0.5,0.65,0.75), "lore": "縄張り争いに勝利するため、群知能を身に着けた小魚の群れ。"},
 	# #110/#111: ヒュドラ/ケツァル/レヴィアタンを強化。#65: 弾幕(way/homing_count/radial_count)と確定炎上(burn_fire)
-	"hydra":     {"name": "ヒュドラ",                 "hp": 3200, "dmg": 46, "cap": 12, "price": 2400, "bounty": 6000,  "fame": 25, "island": 2, "ranged": true,  "aerial": false, "pair": false, "speed": 8.5, "way": 7, "fire": true, "burn_fire": true, "homing_count": 2, "dir": 90, "lore": "旧人類が神を作り出す過程で生まれた失敗作。"},
+	"hydra":     {"name": "ヒュドラ",                 "hp": 3200, "dmg": 46, "cap": 12, "price": 2400, "bounty": 6000,  "fame": 25, "island": 3, "ranged": true,  "aerial": false, "pair": false, "speed": 8.5, "way": 7, "fire": true, "burn_fire": true, "homing_count": 2, "dir": 90, "lore": "旧人類が神を作り出す過程で生まれた失敗作。"},
 	# #111再: HP4500。#65再: 5wayを狭い扇(aim_tight)+黄色い楕円弾、追跡弾は扇状に広がってから急加速(spread_homing)
-	"quetzal":   {"name": "ケツァルコアトル",         "hp": 4500, "dmg": 50, "cap": 13, "price": 3000, "bounty": 8000,  "fame": 30, "island": 2, "ranged": true, "aerial": true,  "pair": false, "speed": 13.0, "way": 5, "aim_tight": true, "aim_shape": "ellipse", "aim_color": Color(0.95,0.85,0.2), "homing_count": 2, "spread_homing": true, "dodge": 0.10, "dodge_pass": true, "kite": true, "always_front": true, "dir": 270, "lore": "空中から攻撃してくるので、衝角による攻撃や魚雷でのロックオンは不可能。旧人類がレヴィアタンへの対抗策として創造したが、彼らはそれぞれ空と海を荒らしまわるばかりであった。"},
+	"quetzal":   {"name": "ケツァルコアトル",         "hp": 4500, "dmg": 50, "cap": 13, "price": 3000, "bounty": 8000,  "fame": 30, "island": 3, "ranged": true, "aerial": true,  "pair": false, "speed": 13.0, "way": 5, "aim_tight": true, "aim_shape": "ellipse", "aim_color": Color(0.95,0.85,0.2), "homing_count": 2, "spread_homing": true, "dodge": 0.10, "dodge_pass": true, "kite": true, "always_front": true, "dir": 270, "lore": "空中から攻撃してくるので、衝角による攻撃や魚雷でのロックオンは不可能。旧人類がレヴィアタンへの対抗策として創造したが、彼らはそれぞれ空と海を荒らしまわるばかりであった。"},
 	# #187: 果ての島の主(レヴィアタンの前に戦う想定)。挙動は海賊王準拠=ガトリング/大砲/魚雷から2つを同時使用。
 	# HPが2/3以下で引き撃ち(kite_hp)。銛のデバフ無効(no_debuff)。取り巻きなし。
-	"ghost":     {"name": "幽霊船",                   "hp": 8000, "dmg": 43, "cap": 20, "price": 7000, "bounty": 30000, "fame": 45, "island": 3, "ranged": true,  "aerial": false, "pair": false, "speed": 13.0, "atk_cd": 0.9, "volley_pool": ["gatling", "cannon", "torpedo"], "volley_pick": 2, "kite": true, "kite_hp": 0.667, "no_debuff": true, "no_escort": true, "dodge": 0.15, "dodge_pass": true, "size_mult": 0.72, "no_cargo": true, "dir": 225, "face_left": true, "color": Color(0.55,0.75,0.8), "lore": "レヴィアタンに轟沈させられた過去の勇士の魂が、いつしか幽霊船の形をとり辺りを彷徨うようになった。"},
+	"ghost":     {"name": "幽霊船",                   "hp": 8000, "dmg": 43, "cap": 20, "price": 7000, "bounty": 30000, "fame": 45, "island": 4, "ranged": true,  "aerial": false, "pair": false, "speed": 13.0, "atk_cd": 0.9, "volley_pool": ["gatling", "cannon", "torpedo"], "volley_pick": 2, "kite": true, "kite_hp": 0.667, "no_debuff": true, "no_escort": true, "dodge": 0.15, "dodge_pass": true, "size_mult": 0.72, "no_cargo": true, "dir": 225, "face_left": true, "color": Color(0.55,0.75,0.8), "lore": "レヴィアタンに轟沈させられた過去の勇士の魂が、いつしか幽霊船の形をとり辺りを彷徨うようになった。"},
 	# #155: 出現方角を果ての島の東(dir=90)。#65: 追跡弾速0.5。#110再: 速度10.5。#163: range_mult=1.6でより遠距離から。#65再: 照準3wayを緑の楕円弾に、追跡弾は扇状に広がってから急加速(spread_homing)。#112再: 説明文(バイオテクノロジー→テクノロジー)
-	"leviathan": {"name": "レヴィアタン",             "hp": 8500, "dmg": 47, "cap": 25, "price": 9999, "bounty": 50000, "fame": 60, "island": 3, "ranged": true,  "aerial": false, "pair": false, "speed": 10.5, "range_mult": 1.6, "spawn_dist_mult": 1.75, "radial": true, "radial_count": 24, "way": 3, "aim_tight": true, "aim_shape": "ellipse", "aim_color": Color(0.35,0.95,0.4), "shot_speed_mult": 0.8, "homing_speed_mult": 0.5, "shot_dmg_mult": 0.7, "homing_count": 4, "spread_homing": true, "dir": 90, "face_left": true, "lore": "旧人類が創り出した神。神の領域に達した旧人類のテクノロジーは神をも創造したが、皮肉にもそれは人類種の天敵となり、残されたわずかな陸地を除いて人類の生存可能領域はなくなった。"},
+	"leviathan": {"name": "レヴィアタン",             "hp": 8500, "dmg": 47, "cap": 25, "price": 9999, "bounty": 50000, "fame": 60, "island": 4, "ranged": true,  "aerial": false, "pair": false, "speed": 10.5, "range_mult": 1.6, "spawn_dist_mult": 1.75, "radial": true, "radial_count": 24, "way": 3, "aim_tight": true, "aim_shape": "ellipse", "aim_color": Color(0.35,0.95,0.4), "shot_speed_mult": 0.8, "homing_speed_mult": 0.5, "shot_dmg_mult": 0.7, "homing_count": 4, "spread_homing": true, "dir": 90, "face_left": true, "lore": "旧人類が創り出した神。神の領域に達した旧人類のテクノロジーは神をも創造したが、皮肉にもそれは人類種の天敵となり、残されたわずかな陸地を除いて人類の生存可能領域はなくなった。"},
 }
 
 # 方位(度・北=0=-Z, 時計回り)を八方位の日本語に
@@ -123,6 +131,9 @@ var bestiary := [
 	{"kind": "mob", "id": "wyrm",           "desc": "ヒュドラの幼体のようだが繁殖方法は不明。"},
 	{"kind": "mob", "id": "wyvern",         "desc": "ワイアームが少し成長した姿。"},
 	{"kind": "mob", "id": "kraken",         "desc": "海面に進出してきたダイオウイカ。"},
+	# #190: 月下の島の強モブ
+	{"kind": "mob", "id": "starfish",       "desc": "繁殖時には大量のクローンを生み出すが、その繁殖行為が近くを通る船の脅威になる。"},
+	{"kind": "mob", "id": "zaratan",        "desc": "特に味噌が美味。"},
 	{"kind": "mob", "id": "merman",         "desc": "人類が海に適応しようとしてバイオテクノロジーに頼った成れの果ての姿。"},
 	{"kind": "mob", "id": "charybdis",      "desc": "本体は海中に身を潜め、海面からは巨大な渦潮しか見えないが、本体は蛇のような姿をしている。"},
 	{"kind": "mob", "id": "amphiptere",     "desc": "翼はあるが足がなく、上半身は竜、下半身は蛇のような見た目をしている。"},
@@ -150,11 +161,11 @@ var weapons := {
 	"cannon":  {"name": "大砲",           "kind": "aim",  "dmg": 35, "cooldown": 1.4,  "reload": 1.6, "mag": 4,  "range": 140, "price": 1200, "slip": true,  "debuff": false, "homing": false, "pirate_burn": 0.7, "sfx": "sfx_cannon",  "desc": "単発威力大・連射小。海賊船に高確率で炎上(スリップ)"},
 	"harpoon": {"name": "銛",             "kind": "aim",  "dmg": 18, "cooldown": 1.0,  "reload": 1.2, "mag": 6,  "range": 100, "price": 900,  "slip": false, "debuff": true,  "homing": false, "sfx": "sfx_harpoon", "desc": "中威力。主・戦闘モブにデバフ付与(毒/弱体)"},
 	"torpedo": {"name": "魚雷",           "kind": "lock", "dmg": 22, "cooldown": 0.9,  "reload": 2.0, "mag": 8,  "range": 160, "price": 1500, "slip": false, "debuff": false, "homing": true,  "pirate_burn": 0.35, "sfx": "sfx_torpedo", "desc": "ロックオンで追尾。空中の敵には不可。海賊船に確率で炎上"},
-	# #102: 嵐越え(tier>=2)以降で買える上位互換。新種は増やさず各武器の強化版
-	"gatling2":{"name": "重ガトリング砲", "kind": "aim",  "dmg": 4,  "cooldown": 0.07, "reload": 0.9, "mag": 55, "range": 145, "price": 5000, "slip": false, "debuff": false, "homing": false, "falloff": true, "tier": 2, "sfx": "sfx_gun",     "desc": "ガトリングの上位。連射・射程・弾数を強化"},
-	"cannon2": {"name": "大口径カノン砲", "kind": "aim",  "dmg": 46, "cooldown": 1.25, "reload": 1.4, "mag": 5,  "range": 165, "price": 6500, "slip": true,  "debuff": false, "homing": false, "pirate_burn": 0.7, "tier": 2, "sfx": "sfx_cannon",  "desc": "大砲の上位。単発威力・射程を強化"},
-	"harpoon2":{"name": "強化銛砲",       "kind": "aim",  "dmg": 24, "cooldown": 0.85, "reload": 1.0, "mag": 9,  "range": 125, "price": 5500, "slip": false, "debuff": true,  "homing": false, "tier": 2, "sfx": "sfx_harpoon", "desc": "銛の上位。連射・デバフ効率を強化"},
-	"torpedo2":{"name": "追尾魚雷改",     "kind": "lock", "dmg": 30, "cooldown": 0.8,  "reload": 1.7, "mag": 10, "range": 195, "price": 8000, "slip": false, "debuff": false, "homing": true,  "pirate_burn": 0.35, "tier": 2, "sfx": "sfx_torpedo", "desc": "魚雷の上位。追尾・射程・弾数を強化"},
+	# #102: 嵐越え(tier>=3)以降で買える上位互換。#190: 月下の島の追加で嵐越えがindex3へ。新種は増やさず各武器の強化版
+	"gatling2":{"name": "重ガトリング砲", "kind": "aim",  "dmg": 4,  "cooldown": 0.07, "reload": 0.9, "mag": 55, "range": 145, "price": 5000, "slip": false, "debuff": false, "homing": false, "falloff": true, "tier": 3, "sfx": "sfx_gun",     "desc": "ガトリングの上位。連射・射程・弾数を強化"},
+	"cannon2": {"name": "大口径カノン砲", "kind": "aim",  "dmg": 46, "cooldown": 1.25, "reload": 1.4, "mag": 5,  "range": 165, "price": 6500, "slip": true,  "debuff": false, "homing": false, "pirate_burn": 0.7, "tier": 3, "sfx": "sfx_cannon",  "desc": "大砲の上位。単発威力・射程を強化"},
+	"harpoon2":{"name": "強化銛砲",       "kind": "aim",  "dmg": 24, "cooldown": 0.85, "reload": 1.0, "mag": 9,  "range": 125, "price": 5500, "slip": false, "debuff": true,  "homing": false, "tier": 3, "sfx": "sfx_harpoon", "desc": "銛の上位。連射・デバフ効率を強化"},
+	"torpedo2":{"name": "追尾魚雷改",     "kind": "lock", "dmg": 30, "cooldown": 0.8,  "reload": 1.7, "mag": 10, "range": 195, "price": 8000, "slip": false, "debuff": false, "homing": true,  "pirate_burn": 0.35, "tier": 3, "sfx": "sfx_torpedo", "desc": "魚雷の上位。追尾・射程・弾数を強化"},
 }
 
 var rams := {
@@ -162,8 +173,8 @@ var rams := {
 	# #170: 衝角の攻撃力を全体的に強化
 	"iron":  {"name": "鉄製衝角",   "dmg": 65,  "price": 600},
 	"steel": {"name": "鋼鉄衝角",   "dmg": 150,  "price": 2000},
-	# #102: 嵐越え(tier>=2)以降の上位衝角
-	"tungsten": {"name": "超硬タングステン衝角", "dmg": 300, "price": 7000, "tier": 2},
+	# #102: 嵐越え(tier>=3)以降の上位衝角。#190: 月下の島の追加で嵐越えがindex3へ
+	"tungsten": {"name": "超硬タングステン衝角", "dmg": 300, "price": 7000, "tier": 3},
 }
 
 # ---------------------------------------------------------------------------
@@ -174,12 +185,13 @@ var ships := {
 	"skiff":    {"name": "武装スキフ",     "food": 140, "hold": 18,  "armor": 140,  "slots": 2, "range": 0, "speed": 11.5, "price": 1500,  "trade": 1000},
 	# #157再々: 燃料(food)を共有者指定値に再調整
 	"cutter":   {"name": "外洋カッター",   "food": 150, "hold": 30,  "armor": 260,  "slots": 3, "range": 1, "speed": 12.0, "price": 9000,   "trade": 3500},
-	"corvette": {"name": "コルベット",     "food": 200, "hold": 40,  "armor": 480,  "slots": 4, "range": 2, "speed": 12.5, "price": 32000,  "trade": 12000},
-	"hunter_h": {"name": "猟特化フリゲート","food": 170, "hold": 32,  "armor": 600,  "slots": 4, "range": 2, "speed": 13.5, "price": 50000,  "trade": 18000},
-	"hauler":   {"name": "大型運搬艦",     "food": 240, "hold": 70,  "armor": 720,  "slots": 4, "range": 2, "speed": 11.0, "price": 50000,  "trade": 18000},
-	"dread":    {"name": "弩級戦艦",       "food": 220, "hold": 60,  "armor": 1300, "slots": 4, "range": 3, "speed": 13.0, "price": 110000, "trade": 40000},
+	# #190: rangeは「販売が解禁される島index」。月下の島(2)の追加でコルベット以降を1つずつ後ろへずらす
+	"corvette": {"name": "コルベット",     "food": 200, "hold": 40,  "armor": 480,  "slots": 4, "range": 2, "speed": 12.5, "price": 32000,  "trade": 12000},   # #190: 月下の島で追加
+	"hunter_h": {"name": "猟特化フリゲート","food": 170, "hold": 32,  "armor": 600,  "slots": 4, "range": 3, "speed": 13.5, "price": 50000,  "trade": 18000},
+	"hauler":   {"name": "大型運搬艦",     "food": 240, "hold": 70,  "armor": 720,  "slots": 4, "range": 3, "speed": 11.0, "price": 50000,  "trade": 18000},
+	"dread":    {"name": "弩級戦艦",       "food": 220, "hold": 60,  "armor": 1300, "slots": 4, "range": 4, "speed": 13.0, "price": 110000, "trade": 40000},
 	# #151: 巡洋戦艦。弩級と対。低装甲・高速・中型・後退が得意(reverse=後退速度倍率)
-	"cruiser":  {"name": "巡洋戦艦",       "food": 200, "hold": 45,  "armor": 1000, "slots": 4, "range": 3, "speed": 14.5, "price": 110000, "trade": 40000, "reverse": 0.9},
+	"cruiser":  {"name": "巡洋戦艦",       "food": 200, "hold": 45,  "armor": 1000, "slots": 4, "range": 4, "speed": 14.5, "price": 110000, "trade": 40000, "reverse": 0.9},
 }
 
 # ---------------------------------------------------------------------------
@@ -189,8 +201,11 @@ var islands := [
 	{"id": 0, "name": "始まりの島",   "fame_req": 0,   "price_mult": 1.0, "pos": Vector3(0, 0, 0),       "spawn": ["sardine","mackerel"], "lords": ["sawshark","dumbo"]},
 	# #174: 次の島到達に必要な名声を全体的に少し上げる
 	{"id": 1, "name": "潮鳴りの島",   "fame_req": 18,   "price_mult": 1.6, "pos": Vector3(900, 0, -300),  "spawn": ["bonito","squid","mackerel"], "lords": ["whale","walrus"]},   # #57再: 元の距離に戻す
-	{"id": 2, "name": "嵐越えの島",   "fame_req": 60,  "price_mult": 2.4, "pos": Vector3(1500, 0, 600),  "spawn": ["octopus","squid","bonito"], "lords": ["hydra","quetzal"]},
-	{"id": 3, "name": "果ての島",     "fame_req": 155,  "price_mult": 3.6, "pos": Vector3(2400, 0, -200), "spawn": ["octopus","bonito"], "lords": ["ghost","leviathan"]},   # #187: 幽霊船はレヴィアタンの上(先に戦う想定)
+	# #190: 3つ目の島。砂漠とわずかな緑地。近海は常に夜(weather="night")
+	{"id": 2, "name": "月下の島",     "fame_req": 36,  "price_mult": 2.0, "pos": Vector3(1700, 0, 200),  "spawn": ["squid","octopus","bonito"], "lords": ["aspidochelone","legion"], "weather": "night"},
+	# #190: 月下の島の追加に伴い、嵐越え・果ては従来よりさらに遠方へ。#191/#192: 近海の天候演出
+	{"id": 3, "name": "嵐越えの島",   "fame_req": 60,  "price_mult": 2.4, "pos": Vector3(2600, 0, 900),  "spawn": ["octopus","squid","bonito"], "lords": ["hydra","quetzal"], "weather": "storm"},
+	{"id": 4, "name": "果ての島",     "fame_req": 155,  "price_mult": 3.6, "pos": Vector3(3600, 0, 300), "spawn": ["octopus","bonito"], "lords": ["ghost","leviathan"], "weather": "blizzard"},   # #187: 幽霊船はレヴィアタンの上(先に戦う想定)
 ]
 
 func island(idx: int) -> Dictionary:

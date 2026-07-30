@@ -9,9 +9,12 @@ uniform vec3 crest_color : source_color = vec3(0.80, 0.92, 0.97);
 uniform float wave_scale = 0.028;
 uniform float wave_speed = 0.9;
 // #135: 島の位置(ワールド座標)。島周りは淡い青にする
-uniform vec2 islands[4];
+uniform vec2 islands[5];
 uniform int island_count = 0;
 uniform float island_light_radius = 900.0;
+// #190/#191/#192: 近海の天候。night=夜(月下の島), rough=高波/荒波(嵐越え・果て)
+uniform float night = 0.0;
+uniform float rough = 0.0;
 
 // 2D擬似ノイズ
 float hash(vec2 p) {
@@ -44,6 +47,8 @@ void fragment() {
 			+ sin((pw.x + pw.y) * 0.6 + t * 1.1) * 0.35
 			+ sin((pw.x * 1.6 - pw.y * 0.8) - t * 1.3) * 0.22;
 	float ripple = sin(pw.x * 5.2 + pw.y * 3.7 + t * 2.2) * sin(pw.y * 4.6 - pw.x * 2.9 - t * 1.7);
+	// #191/#192: 荒天は大きなうねりを重ねて海面全体を波立たせる
+	h += sin(pw.x * 0.45 + pw.y * 0.35 + t * 0.85) * rough * 0.55;
 
 	// #135: 深浅。低周波ノイズで濃淡をつけ、島周りは必ず淡い青に寄せる
 	float depth = noise(world * 0.00035 + 13.0);          // 0..1 (低=浅, 高=深)
@@ -56,22 +61,27 @@ void fragment() {
 	vec3 col = mix(deep_color, shallow_color, shallow_amt);
 
 	// 波頭(高い所にだけ細く)
-	float crest = smoothstep(1.15, 1.45, h + ripple * 0.25);
-	col = mix(col, crest_color, crest * 0.35);
+	float crest = smoothstep(1.15 - rough * 0.32, 1.45 - rough * 0.30, h + ripple * 0.25);
+	col = mix(col, crest_color, crest * (0.35 + rough * 0.22));
 
 	// 太陽のきらめき(波間に走る鋭い光点)
 	float sparkle = sin(pw.x * 7.3 + t * 3.1) * sin(pw.y * 6.7 - t * 2.3) * sin((pw.x - pw.y) * 9.1 + t * 1.7);
 	sparkle = pow(max(sparkle, 0.0), 12.0);
-	col += vec3(1.0, 0.95, 0.8) * sparkle * 0.45;
+	col += vec3(1.0, 0.95, 0.8) * sparkle * 0.45 * (1.0 - night * 0.8);
 
 	// #133: 流れる雲の影。多重ノクターブで大小さまざま、影のない所もつくる
 	vec2 cw = world * 0.0006 + vec2(t * 0.02, t * 0.015);
 	float cloud = noise(cw) * 0.6 + noise(cw * 2.3 + 5.0) * 0.3 + noise(cw * 5.1 + 9.0) * 0.1;
 	float shadow = smoothstep(0.62, 0.82, cloud);   // 閾値以上だけ影(=影のない領域ができる)
-	col *= 1.0 - shadow * 0.20;
+	col *= 1.0 - shadow * (0.20 + rough * 0.28);   // #191/#192: 荒天は雲が厚く海面が暗い
 
 	// 画面右上からの太陽光(暖色のグラデーション)
 	float sun = max(0.0, 1.0 - length(SCREEN_UV - vec2(0.82, 0.12)) * 1.4);
-	col += vec3(0.95, 0.85, 0.6) * sun * sun * 0.10;
+	col += vec3(0.95, 0.85, 0.6) * sun * sun * 0.10 * (1.0 - night);
+
+	// #190: 月下の島の近海は常に夜。全体を暗い藍へ沈め、左上からの月光を落とす
+	col = mix(col, col * vec3(0.30, 0.36, 0.60) + vec3(0.015, 0.025, 0.055), night);
+	float moon = max(0.0, 1.0 - length(SCREEN_UV - vec2(0.18, 0.13)) * 1.5);
+	col += vec3(0.62, 0.70, 0.95) * moon * moon * 0.16 * night;
 	COLOR = vec4(col, 1.0);
 }

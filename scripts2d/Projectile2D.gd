@@ -80,7 +80,22 @@ func _build_visual() -> void:
 		add_child(colf)
 		body_entered.connect(_on_hit)
 		return
-	if shape == "ellipse":
+	if shape == "star":
+		# #190: オニヒトデの星形弾(5角星)。回転しながら飛ぶので進行方向へは向けない
+		for i in 10:
+			var a := TAU * i / 10.0 - PI / 2.0
+			var rr: float = 8.5 if i % 2 == 0 else 3.6
+			poly.append(Vector2(cos(a), sin(a)) * rr)
+		mcol = Color(0.86, 0.62, 0.30)
+		r = 5.5
+	elif shape == "small":
+		# #190: レギオンの小型弾(小魚が吐く小さな水弾)
+		for i in 10:
+			var a := TAU * i / 10.0
+			poly.append(Vector2(cos(a) * 2.6, sin(a) * 4.2))
+		mcol = Color(0.62, 0.78, 0.86)
+		r = 3.2
+	elif shape == "ellipse":
 		# #65再: 細長い楕円弾(長軸=進行方向=プレイヤー向き)。色はbcolorで指定
 		for i in 16:
 			var a := TAU * i / 16.0
@@ -151,6 +166,8 @@ func _scaled(poly: PackedVector2Array, s: float) -> PackedVector2Array:
 
 func _physics_process(delta: float) -> void:
 	_t += delta
+	if shape == "star":
+		rotation += delta * 5.0   # #190: 星形弾はくるくる回りながら飛ぶ
 	if homing and spread_homing:
 		# #65再: 前半は低速で初期方向(扇状)へ広がり、後半で急加速しながら船へ追尾
 		if _t < 0.55:
@@ -247,6 +264,8 @@ func _on_hit(body: Node) -> void:
 		queue_free()
 	elif body.is_in_group("island_body"):
 		queue_free()
+	elif body.is_in_group("obstacle"):
+		queue_free()   # #193: 岩礁・流氷は敵味方どちらの弾も止める(障害物は壊れない)
 
 # #115/#116: 着弾エフェクト(爆発/炎/血しぶき)を親に生成(弾の消滅後も残す)
 func _spawn_effect(kind: String, pos: Vector2) -> void:

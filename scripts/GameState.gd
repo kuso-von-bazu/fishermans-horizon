@@ -49,9 +49,9 @@ func hire_crew(job_id: String) -> bool:
 		notice.emit("資金が足りません(契約金%d)" % cost)
 		return false
 	add_money(-cost)
-	# #85再: 嵐越え(island>=2)以降の酒場はボーナス4倍+最低保証UPでより強力なクルー(水夫は据え置き)
+	# #85再: 嵐越え(island>=3)以降の酒場はボーナス4倍+最低保証UPでより強力なクルー(水夫は据え置き)。#190: 月下の島の追加で嵐越えがindex3へ
 	var bm := hire_bonus_mult(job_id)
-	var high := current_island >= 2 and job_id != "sailor"
+	var high := current_island >= 3 and job_id != "sailor"
 	var base := 1 if job_id == "sailor" else (5 if high else 3)   # 最低保証の底上げ
 	var m := {
 		"name": _unique_crew_name(),
@@ -76,13 +76,13 @@ func hire_crew(job_id: String) -> bool:
 	stats_changed.emit()
 	return true
 
-# #85再: 嵐越えの島(island>=2)以降は契約金3倍・上乗せ4倍。ただし水夫は据え置き
+# #85再: 嵐越えの島(island>=3)以降は契約金3倍・上乗せ4倍。ただし水夫は据え置き。#190: 月下の島(index2)は潮鳴りまでと同条件
 func hire_cost(job_id: String) -> int:
-	var mult := 3 if (current_island >= 2 and job_id != "sailor") else 1
+	var mult := 3 if (current_island >= 3 and job_id != "sailor") else 1
 	return int(jobs[job_id].hire) * mult
 
 func hire_bonus_mult(job_id: String = "") -> int:
-	return 4 if (current_island >= 2 and job_id != "sailor") else 1
+	return 4 if (current_island >= 3 and job_id != "sailor") else 1
 
 # 使われていない名前を選ぶ(#52)。尽きたら「二代目〜」。
 func _unique_crew_name() -> String:
@@ -309,6 +309,8 @@ func reset_all() -> void:
 
 # ---------------- オートセーブ(#93) ----------------
 const SAVE_PATH := "user://save.json"
+# #190: 月下の島を index2 に挿入したので、それ以前(world未設定)のセーブは島indexを1つ後ろへずらす
+const WORLD_VERSION := 190
 
 func has_save() -> bool:
 	return FileAccess.file_exists(SAVE_PATH)
@@ -323,6 +325,7 @@ func save_game() -> void:
 		"defeated_lords": defeated_lords, "claimed_lords": claimed_lords,
 		"kills": kills,
 		"guide_target": guide_target, "has_departed": has_departed,
+		"world": WORLD_VERSION,   # #190: 島構成のバージョン(島を挿入したらセーブの島indexを移行する)
 	}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f:
@@ -358,6 +361,24 @@ func load_game() -> bool:
 	claimed_lords.assign(data.get("claimed_lords", []))
 	guide_target = data.get("guide_target", {})
 	has_departed = bool(data.get("has_departed", true))   # #168: 既存セーブは出港済み扱い
+	# #190: 4島時代のセーブは 嵐越え=2/果て=3 だったので、月下の島の挿入ぶんだけ後ろへ寄せる
+	if int(data.get("world", 0)) < 190:
+		current_island = _shift_island(current_island)
+		var ui: Array[int] = []
+		for i in unlocked_islands:
+			ui.append(_shift_island(i))
+		unlocked_islands.assign(ui)
+		var vi: Array[int] = []
+		for i in visited_islands:
+			vi.append(_shift_island(i))
+		visited_islands.assign(vi)
+		if str(guide_target.get("kind", "")) == "island":
+			guide_target["id"] = _shift_island(int(guide_target.get("id", 0)))
+		# 挿入された月下の島は旧セーブに存在しないので、名声が足りていればこの場で解放する
+		for isle in Database.islands:
+			if fame >= int(isle.fame_req) and not unlocked_islands.has(int(isle.id)):
+				unlocked_islands.append(int(isle.id))
+		unlocked_islands.sort()
 	# 辞書の数値はJSONでfloat化するのでintへ戻す
 	cargo = _to_int_dict(data.get("cargo", {}))
 	heads = _to_int_dict(data.get("heads", {}))
@@ -373,6 +394,10 @@ func load_game() -> bool:
 	dock_reset()
 	stats_changed.emit()
 	return true
+
+# #190: 旧セーブの島index(0始まり/1潮鳴り/2嵐越え/3果て)を新しい5島構成へ移す
+func _shift_island(i: int) -> int:
+	return i + 1 if i >= 2 else i
 
 func _to_int_array(a) -> Array:
 	var out := []

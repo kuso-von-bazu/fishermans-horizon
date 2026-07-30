@@ -55,10 +55,13 @@ func _coast(base_r: float, wobble: float, seed_off: int, points: int = 28) -> Pa
 		pts.append(Vector2(cos(a), sin(a)) * r)
 	return pts
 
-# #172: 島ごとに配色・植生・地形を変える(0南国/1涼しい岩場/2火山/3寒冷)
+# #172: 島ごとに配色・植生・地形を変える(0南国/1涼しい岩場/2砂漠/3火山/4寒冷)
+# #190: 月下の島(index2)を砂漠+わずかな緑地として追加し、火山/寒冷を1つずつ後ろへ
 const PALETTES := [
 	{"shallow": Color(0.55,0.82,0.87,0.45), "sand": Color(0.90,0.83,0.62), "grass": Color(0.44,0.64,0.36), "grass2": Color(0.33,0.52,0.30), "mtn": Color(0.52,0.48,0.44), "peak": Color(0.72,0.70,0.66), "tree": Color(0.25,0.55,0.25), "trunk": Color(0.45,0.32,0.18), "trees": 5, "wob": 0.16},
 	{"shallow": Color(0.45,0.72,0.85,0.45), "sand": Color(0.80,0.79,0.70), "grass": Color(0.36,0.56,0.40), "grass2": Color(0.23,0.41,0.31), "mtn": Color(0.45,0.46,0.50), "peak": Color(0.66,0.68,0.72), "tree": Color(0.20,0.45,0.34), "trunk": Color(0.38,0.30,0.22), "trees": 7, "wob": 0.20},
+	# #190: 月下の島=砂漠。砂丘が島の大部分を占め、中央の泉のまわりだけわずかに緑(oasis=緑地を小さく描く)
+	{"shallow": Color(0.52,0.76,0.80,0.45), "sand": Color(0.88,0.78,0.53), "grass": Color(0.80,0.68,0.43), "grass2": Color(0.45,0.55,0.30), "mtn": Color(0.66,0.55,0.38), "peak": Color(0.86,0.76,0.55), "tree": Color(0.30,0.52,0.28), "trunk": Color(0.42,0.32,0.20), "trees": 2, "wob": 0.14, "oasis": true},
 	{"shallow": Color(0.50,0.58,0.66,0.45), "sand": Color(0.58,0.50,0.42), "grass": Color(0.46,0.44,0.31), "grass2": Color(0.31,0.27,0.21), "mtn": Color(0.40,0.26,0.22), "peak": Color(0.80,0.36,0.18), "tree": Color(0.32,0.40,0.22), "trunk": Color(0.32,0.24,0.16), "trees": 3, "wob": 0.24},
 	{"shallow": Color(0.60,0.74,0.84,0.45), "sand": Color(0.83,0.85,0.88), "grass": Color(0.62,0.66,0.68), "grass2": Color(0.47,0.52,0.56), "mtn": Color(0.55,0.57,0.62), "peak": Color(0.93,0.95,0.99), "tree": Color(0.24,0.40,0.32), "trunk": Color(0.34,0.26,0.18), "trees": 3, "wob": 0.18, "conifer": true},
 ]
@@ -70,7 +73,12 @@ func _draw() -> void:
 	draw_colored_polygon(_coast(132, wob, 1), p.shallow)
 	draw_colored_polygon(_coast(112, wob * 0.9, 1), p.sand)
 	draw_colored_polygon(_coast(86, wob, 3), p.grass)
-	draw_colored_polygon(_coast(52, wob * 1.3, 5), p.grass2)
+	if bool(p.get("oasis", false)):
+		# #190: 砂漠の島は緑地がわずか。中央の泉(オアシス)まわりだけ小さく緑を置く
+		draw_colored_polygon(_coast(26, wob * 1.4, 5), p.grass2)
+		draw_circle(Vector2(6, 10), 10, Color(0.35, 0.62, 0.72, 0.9))
+	else:
+		draw_colored_polygon(_coast(52, wob * 1.3, 5), p.grass2)
 	# 山(頂と影)
 	draw_circle(Vector2(-12, -12), 22, p.mtn)
 	draw_circle(Vector2(-16, -16), 10, p.peak)

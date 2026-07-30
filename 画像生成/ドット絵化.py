@@ -16,11 +16,17 @@ LONG = 48
 # #81再: ヒュドラ(80→180)とケツァル(140→180)をさらに高精細化(front/backも揃える)
 LONG_OVERRIDE = {"lord_leviathan.png": 200, "lord_leviathan_front.png": 200, "lord_leviathan_back.png": 200, "lord_hydra.png": 180, "lord_hydra_front.png": 180, "lord_hydra_back.png": 180, "lord_quetzal.png": 180, "lord_quetzal_front.png": 180, "lord_quetzal_back.png": 180,
                  # #187: 幽霊船(帆船は細部が多いので高精細)
-                 "lord_ghost.png": 180, "lord_ghost_front.png": 180, "lord_ghost_back.png": 180}
+                 "lord_ghost.png": 180, "lord_ghost_front.png": 180, "lord_ghost_back.png": 180,
+                 # #190: 月下の島の主。レギオンは小魚の粒立ちを残したいので高精細
+                 "lord_aspidochelone.png": 180,
+                 "lord_legion.png": 180, "lord_legion_front.png": 180, "lord_legion_back.png": 180}
 # #81: レヴィアタンは色数も増やしてより詳細に。#173: ケツァルも増色。#81再: ヒュドラ増色・ケツァル64色
 COLORS_OVERRIDE = {"lord_leviathan.png": 64, "lord_leviathan_front.png": 64, "lord_leviathan_back.png": 64, "lord_hydra.png": 64, "lord_hydra_front.png": 64, "lord_hydra_back.png": 64, "lord_quetzal.png": 64, "lord_quetzal_front.png": 64, "lord_quetzal_back.png": 64,
                    # #187: 幽霊船
-                   "lord_ghost.png": 64, "lord_ghost_front.png": 64, "lord_ghost_back.png": 64}
+                   "lord_ghost.png": 64, "lord_ghost_front.png": 64, "lord_ghost_back.png": 64,
+                   # #190: 月下の島の主
+                   "lord_aspidochelone.png": 64,
+                   "lord_legion.png": 64, "lord_legion_front.png": 64, "lord_legion_back.png": 64}
 
 for f in sorted(os.listdir(SRC)):
     if not f.lower().endswith(".png"):

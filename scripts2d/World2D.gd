@@ -8,6 +8,7 @@ const FishSchoolScript = preload("res://scripts2d/FishSchool2D.gd")
 const EnemyScript = preload("res://scripts2d/Enemy2D.gd")
 const ProjectileScript = preload("res://scripts2d/Projectile2D.gd")
 const RelicScript = preload("res://scripts2d/Relic2D.gd")
+const ObstacleScript = preload("res://scripts2d/Obstacle2D.gd")
 const HUDScript = preload("res://scripts2d/HUD2D.gd")
 const PortUIScript = preload("res://scripts/PortUI.gd")
 const TitleScript = preload("res://scripts/TitleScreen.gd")
@@ -20,11 +21,14 @@ var hud: CanvasLayer
 var port_ui: CanvasLayer
 var title: CanvasLayer
 var ocean_mat: ShaderMaterial
+var weather_mat: ShaderMaterial   # #190/#191/#192: 近海ごとの天候オーバーレイ
+var weather_rect: ColorRect
 
 var phase: String = "title"
 var fish_schools: Array = []
 var enemies: Array = []
 var relics_world: Array = []
+var obstacles: Array = []      # #193: 海上の障害物(岩礁/流氷)
 var slot_cooldowns: Array = [0.0, 0.0, 0.0, 0.0]
 var slot_ammo: Array = [0, 0, 0, 0]        # #27: 残弾。0でリロード(reload秒)
 var lock_target: Node2D = null
@@ -48,6 +52,7 @@ func island_pos(idx: int) -> Vector2:
 
 func _ready() -> void:
 	_build_ocean()
+	_build_weather()
 	_build_islands()
 	_build_player()
 	hud = HUDScript.new()
@@ -83,10 +88,53 @@ func _build_ocean() -> void:
 	var ipos := PackedVector2Array()
 	for i in Database.islands.size():
 		ipos.append(island_pos(i))
-	while ipos.size() < 4:
+	while ipos.size() < 5:
 		ipos.append(Vector2(1e9, 1e9))
 	ocean_mat.set_shader_parameter("islands", ipos)
-	ocean_mat.set_shader_parameter("island_count", mini(Database.islands.size(), 4))
+	ocean_mat.set_shader_parameter("island_count", mini(Database.islands.size(), 5))
+
+# #190/#191/#192: 天候オーバーレイ(夜/大雨/吹雪)。海の上・HUDの下に全画面で重ねる
+func _build_weather() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 5
+	add_child(layer)
+	weather_rect = ColorRect.new()
+	weather_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	weather_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	weather_mat = ShaderMaterial.new()
+	weather_mat.shader = load("res://shaders/weather2d.gdshader")
+	weather_rect.material = weather_mat
+	layer.add_child(weather_rect)
+	_apply_weather("")
+
+# 島の weather 値に応じて海シェーダと天候オーバーレイを設定する
+func _apply_weather(w: String) -> void:
+	var tint := Color(0, 0, 0, 0)
+	var rain := 0.0
+	var snow := 0.0
+	var night := 0.0
+	var rough := 0.0
+	match w:
+		"night":     # #190: 月下の島の近海は常に夜
+			tint = Color(0.05, 0.08, 0.22, 0.40)
+			night = 1.0
+		"storm":     # #191: 嵐越えの島の近海は大雨と高波
+			tint = Color(0.10, 0.12, 0.18, 0.24)
+			rain = 1.0
+			rough = 1.0
+		"blizzard":  # #192: 果ての島の近海は吹雪と荒波
+			tint = Color(0.72, 0.80, 0.90, 0.18)
+			snow = 1.0
+			rough = 0.85
+	if weather_mat:
+		weather_mat.set_shader_parameter("tint", tint)
+		weather_mat.set_shader_parameter("rain", rain)
+		weather_mat.set_shader_parameter("snow", snow)
+	if weather_rect:
+		weather_rect.visible = tint.a > 0.0 or rain > 0.0 or snow > 0.0
+	if ocean_mat:
+		ocean_mat.set_shader_parameter("night", night)
+		ocean_mat.set_shader_parameter("rough", rough)
 
 func _build_islands() -> void:
 	for i in Database.islands.size():
@@ -160,6 +208,7 @@ func _enter_dock(island_id: int, do_reset := true) -> void:
 	player.global_position = island_pos(island_id) + Vector2(0, 260)
 	player.velocity = Vector2.ZERO
 	player.control_enabled = false
+	_apply_weather(str(Database.island(island_id).get("weather", "")))   # #190/#191/#192: 近海の天候
 	_clear_sea_actors()
 	if hud:
 		hud.visible = false
@@ -187,6 +236,7 @@ func _on_set_sail() -> void:
 		GameState.add_money(-mini(wages, GameState.money))
 		GameState.notice.emit("クルーへ賃金 %d を支払った" % wages)
 	GameState.set_sail()
+	_apply_weather(str(Database.island(GameState.current_island).get("weather", "")))   # #190/#191/#192: 近海の天候
 	player.control_enabled = true
 	player.rebuild_visual()
 	player.global_position = island_pos(GameState.current_island) + Vector2(0, 300)
@@ -349,12 +399,17 @@ func _update_spawns(delta: float) -> void:
 	fish_schools = fish_schools.filter(func(f): return is_instance_valid(f) and not f.depleted())
 	enemies = enemies.filter(func(e): return is_instance_valid(e))
 	relics_world = relics_world.filter(func(r): return is_instance_valid(r))
+	obstacles = obstacles.filter(func(o): return is_instance_valid(o))
 	for fs in fish_schools.duplicate():
 		if player.global_position.distance_to(fs.global_position) > 320 * K:
 			fs.queue_free()
 	for r in relics_world.duplicate():
 		if player.global_position.distance_to(r.global_position) > 360 * K:
 			r.queue_free()
+	# #193: 障害物も遠く離れたら片付ける(数を保ちつつ処理を軽く)
+	for o in obstacles.duplicate():
+		if player.global_position.distance_to(o.global_position) > 380 * K:
+			o.queue_free()
 	# #69他再修正: 主以外の敵は遠く離れたらデスポーンして枠を空ける(#67/#166: 主・取り巻き・海賊王は免除)
 	for e in enemies.duplicate():
 		if is_instance_valid(e) and e.kind != "lord" and not e.is_escort and not (e.kind == "pirate" and e.id == "king") and player.global_position.distance_to(e.global_position) > 400 * K:
@@ -375,6 +430,11 @@ func _update_spawns(delta: float) -> void:
 		_spawn_enemy()
 	if relics_world.size() < 2 and randf() < 0.12:
 		_spawn_relic()
+	# #193: 障害物は地形に近いので、1tickに複数出して早めに規定数まで満たす
+	for i in 3:
+		if obstacles.size() >= _obstacle_max():
+			break
+		_spawn_obstacle()
 
 func _spawn_fish() -> void:
 	var isle: Dictionary = Database.island(GameState.current_island)
@@ -419,16 +479,14 @@ func _spawn_enemy() -> void:
 	# 海賊12%(#1,#10)、戦闘モブ26%(#3)、海賊王レア(#73)、残りは静かな海
 	if roll < 0.12:
 		kind = "pirate"
-		var ps := ["raider", "corsair", "dread"]
-		id = ps[mini(isle, 2)]
-		if isle == 0:
-			id = "raider"
+		# #190: 島が5つになったので island index → 海賊の格 を明示表で対応させる
+		id = ["raider", "corsair", "dread", "dread", "dread"][clampi(isle, 0, 4)]
 	elif roll < 0.38:
 		kind = "mob"
 		id = Database.pick_mob(isle)   # #38: 島tierごとの出現割合
 	elif roll < 0.50:
 		# #73再: 海賊王。島の周り以外の全海域で出現。先の島ほど出やすい(始0.02/潮0.04/嵐0.08/果0.12)。同時1体
-		var king_rate: float = [0.02, 0.04, 0.08, 0.12][clampi(isle, 0, 3)]
+		var king_rate: float = [0.02, 0.04, 0.06, 0.08, 0.12][clampi(isle, 0, 4)]   # #190: 月下の島ぶんを追加
 		if not near_island and not _king_alive() and randf() < king_rate:
 			kind = "pirate"
 			id = "king"
@@ -535,6 +593,39 @@ func _make_enemy(kind: String, id: String, pos: Vector2) -> CharacterBody2D:
 	e.global_position = pos
 	enemies.append(e)
 	return e
+
+# #193: 島ごとの障害物。始まりの島〜嵐越えの島は岩礁、果ての島は流氷(低速で移動)
+func _obstacle_kind() -> String:
+	return "ice" if GameState.current_island >= 4 else "reef"
+
+# 始まりの島の近海は岩礁を少なめに
+func _obstacle_max() -> int:
+	return [3, 8, 8, 9, 7][clampi(GameState.current_island, 0, 4)]
+
+func _spawn_obstacle() -> void:
+	var pos := _ring_pos(85, 200)
+	for attempt in 8:
+		if _obstacle_spot_ok(pos):
+			break
+		pos = _ring_pos(85, 200)
+	if not _obstacle_spot_ok(pos):
+		return
+	var o := StaticBody2D.new()
+	o.set_script(ObstacleScript)
+	o.setup(_obstacle_kind())
+	add_child(o)
+	o.global_position = pos
+	obstacles.append(o)
+
+# 島の上・他の障害物の近くには置かない
+func _obstacle_spot_ok(pos: Vector2) -> bool:
+	for isle_node in islands:
+		if pos.distance_to(isle_node.global_position) < 380.0:
+			return false
+	for o in obstacles:
+		if is_instance_valid(o) and pos.distance_to(o.global_position) < 260.0:
+			return false
+	return true
 
 func _spawn_relic() -> void:
 	# #124: 島の領域内には遺産を出さない(魚群#53と同様に島から離す)
@@ -883,12 +974,13 @@ func _build_food_dialog() -> void:
 
 # ---------------- クリーンアップ ----------------
 func _clear_sea_actors() -> void:
-	for a in fish_schools + enemies + relics_world:
+	for a in fish_schools + enemies + relics_world + obstacles:
 		if is_instance_valid(a):
 			a.queue_free()
 	fish_schools.clear()
 	enemies.clear()
 	relics_world.clear()
+	obstacles.clear()
 	lock_target = null
 
 # ---------------- 検証用スクリーンショット ----------------
@@ -904,6 +996,7 @@ func _maybe_screenshot() -> void:
 	var want_bestiary := false
 	var want_guide := false
 	var want_bullets := false
+	var want_isle := 0        # #190: 撮影する海域(島index)
 	for a in args:
 		if a.begins_with("--shot"):
 			want_shot = true
@@ -915,11 +1008,23 @@ func _maybe_screenshot() -> void:
 			want_bestiary = a.find("bestiary") != -1
 			want_guide = a.find("guide") != -1
 			want_bullets = a.find("bullets") != -1
+			# #190: isle<N> で撮影する海域(島index)を指定(天候・障害物の確認用)
+			var ip := a.find("isle")
+			if ip != -1 and ip + 4 < a.length():
+				var n := a.substr(ip + 4, 1)
+				if n.is_valid_int():
+					want_isle = clampi(int(n), 0, Database.islands.size() - 1)
 	if not want_shot:
 		return
 	await get_tree().create_timer(0.6).timeout
 	if want_sea:
 		title.visible = false
+		if want_isle > 0:
+			GameState.current_island = want_isle
+			GameState.unlocked_islands.assign(range(Database.islands.size()))
+			GameState.money = 999999
+			GameState.buy_ship("dread")
+			GameState.dock_reset()
 		_on_set_sail()
 		if want_guide:   # #60/#61: ガイド弧の表示確認
 			GameState.unlocked_islands = [0, 1]
@@ -964,10 +1069,20 @@ func _maybe_screenshot() -> void:
 				["pirate", "king"], ["mob", "kraken"], ["mob", "wyvern"],
 				["mob", "merman"], ["mob", "charybdis"], ["mob", "tiamat"], ["mob", "dagon"],
 				["mob", "zahhak"],
+				# #190: 月下の島の新しい敵
+				["mob", "starfish"], ["mob", "zaratan"],
+				["lord", "aspidochelone"], ["lord", "legion"],
 			]
+			# #190: 体数が増えたので折り返して2段に並べる(画面からはみ出さないように)
+			var per_row := 6
+			var rows := int(ceil(float(lineup.size()) / float(per_row)))
 			for i in lineup.size():
-				var x := (float(i) - (lineup.size() - 1) / 2.0) * 260.0
-				_make_enemy(lineup[i][0], lineup[i][1], player.global_position + Vector2(x, -330))
+				var col := i % per_row
+				var row := i / per_row
+				var n_in_row: int = mini(per_row, lineup.size() - row * per_row)
+				var x := (float(col) - (n_in_row - 1) / 2.0) * 260.0
+				var y := -560.0 + float(row) * 300.0 - (float(rows) - 2.0) * 150.0
+				_make_enemy(lineup[i][0], lineup[i][1], player.global_position + Vector2(x, y))
 			await get_tree().create_timer(0.25).timeout
 		else:
 			await get_tree().create_timer(1.0).timeout

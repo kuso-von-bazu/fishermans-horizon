@@ -45,6 +45,9 @@ var _bob: float = 0.0
 var _radius: float = 40.0
 var locked: bool = false   # 魚雷ロック対象の表示(#16)
 var _offscreen_t: float = 0.0   # #166: 画面外にいる時間(モブ/海賊は一定時間で消滅し枠を空ける)
+var _spin: float = 0.0          # #190: 回転する敵(オニヒトデ/アスピドケロン)の現在角
+var _charge_t: float = 0.0      # #190: 突進/休憩サイクルの残り秒(アスピドケロン)
+var _charging: bool = true      # #190: true=突進(高速), false=休憩(低速)
 
 func setup(p_kind: String, p_id: String) -> void:
 	kind = p_kind
@@ -185,6 +188,28 @@ func _make_particles(c0: Color, c1: Color) -> CPUParticles2D:
 	p.z_index = 3
 	return p
 
+# #190: ザラタンの範囲近接。攻撃が届く範囲を白い波の輪で示し、広がりながら消える
+func _wave_ring(radius: float) -> void:
+	var ring := Line2D.new()
+	ring.width = 7.0
+	ring.default_color = Color(0.92, 0.98, 1.0, 0.85)
+	ring.closed = true
+	var pts := PackedVector2Array()
+	for i in 36:
+		var a := TAU * i / 36.0
+		pts.append(Vector2(cos(a), sin(a)) * radius)
+	ring.points = pts
+	ring.z_index = 4
+	get_parent().add_child(ring)
+	ring.global_position = global_position
+	ring.scale = Vector2.ONE * 0.3
+	var tw := get_tree().create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(ring, "scale", Vector2.ONE, 0.32)
+	tw.tween_property(ring, "modulate:a", 0.0, 0.5)
+	var t := get_tree().create_timer(0.7)
+	t.timeout.connect(func(): if is_instance_valid(ring): ring.queue_free())
+
 # #156: 薙ぎ払いの水しぶきエフェクト。攻撃方向へ扇状に飛沫を飛ばし、視覚的に薙ぎ払いを示す
 func _nagiharai_splash(dir: Vector2, reach: float) -> void:
 	var p := CPUParticles2D.new()
@@ -237,9 +262,18 @@ func _tex_scale(t: Texture2D) -> float:
 	var longest := maxf(float(t.get_width()), float(t.get_height()))
 	return _target_w / maxf(longest, 1.0)
 
+# #190: 現在のテクスチャ本来の表示スケール(shrink_hpで縮める際の基準)
+func _base_scale() -> float:
+	if sprite and sprite.texture:
+		return _tex_scale(sprite.texture)
+	return _target_w / 64.0
+
 # #26: 移動方向に応じて 横/正面(南向き)/後ろ姿(北向き) を切り替える
 func _update_facing(move_dir: Vector2) -> void:
 	if sprite == null or move_dir.length() < 0.01:
+		return
+	# #190: 回転する敵(オニヒトデ/アスピドケロン)は向きの概念がないので横向き固定・反転なし
+	if float(def.get("spin", 0.0)) > 0.0:
 		return
 	# #118: ケツァル等は常に正面(プレイヤー向き)固定で不自然な切替を防ぐ
 	if bool(def.get("always_front", false)):
@@ -378,10 +412,23 @@ func _physics_process(delta: float) -> void:
 	# 泳ぎアニメ(#26): 揺れ+伸縮でドット絵を動かす
 	_bob += delta * (2.6 if _aggro else 1.4)
 	if sprite:
-		sprite.rotation = sin(_bob * 0.7) * 0.06
+		var spin_rate: float = float(def.get("spin", 0.0))
+		if spin_rate > 0.0:
+			# #190: 回転する敵。突進中(_charging)はさらに速く回る
+			_spin += delta * spin_rate * (1.6 if (_charging and _aggro) else 1.0)
+			sprite.rotation = _spin
+		else:
+			sprite.rotation = sin(_bob * 0.7) * 0.06
 		var squash := 1.0 + sin(_bob * 2.0) * 0.05
 		var base_s: float = sprite.scale.x
 		sprite.scale.y = absf(base_s) * squash
+		# #190: レギオンは被弾で小魚が減り、陣形(見た目)が縮む
+		var shrink: float = float(def.get("shrink_hp", 0.0))
+		if shrink > 0.0:
+			var f: float = lerpf(shrink, 1.0, clampf(hp / maxf(max_hp, 1.0), 0.0, 1.0))
+			var b: float = _base_scale() * f
+			sprite.scale.x = b
+			sprite.scale.y = b * squash
 	if not is_instance_valid(player):
 		return
 	var to: Vector2 = player.global_position - global_position
@@ -391,6 +438,13 @@ func _physics_process(delta: float) -> void:
 	if not _aggro and dist < aggro_range:
 		_aggro = true
 	var eff_speed := speed
+	# #190: charge_cycle=突進と休憩を繰り返して動きに緩急をつける(アスピドケロン)
+	if bool(def.get("charge_cycle", false)):
+		_charge_t -= delta
+		if _charge_t <= 0.0:
+			_charging = not _charging
+			_charge_t = randf_range(2.2, 3.4) if _charging else randf_range(1.4, 2.2)
+		eff_speed *= 1.35 if _charging else 0.35
 	if _debuff_kind == "speed":
 		eff_speed *= 1.0 - 0.55 * clampf(_debuff_power, 0.0, 1.0)   # #37再々: 鈍化を強化   # #91/#114 鈍化(重ねがけで増加/減衰)
 	var move_dir: Vector2
@@ -480,7 +534,12 @@ func _attack(delta: float, dist: float) -> void:
 			if randf() < 0.4:   # #161: 近接圏でも時折遠隔攻撃を織り交ぜる
 				_ranged_attack(false)
 		elif dist <= melee_r:
-			_damage_player(eff_dmg)
+			# #190: melee_mult=体当たりなど近接が強い主(アスピドケロン)
+			var mm := float(def.get("melee_mult", 1.0))
+			if mm > 1.0:
+				_nagiharai_splash((player.global_position - global_position).normalized(), melee_r)
+				GameState.notice.emit("%s の体当たり!" % def.name)
+			_damage_player(eff_dmg * mm)
 		else:
 			_ranged_attack(bool(def.get("fire", false)))
 	elif kind == "pirate":
@@ -499,6 +558,9 @@ func _attack(delta: float, dist: float) -> void:
 		else:
 			_ranged_attack(false)
 	elif dist <= attack_range:
+		# #190: wave_melee=離れた距離からの範囲近接(ザラタン)。攻撃範囲を波の輪で表示
+		if bool(def.get("wave_melee", false)):
+			_wave_ring(attack_range)
 		_damage_player(eff_dmg)
 
 # #65/#66: way=扇状同時弾, homing=追跡弾を追加, wpn=gatling(3連小弾)/torpedo(追尾)/cannon
@@ -548,14 +610,31 @@ func _fire_weapon(wpn: String, eff_dmg: float, base_dir: Vector2, is_fire: bool)
 			var spread_step: float = 0.10 if bool(def.get("aim_tight", false)) else 0.20
 			var aim_shape := str(def.get("aim_shape", ""))
 			var aim_color = def.get("aim_color", null)
-			for i in way:
-				var off: float = (float(i) - float(way - 1) / 2.0) * spread_step
-				var w := {"dmg": eff_dmg * dm, "speed_mult": ss}
-				if aim_shape != "":
-					w["shape"] = aim_shape
-				if aim_color != null:
-					w["bcolor"] = aim_color
-				_shoot(base_dir.rotated(off), w, is_fire)
+			# #190: multi_origin=陣形の複数箇所から同時発射(レギオン)。既定は本体1箇所のみ
+			var origins := _shot_origins()
+			for org in origins:
+				for i in way:
+					var off: float = (float(i) - float(way - 1) / 2.0) * spread_step
+					var w := {"dmg": eff_dmg * dm, "speed_mult": ss}
+					if aim_shape != "":
+						w["shape"] = aim_shape
+					if aim_color != null:
+						w["bcolor"] = aim_color
+					if bool(def.get("star_shot", false)):
+						w["shape"] = "star"
+					elif bool(def.get("small_shot", false)):
+						w["shape"] = "small"
+					_shoot(base_dir.rotated(off), w, is_fire, null, org)
+			# #190: scatter=無作為な方向へばら撒く弾(オニヒトデ/アスピドケロン/レギオン)
+			var scatter := int(def.get("scatter", 0))
+			for i in scatter:
+				var sd := Vector2.RIGHT.rotated(TAU * (float(i) + randf()) / float(maxi(scatter, 1)))
+				var ws := {"dmg": eff_dmg * dm, "speed_mult": ss * randf_range(0.82, 1.18)}
+				if bool(def.get("star_shot", false)):
+					ws["shape"] = "star"
+				elif bool(def.get("small_shot", false)):
+					ws["shape"] = "small"
+				_shoot(sd, ws, is_fire, null, origins[i % origins.size()])
 			# #65再: spread_homing=発射後に扇状(左右)へ広がってから急加速して追尾
 			var spread_h := bool(def.get("spread_homing", false))
 			var hc := int(def.get("homing_count", 1 if bool(def.get("homing", false)) else 0))
@@ -570,7 +649,18 @@ func _fire_weapon(wpn: String, eff_dmg: float, base_dir: Vector2, is_fire: bool)
 					wh["spread_homing"] = true
 				_shoot(hd, wh, is_fire, player)
 
-func _shoot(d: Vector2, w: Dictionary, is_fire: bool, tgt: Node2D = null) -> void:
+# #190: 弾の発射位置(本体からのオフセット)。multi_origin指定時は陣形上に散らす
+func _shot_origins() -> Array:
+	var n := int(def.get("multi_origin", 1))
+	if n <= 1:
+		return [Vector2.ZERO]
+	var out: Array = []
+	for i in n:
+		var a: float = TAU * float(i) / float(n) + _bob * 0.35
+		out.append(Vector2(cos(a), sin(a)) * _radius * 0.7)
+	return out
+
+func _shoot(d: Vector2, w: Dictionary, is_fire: bool, tgt: Node2D = null, origin_off: Vector2 = Vector2.ZERO) -> void:
 	# #72: ティアマット等は遠隔弾に高確率の炎上を付与
 	if float(def.get("burn_chance", 0.0)) > 0.0 and not w.has("homing"):
 		w["burn_chance"] = float(def.get("burn_chance", 0.0))
@@ -583,7 +673,7 @@ func _shoot(d: Vector2, w: Dictionary, is_fire: bool, tgt: Node2D = null) -> voi
 	var proj := Area2D.new()
 	proj.set_script(preload("res://scripts2d/Projectile2D.gd"))
 	get_parent().add_child(proj)
-	proj.global_position = global_position
+	proj.global_position = global_position + origin_off
 	proj.from_player = false
 	proj.fire = is_fire
 	proj.setup(d, w, tgt)
