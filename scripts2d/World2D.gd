@@ -544,6 +544,8 @@ func _spawn_escorts(center: Vector2, lord_id: String = "") -> Array:
 		return out   # #187: 幽霊船など取り巻きを持たない主
 	if lord_id == "leviathan":
 		ids = ["zahhak", "tiamat", "dagon"]   # #119再: 3種を1匹ずつ
+	elif lord_id == "aspidochelone" or lord_id == "legion":
+		ids = ["starfish", "zaratan"]   # #190再: 月下の主の取り巻きはオニヒトデ1体+ザラタン1体
 	elif lord_id == "hydra" or lord_id == "quetzal":
 		# #141再: カリュブディス1体+アンフィプテレ1体
 		ids = ["charybdis", "amphiptere"]

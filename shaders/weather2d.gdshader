@@ -22,7 +22,8 @@ void fragment() {
 		for (int i = 0; i < 3; i++) {
 			float fi = float(i);
 			vec2 p = uv * vec2(120.0 + fi * 44.0, 30.0 + fi * 10.0);
-			p += vec2(-1.0, 5.2) * TIME * (6.0 + fi * 2.2);
+			// #191再: SCREEN_UVはyが下向き。サンプル座標を加算すると模様は上へ流れてしまうため減算する
+			p -= vec2(-1.0, 5.2) * TIME * (6.0 + fi * 2.2);
 			vec2 c = floor(p);
 			vec2 f = fract(p);
 			float h = hash(c + fi * 17.3);
@@ -41,7 +42,7 @@ void fragment() {
 			float fi = float(i);
 			float sc = 30.0 + fi * 20.0;
 			vec2 p = uv * vec2(sc, sc * 0.6);
-			p += vec2(-1.0, 0.38) * TIME * (3.2 + fi * 1.8);
+			p -= vec2(-1.0, 0.38) * TIME * (3.2 + fi * 1.8);   // #191再: 雨と同様に上→下へ流す
 			p.x += sin(TIME * (0.8 + fi * 0.35) + uv.y * 9.0) * 0.9;
 			vec2 c = floor(p);
 			vec2 f = fract(p);

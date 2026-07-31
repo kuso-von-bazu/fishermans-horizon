@@ -435,7 +435,8 @@ func _physics_process(delta: float) -> void:
 	var dist := to.length()
 	# #32: 普段はゆっくり徘徊、発見(索敵圏内)で加速して追跡。#71: マーマンは索敵が広く好戦的
 	var aggro_range: float = float(def.get("aggro", 900.0 if kind == "lord" else 640.0))
-	if not _aggro and dist < aggro_range:
+	# #73再: always_aggro(海賊王)は出現位置に関わらず必ずプレイヤーに気づいて追ってくる
+	if not _aggro and (dist < aggro_range or bool(def.get("always_aggro", false))):
 		_aggro = true
 	var eff_speed := speed
 	# #190: charge_cycle=突進と休憩を繰り返して動きに緩急をつける(アスピドケロン)
@@ -627,9 +628,12 @@ func _fire_weapon(wpn: String, eff_dmg: float, base_dir: Vector2, is_fire: bool)
 					_shoot(base_dir.rotated(off), w, is_fire, null, org)
 			# #190: scatter=無作為な方向へばら撒く弾(オニヒトデ/アスピドケロン/レギオン)
 			var scatter := int(def.get("scatter", 0))
+			# #190再: scatter_speeds指定時は低速/中速/高速を順に混ぜて撒く(レギオン)
+			var sp_pool: Array = def.get("scatter_speeds", [])
 			for i in scatter:
 				var sd := Vector2.RIGHT.rotated(TAU * (float(i) + randf()) / float(maxi(scatter, 1)))
-				var ws := {"dmg": eff_dmg * dm, "speed_mult": ss * randf_range(0.82, 1.18)}
+				var smul: float = float(sp_pool[i % sp_pool.size()]) if not sp_pool.is_empty() else randf_range(0.82, 1.18)
+				var ws := {"dmg": eff_dmg * dm, "speed_mult": ss * smul}
 				if bool(def.get("star_shot", false)):
 					ws["shape"] = "star"
 				elif bool(def.get("small_shot", false)):
