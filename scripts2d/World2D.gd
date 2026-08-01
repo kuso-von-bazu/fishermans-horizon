@@ -598,8 +598,8 @@ func _spawn_escorts(center: Vector2, lord_id: String = "") -> Array:
 	elif lord_id == "aspidochelone" or lord_id == "legion":
 		ids = ["starfish", "zaratan"]   # #190再: 月下の主の取り巻きはオニヒトデ1体+ザラタン1体
 	elif lord_id == "hydra" or lord_id == "quetzal":
-		# #141再: カリュブディス1体+アンフィプテレ1体
-		ids = ["charybdis", "amphiptere"]
+		# #141再2: カリュブディス1体+オニヒトデ1体
+		ids = ["charybdis", "starfish"]
 	else:
 		for i in 2:
 			var mid: String = Database.pick_mob(GameState.current_island)
