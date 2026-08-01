@@ -28,6 +28,8 @@ var _travel: float = 0.0
 var _offscreen_t: float = 0.0   # #154: 画面外にいる時間
 
 func setup(p_dir: Vector2, w: Dictionary, p_target: Node2D = null) -> void:
+	# #149再3: 敵はレイヤー2へ移したので、弾は レイヤー1(自機/島/障害物)+2(敵) の両方を見る
+	collision_mask = 3
 	dmg = float(w.get("dmg", 5))
 	speed = (70.0 + float(w.get("dmg", 5)) * 0.3) * K * float(w.get("speed_mult", 1.0))   # #65: 弾速倍率
 	slip = bool(w.get("slip", false))

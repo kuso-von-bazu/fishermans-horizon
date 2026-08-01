@@ -496,14 +496,17 @@ func _spawn_fish() -> void:
 	# #53: 島の領域内(入港圏+余白)には魚群を出さない
 	var pos := _ring_pos(40, 160)
 	for attempt in 6:
-		var ok := true
-		for isle_node in islands:
-			if pos.distance_to(isle_node.global_position) < 340.0:
-				ok = false
-				break
+		var ok := _clear_of_obstacles(pos)   # #193再2: 障害物の上には湧かせない
+		if ok:
+			for isle_node in islands:
+				if pos.distance_to(isle_node.global_position) < 340.0:
+					ok = false
+					break
 		if ok:
 			break
 		pos = _ring_pos(40, 160)
+	if not _clear_of_obstacles(pos):
+		return
 	for isle_node in islands:
 		if pos.distance_to(isle_node.global_position) < 340.0:
 			return   # 6回試して島の上なら今回は見送り
@@ -670,6 +673,15 @@ func _spawn_obstacle() -> void:
 	o.global_position = pos
 	obstacles.append(o)
 
+# #193再2: 障害物の上に重なっていないか(魚群・遺産の湧き位置チェック用)
+func _clear_of_obstacles(pos: Vector2, margin := 40.0) -> bool:
+	for o in obstacles:
+		if is_instance_valid(o):
+			var orad: float = float(o.get("radius")) if o.get("radius") != null else 50.0
+			if pos.distance_to(o.global_position) < orad + margin:
+				return false
+	return true
+
 # 島の上・他の障害物の近くには置かない
 func _obstacle_spot_ok(pos: Vector2) -> bool:
 	for isle_node in islands:
@@ -684,14 +696,17 @@ func _spawn_relic() -> void:
 	# #124: 島の領域内には遺産を出さない(魚群#53と同様に島から離す)
 	var pos := _ring_pos(60, 180)
 	for attempt in 6:
-		var ok := true
-		for isle_node in islands:
-			if pos.distance_to(isle_node.global_position) < 340.0:
-				ok = false
-				break
+		var ok := _clear_of_obstacles(pos)   # #193再2: 障害物の上には湧かせない
+		if ok:
+			for isle_node in islands:
+				if pos.distance_to(isle_node.global_position) < 340.0:
+					ok = false
+					break
 		if ok:
 			break
 		pos = _ring_pos(60, 180)
+	if not _clear_of_obstacles(pos):
+		return
 	for isle_node in islands:
 		if pos.distance_to(isle_node.global_position) < 340.0:
 			return

@@ -146,6 +146,11 @@ func _ready() -> void:
 		# 衝角はPlayer2D側の近接判定で当てる。
 		if ps is CollisionObject2D:
 			(ps as CollisionObject2D).add_collision_exception_with(self)
+	# #149再3: 敵は専用レイヤー(2)に置き、敵同士では衝突しない。
+	# ティアマットのジグザグ移動がレヴィアタン等を押してしまう問題の対策。
+	# 島・障害物・プレイヤー(レイヤー1)とは従来どおり衝突する。
+	collision_layer = 2
+	collision_mask = 1
 	# #150: 空中の敵は島の当たり判定を無視(島と重なって追う)
 	if aerial:
 		collision_mask = 0
