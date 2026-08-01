@@ -48,6 +48,7 @@ var _offscreen_t: float = 0.0   # #166: 画面外にいる時間(モブ/海賊�
 var _spin: float = 0.0          # #190: 回転する敵(オニヒトデ/アスピドケロン)の現在角
 var _charge_t: float = 0.0      # #190: 突進/休憩サイクルの残り秒(アスピドケロン)
 var _charging: bool = true      # #190: true=突進(高速), false=休憩(低速)
+var _burst_t: float = 0.0       # #65再2: 通常攻撃とは別系統の「バラマキ弾」までの残り秒
 
 func setup(p_kind: String, p_id: String) -> void:
 	kind = p_kind
@@ -392,6 +393,7 @@ func _physics_process(delta: float) -> void:
 			return
 	if _facing_cd > 0.0:
 		_facing_cd -= delta   # #187再: 向き切替クールダウン
+	_tick_burst(delta)        # #65再2/#72再: 一定でないタイミングのバラマキ弾
 	if _debuff_t > 0.0:
 		_debuff_t -= delta
 		if _debuff_t <= 0.0:
@@ -462,7 +464,7 @@ func _physics_process(delta: float) -> void:
 		# #149再: ティアマット等はプレイヤーを追いつつさらに大きくジグザグに移動
 		elif bool(def.get("zigzag", false)):
 			var perp := move_dir.rotated(PI / 2)
-			move_dir = (move_dir + perp * sin(_bob * 1.8) * 4.2).normalized()
+			move_dir = (move_dir + perp * sin(_bob * 1.8) * float(def.get("zigzag_amp", 4.2))).normalized()   # #149再2: 振幅はdefで調整
 		# #150: 地上の敵は島を迂回して追う(島から離れる向きを混ぜる)
 		if not aerial:
 			move_dir = _avoid_islands(move_dir)
@@ -472,6 +474,8 @@ func _physics_process(delta: float) -> void:
 			_wander_t = randf_range(2.0, 4.5)
 			_wander_dir = Vector2.RIGHT.rotated(randf() * TAU)
 		move_dir = _wander_dir
+		if not aerial:
+			move_dir = _avoid_islands(move_dir)   # #193再: 徘徊中も障害物に引っかからないよう迂回
 		eff_speed *= 0.3
 	# スプライトの向き(#26: 横/正面/後ろ姿の切替+左右反転)
 	_update_facing(face_dir if face_dir != Vector2.ZERO else move_dir)
@@ -484,7 +488,7 @@ func _physics_process(delta: float) -> void:
 		var melee_r: float = _radius + (12.0 if kind == "lord" else 9.0) * K * float(def.get("reach", 1.0))
 		if kind == "lord" and dist > melee_r:
 			velocity = move_dir * eff_speed * 0.75
-		elif kind == "mob" and bool(def.get("zigzag", false)) and dist > melee_r:
+		elif kind == "mob" and (bool(def.get("zigzag", false)) or bool(def.get("shoot_moving", false))) and dist > melee_r:
 			velocity = move_dir * eff_speed * 0.85   # #149再: ティアマット等は移動(ジグザグ)しながら遠隔攻撃
 		else:
 			velocity = velocity.move_toward(Vector2.ZERO, eff_speed)
@@ -608,6 +612,10 @@ func _fire_weapon(wpn: String, eff_dmg: float, base_dir: Vector2, is_fire: bool)
 					_shoot(Vector2.RIGHT.rotated(TAU * i / count), {"dmg": eff_dmg * dm, "speed_mult": ss}, is_fire)
 			# 照準の扇状弾(radialと併用可)。aim_tight=密な狭い扇。#65再: aim_shape/aim_colorで楕円弾など見た目指定
 			var way := int(def.get("way", 0 if has_radial else 1))
+			# #72再: way_choices指定時は毎回そこから選ぶ(ティアマット=時々2way/3way)
+			var way_pool: Array = def.get("way_choices", [])
+			if not way_pool.is_empty():
+				way = int(way_pool[randi() % way_pool.size()])
 			var spread_step: float = 0.10 if bool(def.get("aim_tight", false)) else 0.20
 			var aim_shape := str(def.get("aim_shape", ""))
 			var aim_color = def.get("aim_color", null)
@@ -653,6 +661,79 @@ func _fire_weapon(wpn: String, eff_dmg: float, base_dir: Vector2, is_fire: bool)
 					wh["spread_homing"] = true
 				_shoot(hd, wh, is_fire, player)
 
+# #65再2/#72再: 通常攻撃とは別系統の「バラマキ弾」。
+# def.burst = {count, spread(rad), speeds[](弾速倍率の混在), dmg_mult, color, shape,
+#              every:[最短,最長](一定でないタイミング), kite_only(引き撃ち移行後のみ)}
+# 通常攻撃より頻度が低くなるよう every は攻撃間隔よりかなり長く取る。
+func _tick_burst(delta: float) -> void:
+	if not def.has("burst"):
+		return
+	var b: Dictionary = def.burst
+	if _burst_t <= 0.0:
+		_burst_t = randf_range(float(b.every[0]), float(b.every[1]))
+		return   # 出現直後にいきなり撃たないよう、最初は間隔を置くだけ
+	_burst_t -= delta
+	if _burst_t > 0.0:
+		return
+	_burst_t = randf_range(float(b.every[0]), float(b.every[1]))
+	if not _aggro or GameState.docking_locked or not is_instance_valid(player):
+		return
+	if player.global_position.distance_to(global_position) > attack_range * 1.15:
+		return
+	# #65再: ケツァルは引き撃ちモードへ移行してからのみ撃つ
+	if bool(b.get("kite_only", false)) and not (_escorts_cleared() and hp / maxf(max_hp, 1.0) <= float(def.get("kite_hp", 1.0))):
+		return
+	_fire_spray(b, (player.global_position - global_position).normalized())
+
+# バラマキ弾の実射出。扇状に散らし、速度を speeds から順に混ぜる
+func _fire_spray(b: Dictionary, base_dir: Vector2) -> void:
+	var count := int(b.get("count", 12))
+	var spread := float(b.get("spread", 0.5))
+	var speeds: Array = b.get("speeds", [1.0])
+	var shp := str(b.get("shape", "ellipse_s"))
+	for i in count:
+		var t: float = (float(i) / float(maxi(count - 1, 1))) - 0.5   # -0.5..0.5
+		var d := base_dir.rotated(t * spread * 2.0 + randf_range(-0.05, 0.05))
+		var w := {
+			"dmg": dmg * float(b.get("dmg_mult", 0.22)),
+			"speed_mult": float(speeds[i % speeds.size()]),
+			"shape": shp,
+			"burst": true,   # _shoot の一括付与(炎/毒)から除外するための目印
+		}
+		if b.has("color"):
+			w["bcolor"] = b.color
+		_shoot(d, w, false)
+
+# #190再2/#71再: 撃墜された瞬間の「打ち返し弾」。
+# def.death_shot = {count, mode:"radial"|"aim"|"shotgun", spread, speeds[], dmg_mult, shape, color}
+func _fire_death_shot() -> void:
+	if not def.has("death_shot") or GameState.docking_locked or not is_instance_valid(player):
+		return
+	var d: Dictionary = def.death_shot
+	var to_p := (player.global_position - global_position).normalized()
+	match str(d.get("mode", "shotgun")):
+		"radial":
+			var n := int(d.get("count", 12))
+			var speeds: Array = d.get("speeds", [1.0])
+			for i in n:
+				var w := {
+					"dmg": dmg * float(d.get("dmg_mult", 0.3)),
+					"speed_mult": float(speeds[i % speeds.size()]),
+					"shape": str(d.get("shape", "ellipse_s")),
+					"burst": true,
+				}
+				if d.has("color"):
+					w["bcolor"] = d.color
+				_shoot(Vector2.RIGHT.rotated(TAU * i / n), w, false)
+		"aim":
+			for i in int(d.get("count", 1)):
+				var w2 := {"dmg": dmg * float(d.get("dmg_mult", 0.6)), "shape": str(d.get("shape", "")), "burst": true}
+				if d.has("color"):
+					w2["bcolor"] = d.color
+				_shoot(to_p, w2, false)
+		_:
+			_fire_spray(d, to_p)   # ショットガン状(バラマキと同じ散らし方)
+
 # #190: 弾の発射位置(本体からのオフセット)。multi_origin指定時は陣形上に散らす
 func _shot_origins() -> Array:
 	var n := int(def.get("multi_origin", 1))
@@ -668,9 +749,14 @@ func _shoot(d: Vector2, w: Dictionary, is_fire: bool, tgt: Node2D = null, origin
 	# #72: ティアマット等は遠隔弾に高確率の炎上を付与
 	if float(def.get("burn_chance", 0.0)) > 0.0 and not w.has("homing"):
 		w["burn_chance"] = float(def.get("burn_chance", 0.0))
+	# #194: ダゴンの遠隔弾は直接ダメージ無し・毒のスリップのみ(バラマキ弾には付けない)
+	if bool(def.get("shot_poison", false)) and not w.has("homing") and not w.has("burst"):
+		w["poison_only"] = true
 	# #167: ティアマット等は弾の見た目だけヒュドラの炎弾と同じに(挙動はburn_chanceのまま)
-	if bool(def.get("fire_look", false)) and not w.has("homing"):
+	if bool(def.get("fire_look", false)) and not w.has("homing") and not w.has("burst"):
 		w["fire_look"] = true
+		if def.has("flame_color"):
+			w["flame_color"] = def.flame_color   # #72再: ザッハークの白い炎など
 	# #65: 弾速倍率(_fire_weaponで明示指定済みならそのまま)
 	if not w.has("speed_mult") and float(def.get("shot_speed_mult", 1.0)) != 1.0 and not w.has("homing"):
 		w["speed_mult"] = float(def.get("shot_speed_mult", 1.0))
@@ -693,20 +779,29 @@ func ignite_slip(amount: float) -> void:
 		tw.tween_property(sprite, "modulate", Color.WHITE, 0.3)
 
 # #150: 島を迂回するステアリング。近い島から離れる+接線方向を混ぜて回り込む
+# #193再: 海上の障害物(岩礁/流氷)も同じ仕組みで迂回し、引っかかって動けなくなるのを防ぐ
 func _avoid_islands(move_dir: Vector2) -> Vector2:
 	var result := move_dir
 	for isle in get_tree().get_nodes_in_group("island_body"):
 		if not is_instance_valid(isle):
 			continue
-		var away: Vector2 = global_position - isle.global_position
-		var d := away.length()
-		var avoid_r := 360.0 + _radius   # 島の実効半径+余白
-		if d < avoid_r and d > 1.0:
-			var strength: float = clampf(1.0 - d / avoid_r, 0.0, 1.0)
-			# 反発 + 接線(進行方向に近い側へ回り込む)
-			var tangent: float = 1.0 if move_dir.dot(away.rotated(PI / 2)) >= 0.0 else -1.0
-			result += (away.normalized() * 0.8 + away.rotated(PI / 2).normalized() * tangent * 0.9) * strength
+		result = _steer_around(result, isle.global_position, 360.0 + _radius)
+	for ob in get_tree().get_nodes_in_group("obstacle"):
+		if not is_instance_valid(ob):
+			continue
+		var orad: float = float(ob.get("radius")) if ob.get("radius") != null else 50.0
+		result = _steer_around(result, ob.global_position, orad + _radius + 70.0)
 	return result.normalized()
+
+# 指定の点から離れる反発+接線(進行方向に近い側へ回り込む)を合成する
+func _steer_around(move_dir: Vector2, center: Vector2, avoid_r: float) -> Vector2:
+	var away: Vector2 = global_position - center
+	var d := away.length()
+	if d >= avoid_r or d <= 1.0:
+		return move_dir
+	var strength: float = clampf(1.0 - d / avoid_r, 0.0, 1.0)
+	var tangent: float = 1.0 if move_dir.dot(away.rotated(PI / 2)) >= 0.0 else -1.0
+	return move_dir + (away.normalized() * 0.8 + away.rotated(PI / 2).normalized() * tangent * 0.9) * strength
 
 # #118: 取り巻きが全滅したか
 func _escorts_cleared() -> bool:
@@ -743,6 +838,7 @@ func _die() -> void:
 	if _dead:
 		return   # #148: 同一フレームの多重ヒットで名声/首を重複取得しないよう1回だけ
 	_dead = true
+	_fire_death_shot()   # #190再2/#71再: 撃墜された瞬間の打ち返し弾
 	GameState.record_kill(kind, id)   # #177: 討伐記録(モブ・海賊のみ加算)
 	match kind:
 		"mob":

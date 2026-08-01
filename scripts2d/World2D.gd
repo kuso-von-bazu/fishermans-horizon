@@ -23,6 +23,9 @@ var title: CanvasLayer
 var ocean_mat: ShaderMaterial
 var weather_mat: ShaderMaterial   # #190/#191/#192: 近海ごとの天候オーバーレイ
 var weather_rect: ColorRect
+var _weather_cur: Dictionary = {"tint": Color(0,0,0,0), "rain": 0.0, "snow": 0.0, "night": 0.0, "rough": 0.0}
+var _weather_target: Dictionary = {"tint": Color(0,0,0,0), "rain": 0.0, "snow": 0.0, "night": 0.0, "rough": 0.0}
+var _weather_name: String = ""
 
 var phase: String = "title"
 var fish_schools: Array = []
@@ -107,8 +110,22 @@ func _build_weather() -> void:
 	layer.add_child(weather_rect)
 	_apply_weather("")
 
-# 島の weather 値に応じて海シェーダと天候オーバーレイを設定する
-func _apply_weather(w: String) -> void:
+# #191再: 天候は current_island でなく「実際にいる海域(最寄りの島)」に追従させる。
+# 別の島を目指して航行中でも、近づいた海域の天候になる。
+func _nearest_island_weather() -> String:
+	if not is_instance_valid(player):
+		return ""
+	var best := 1e18
+	var best_i := GameState.current_island
+	for i in Database.islands.size():
+		var d: float = player.global_position.distance_to(island_pos(i))
+		if d < best:
+			best = d
+			best_i = i
+	return str(Database.island(best_i).get("weather", ""))
+
+# 天候名から目標パラメータを求める(反映は _update_weather で滑らかに補間)
+func _weather_params(w: String) -> Dictionary:
 	var tint := Color(0, 0, 0, 0)
 	var rain := 0.0
 	var snow := 0.0
@@ -126,15 +143,41 @@ func _apply_weather(w: String) -> void:
 			tint = Color(0.72, 0.80, 0.90, 0.18)
 			snow = 1.0
 			rough = 0.85
+	return {"tint": tint, "rain": rain, "snow": snow, "night": night, "rough": rough}
+
+# 目標値を設定(instant=trueで即反映。寄港/出港時のみ)
+func _apply_weather(w: String, instant := true) -> void:
+	_weather_name = w
+	_weather_target = _weather_params(w)
+	if instant:
+		_weather_cur = _weather_target.duplicate()
+	_push_weather()
+
+# 現在値をシェーダへ流し込む
+func _push_weather() -> void:
 	if weather_mat:
-		weather_mat.set_shader_parameter("tint", tint)
-		weather_mat.set_shader_parameter("rain", rain)
-		weather_mat.set_shader_parameter("snow", snow)
+		weather_mat.set_shader_parameter("tint", _weather_cur.tint)
+		weather_mat.set_shader_parameter("rain", _weather_cur.rain)
+		weather_mat.set_shader_parameter("snow", _weather_cur.snow)
 	if weather_rect:
-		weather_rect.visible = tint.a > 0.0 or rain > 0.0 or snow > 0.0
+		weather_rect.visible = _weather_cur.tint.a > 0.001 or _weather_cur.rain > 0.001 or _weather_cur.snow > 0.001
 	if ocean_mat:
-		ocean_mat.set_shader_parameter("night", night)
-		ocean_mat.set_shader_parameter("rough", rough)
+		ocean_mat.set_shader_parameter("night", _weather_cur.night)
+		ocean_mat.set_shader_parameter("rough", _weather_cur.rough)
+
+# 航行中は最寄りの海域の天候へ徐々に寄せる(海域をまたぐと自然に切り替わる)
+func _update_weather(delta: float) -> void:
+	if phase != "sea":
+		return
+	var want := _nearest_island_weather()
+	if want != _weather_name:
+		_weather_name = want
+		_weather_target = _weather_params(want)
+	var t: float = clampf(delta / 1.5, 0.0, 1.0)
+	_weather_cur.tint = (_weather_cur.tint as Color).lerp(_weather_target.tint, t)
+	for k in ["rain", "snow", "night", "rough"]:
+		_weather_cur[k] = lerpf(float(_weather_cur[k]), float(_weather_target[k]), t)
+	_push_weather()
 
 func _build_islands() -> void:
 	for i in Database.islands.size():
@@ -173,6 +216,7 @@ func _process(_d: float) -> void:
 	if ocean_mat and player:
 		var vp := get_viewport_rect().size
 		ocean_mat.set_shader_parameter("cam_pos", player.global_position - vp * 0.5)
+	_update_weather(_d)   # #191再: 航行中は最寄りの海域の天候へ追従
 
 # ---------------- フェーズ ----------------
 func _on_title_start() -> void:
@@ -227,8 +271,12 @@ func _on_set_sail() -> void:
 	if GameState.has_departed:
 		var fuel := GameState.fuel_cost()
 		if fuel > 0:
-			GameState.add_money(-mini(fuel, GameState.money))
-			GameState.notice.emit("燃料費 %d を支払った" % fuel)
+			var paid_fuel: int = mini(fuel, GameState.money)
+			GameState.add_money(-paid_fuel)
+			if paid_fuel < fuel:
+				GameState.notice.emit("燃料費を踏み倒した!")   # #195: 資金不足で払いきれなかった
+			else:
+				GameState.notice.emit("燃料費 %d を支払った" % fuel)
 	GameState.has_departed = true
 	# クルーの賃金(#39): 出港ごとに支払い
 	var wages := GameState.crew_wages()
@@ -293,6 +341,9 @@ func _forced_return(reason: String, wrecked: bool = false) -> void:
 		var paid: int = mini(repair, GameState.money)
 		if paid > 0:
 			GameState.add_money(-paid)
+		if paid < repair:
+			msg += "\n修理費を踏み倒した!"   # #195: 資金不足で払いきれなかった
+		else:
 			msg += "\n修理費 %d を支払った" % paid
 		var gone := GameState.wreck_lose_crew()   # #97: 0〜2人ロスト
 		if gone != "":

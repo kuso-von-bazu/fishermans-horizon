@@ -18,6 +18,8 @@ var fire_look: bool = false    # #167: 見た目だけ炎弾(挙動は通常)
 var shape: String = ""         # #65再: "ellipse"等の弾形状指定
 var bcolor: Color = Color(0, 0, 0, 0)   # #65再: 弾のカスタム色(alpha>0で有効)
 var spread_homing: bool = false   # #65再: 発射後に扇状へ広がってから急加速して追尾
+var poison_only: bool = false     # #194: 直接ダメージ無しで毒のスリップのみ与える弾(ダゴン)
+var flame_color: Color = Color(0, 0, 0, 0)   # #72再: 炎弾の色替え(ザッハーク=白い炎)
 var target: Node2D = null
 var dir: Vector2 = Vector2.UP
 var from_player: bool = true
@@ -39,6 +41,8 @@ func setup(p_dir: Vector2, w: Dictionary, p_target: Node2D = null) -> void:
 	shape = str(w.get("shape", ""))
 	bcolor = w.get("bcolor", Color(0, 0, 0, 0))
 	spread_homing = bool(w.get("spread_homing", false))
+	poison_only = bool(w.get("poison_only", false))
+	flame_color = w.get("flame_color", Color(0, 0, 0, 0))
 	target = p_target
 	dir = p_dir.normalized()
 	# #158: 敵の遠隔弾は距離が離れても消えないよう寿命を延長(引き撃ち対策)
@@ -64,13 +68,13 @@ func _build_visual() -> void:
 		add_child(outline0)
 		var outer := Polygon2D.new()
 		outer.polygon = drop
-		outer.color = Color(0.85, 0.35, 0.12)   # 外炎(橙赤)
+		outer.color = flame_color if flame_color.a > 0.0 else Color(0.85, 0.35, 0.12)   # #72再: flame_colorで色替え
 		add_child(outer)
 		var inner := Polygon2D.new()
 		inner.polygon = _scaled(PackedVector2Array([
 			Vector2(0, -7), Vector2(3.2, -3), Vector2(2.2, 2), Vector2(0, 7),
 			Vector2(-2.2, 2), Vector2(-3.2, -3)]), 1.0)
-		inner.color = Color(1.0, 0.82, 0.35)     # 内炎(黄)
+		inner.color = (flame_color.lerp(Color.WHITE, 0.55) if flame_color.a > 0.0 else Color(1.0, 0.82, 0.35))     # 内炎
 		add_child(inner)
 		rotation = dir.angle() + PI / 2
 		var colf := CollisionShape2D.new()
@@ -80,7 +84,21 @@ func _build_visual() -> void:
 		add_child(colf)
 		body_entered.connect(_on_hit)
 		return
-	if shape == "star":
+	if shape == "ellipse_s":
+		# #65再2: 小型の楕円弾(主のバラマキ用)。色はbcolorで指定
+		for i in 14:
+			var ae := TAU * i / 14.0
+			poly.append(Vector2(cos(ae) * 2.4, sin(ae) * 5.2))
+		mcol = Color(0.8, 0.8, 0.8)
+		r = 3.4
+	elif shape == "grain":
+		# #71再: 小型の米粒状(カリュブディスの打ち返し弾)
+		for i in 12:
+			var ag := TAU * i / 12.0
+			poly.append(Vector2(cos(ag) * 2.0, sin(ag) * 4.4))
+		mcol = Color(0.8, 0.8, 0.8)
+		r = 3.0
+	elif shape == "star":
 		# #190: オニヒトデの星形弾(5角星)。回転しながら飛ぶので進行方向へは向けない
 		for i in 10:
 			var a := TAU * i / 10.0 - PI / 2.0
@@ -129,6 +147,9 @@ func _build_visual() -> void:
 			poly.append(Vector2(cos(a), sin(a)) * 6.0)
 		mcol = Color(0.72, 0.45, 0.32) if from_player else Color(0.6, 0.3, 0.28)
 		r = 6.0
+	# #71再: bcolor指定があれば形状によらず色を上書き(紺色のカリュブディス弾など)
+	if bcolor.a > 0.0:
+		mcol = bcolor
 	# 暗い輪郭(視認性UP)
 	var outline := Polygon2D.new()
 	outline.polygon = _scaled(poly, 1.45)
@@ -253,6 +274,8 @@ func _on_hit(body: Node) -> void:
 		if fire:
 			GameState.damage_player(_eff_dmg())   # #143: 通常ダメージ+炎上(永続チャンクなし)
 			GameState.ignite(4.0)   # #65: ヒュドラの炎弾は被弾で必ず炎上(4.5秒)
+		elif poison_only:
+			GameState.apply_poison(6.0, 4.0)   # #194: ダゴンの弾は直接ダメージ無し・毒のスリップのみ
 		else:
 			GameState.damage_player(_eff_dmg())   # 敏捷カット込み
 			if burn_chance > 0.0 and randf() < burn_chance:
