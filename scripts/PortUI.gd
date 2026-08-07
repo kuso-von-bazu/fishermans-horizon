@@ -10,6 +10,8 @@ var header: Label
 var _root: Control
 var _toast_box: VBoxContainer   # #160: トーストを縦に積んで重ならないようにする
 
+var _fleet_tab: Button   # #196: 編成タブ(潮鳴りの島以降だけ表示)
+
 func _ready() -> void:
 	layer = 20
 	visible = false
@@ -60,6 +62,8 @@ func _build() -> void:
 	tabs.add_child(_btn("魚市場", show_market))
 	tabs.add_child(_btn("酒場", show_tavern))
 	tabs.add_child(_btn("造船所", show_shipyard))
+	_fleet_tab = _btn("編成", show_fleet)   # #196: 潮鳴りの島以降のみ表示
+	tabs.add_child(_fleet_tab)
 	tabs.add_child(_btn("航路", show_travel))
 	tabs.add_child(_btn("討伐記録", show_bestiary))   # #177
 
@@ -81,6 +85,8 @@ func _build() -> void:
 	vb.add_child(sail)
 
 func open(arrival := false) -> void:
+	if _fleet_tab:
+		_fleet_tab.visible = GameState.fleet_enabled()   # #196
 	visible = true
 	_refresh_header()
 	show_market()
@@ -198,31 +204,45 @@ func show_tavern() -> void:
 		show_tavern()))
 	# クルー(#39): 雇用・一覧・ジョブチェンジ
 	content.add_child(_p(""))
-	content.add_child(_h("クルー(%d/%d) — 出港ごとに賃金・帰港で成長・大破で失う恐れ" % [GameState.crew.size(), GameState.CREW_MAX], 18))
-	for m in GameState.crew:
-		var j: Dictionary = GameState.jobs[m.job]
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 8)
-		# #140再: 上限(STAT_MAX)に達したパラメータは黄色で表示(RichTextLabel)
-		var info := RichTextLabel.new()
-		info.bbcode_enabled = true
-		info.fit_content = true
-		info.scroll_active = false
-		info.custom_minimum_size = Vector2(330, 0)
-		info.add_theme_font_size_override("normal_font_size", 18)
-		info.text = "%s [%s] %s %s %s %s %s" % [m.name, j.name,
-			_stat_bb("体", int(m.hp)), _stat_bb("敏", int(m.agi)), _stat_bb("射", int(m.sht)),
-			_stat_bb("知", int(m.int_)), _stat_bb("視", int(m.vis))]
-		row.add_child(info)
-		for jid in GameState.jobs:
-			if GameState.can_jobchange(m, jid):
-				row.add_child(_btn("→%s" % GameState.jobs[jid].name, func():
-					GameState.jobchange(m, jid)
-					show_tavern()))
-		row.add_child(_btn("解雇", func():
-			GameState.fire_crew(m)
-			show_tavern()))
-		content.add_child(row)
+	content.add_child(_h("クルー(船団計%d名) — 出港ごとに賃金・帰港で成長・大破で失う恐れ" % GameState.all_crew().size(), 18))
+	for _fi in GameState.fleet.size():
+		if GameState.fleet.size() > 1:
+			content.add_child(_p("【%s】%d/%d名" % [GameState.fleet_label(_fi), GameState.fleet[_fi].crew.size(), GameState.CREW_MAX]))
+		for m in GameState.fleet[_fi].crew:
+			var j: Dictionary = GameState.jobs[m.job]
+			var row := HBoxContainer.new()
+			row.add_theme_constant_override("separation", 8)
+			# #140再: 上限(STAT_MAX)に達したパラメータは黄色で表示(RichTextLabel)
+			var info := RichTextLabel.new()
+			info.bbcode_enabled = true
+			info.fit_content = true
+			info.scroll_active = false
+			info.custom_minimum_size = Vector2(330, 0)
+			info.add_theme_font_size_override("normal_font_size", 18)
+			info.text = "%s [%s] %s %s %s %s %s" % [m.name, j.name,
+				_stat_bb("体", int(m.hp)), _stat_bb("敏", int(m.agi)), _stat_bb("射", int(m.sht)),
+				_stat_bb("知", int(m.int_)), _stat_bb("視", int(m.vis))]
+			row.add_child(info)
+			for jid in GameState.jobs:
+				if GameState.can_jobchange(m, jid):
+					row.add_child(_btn("→%s" % GameState.jobs[jid].name, func():
+						GameState.jobchange(m, jid)
+						show_tavern()))
+			row.add_child(_btn("解雇", func():
+				GameState.fire_crew(m)
+				show_tavern()))
+			content.add_child(row)
+	# #196: どの艦に乗せるかを先に選ぶ
+	if GameState.fleet.size() > 1:
+		var trow := HBoxContainer.new()
+		trow.add_theme_constant_override("separation", 6)
+		trow.add_child(_p("雇用先: %s" % GameState.fleet_label(GameState.target_ship)))
+		for i in GameState.fleet.size():
+			var ti: int = i
+			trow.add_child(_btn(GameState.fleet_label(i), func():
+				GameState.target_ship = ti
+				show_tavern()))
+		content.add_child(trow)
 	content.add_child(_p("雇用(※上位ジョブは規定パラメータ以上で1キャラにつき1度だけジョブチェンジも可能):"))
 	# #107: 各ジョブの説明付きで雇用ボタンを縦に並べる
 	for jid in GameState.jobs:
@@ -325,35 +345,45 @@ func _unknown_portrait(h: float) -> Control:
 func show_shipyard() -> void:
 	_refresh_header()
 	_clear()
-	content.add_child(_h("造船所 — 船・武器の購入(船の下取りは定価の80%)", 22))
+	content.add_child(_h("造船所 — 船・武器の購入", 22))
+	content.add_child(_p("#196: 購入した船はストックされます。編成メニューで船団に組み込んでください。"))
 	var tier := GameState.current_island
 	content.add_child(_h("船", 18))
 	for sid in Database.ships:
 		var s: Dictionary = Database.ships[sid]
 		if int(s.range) > tier:
 			continue  # 先の島でしか売らない
-		var owned: bool = sid == GameState.ship_id
-		var cost := GameState.ship_buy_cost(sid)   # #51再: 80%下取り。負なら返金
+		var cost := GameState.ship_buy_cost(sid)   # #196: 下取り無し・購入した船はストックへ
 		var line := "%s  燃料%d 魚倉%d 装甲%d 武器枠%d 速%.0f" % [s.name, s.food, s.hold, s.armor, s.slots, s.speed]
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 10)
 		var lab := _p(line)
 		lab.custom_minimum_size = Vector2(460, 0)
 		row.add_child(lab)
-		if owned:
-			row.add_child(_p("[所有中]"))
-		else:
-			var blabel := ("購入 %d" % cost) if cost >= 0 else ("買替 +%d返金" % (-cost))
-			row.add_child(_btn(blabel, func():
-				GameState.buy_ship(sid)
-				show_shipyard()))
+		row.add_child(_btn("購入 %d" % cost, func():
+			GameState.buy_ship(sid)
+			show_shipyard()))
 		content.add_child(row)
 
 	content.add_child(_p(""))
 	content.add_child(_h("武器スロット — 付替は差額制・現装備は8割下取り(#34)", 18))
-	var slots := int(GameState.ship().slots)
+	# #196: どの艦の武器を買うかを先に選ぶ
+	var tgt: int = clampi(GameState.target_ship, 0, GameState.fleet.size() - 1)
+	if GameState.fleet.size() > 1:
+		var trow := HBoxContainer.new()
+		trow.add_theme_constant_override("separation", 6)
+		trow.add_child(_p("対象: %s" % GameState.fleet_label(tgt)))
+		for fi in GameState.fleet.size():
+			var ti: int = fi
+			trow.add_child(_btn(GameState.fleet_label(fi), func():
+				GameState.target_ship = ti
+				show_shipyard()))
+		content.add_child(trow)
+	var tship: Dictionary = GameState.fleet[tgt]
+	var twp: Array = tship.weapons
+	var slots := int(Database.ships[str(tship.ship_id)].slots)
 	for i in slots:
-		var cur: String = GameState.weapons[i] if i < GameState.weapons.size() else ""
+		var cur: String = str(twp[i]) if i < twp.size() else ""
 		var nm: String = Database.weapons[cur].name if (cur != "" and Database.weapons.has(cur)) else "空"
 		var trade_in := int(float(Database.weapons[cur].price) * 0.8) if (cur != "" and Database.weapons.has(cur)) else 0
 		var row := HBoxContainer.new()
@@ -372,12 +402,12 @@ func show_shipyard() -> void:
 					GameState.notice.emit("資金が足りません(必要%d)" % cost)
 				else:
 					GameState.add_money(-cost)   # costが負なら返金
-					GameState.equip_weapon(i, wid)
+					GameState.equip_weapon_on(tgt, i, wid)   # #196: 選択中の艦へ装備
 				show_shipyard()))
 		if cur != "":
 			row.add_child(_btn("外す(+%d)" % trade_in, func():
 				GameState.add_money(trade_in)
-				GameState.equip_weapon(i, "")
+				GameState.equip_weapon_on(tgt, i, "")
 				show_shipyard()))
 		content.add_child(row)
 
@@ -455,6 +485,125 @@ func show_travel() -> void:
 			content.add_child(_p("・%s  [未開放 / 必要名声 %d]  方角:【%s】" % [isle.name, isle.fame_req, compass]))
 
 # #140再: パラメータ表記。上限到達で黄色に
+# ---------------- 編成(#196) ----------------
+const FORMATION_NAMES := {
+	"line": "横並び", "column": "縦並び", "vee": "V字型", "inv_vee": "逆V字型", "echelon": "斜線陣",
+}
+
+func show_fleet() -> void:
+	_refresh_header()
+	_clear()
+	content.add_child(_h("編成 — 船団(最大%d隻/この島では%d隻まで)" % [GameState.FLEET_MAX, GameState.max_fleet()], 22))
+	content.add_child(_p("1隻目が旗艦。旗艦が大破すると船団ごと強制帰還します。2番艦以降は副船長を1名乗せると出港できます。"))
+	var repair := GameState.fleet_repair_cost()
+	if repair > 0:
+		content.add_child(_p("※離脱した船の修理費 %d が次の出港時にかかります" % repair))
+
+	# --- 船団の各艦 ---
+	content.add_child(_p(""))
+	content.add_child(_h("船団", 18))
+	for i in GameState.fleet.size():
+		var e: Dictionary = GameState.fleet[i]
+		var sd: Dictionary = Database.ships[str(e.ship_id)]
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		var ok := GameState.can_sail(i)
+		var lab := _p("%s: %s  装甲%d 速%.0f 武器枠%d  クルー%d/%d %s" % [
+			GameState.fleet_label(i), sd.name, sd.armor, sd.speed, sd.slots,
+			e.crew.size(), GameState.CREW_MAX,
+			"" if ok else "【副船長がいないため出港不可】"])
+		lab.custom_minimum_size = Vector2(520, 0)
+		row.add_child(lab)
+		var idx := i
+		if i > 0:
+			row.add_child(_btn("旗艦と交代", func():
+				GameState.fleet_swap(0, idx)
+				show_fleet()))
+			row.add_child(_btn("船団から外す", func():
+				GameState.fleet_remove(idx)
+				show_fleet()))
+		content.add_child(row)
+		# 乗員(他の艦へ移せる)
+		for m in e.crew.duplicate():
+			var crow := HBoxContainer.new()
+			crow.add_theme_constant_override("separation", 6)
+			var info := _p("    %s [%s] 体%d 敏%d 射%d 知%d 視%d" % [
+				m.name, GameState.jobs[m.job].name, int(m.hp), int(m.agi), int(m.sht), int(m.int_), int(m.vis)])
+			info.custom_minimum_size = Vector2(420, 0)
+			crow.add_child(info)
+			for j in GameState.fleet.size():
+				if j == idx:
+					continue
+				var to := j
+				var mem: Dictionary = m
+				crow.add_child(_btn("→%s" % GameState.fleet_label(to), func():
+					GameState.move_crew(idx, mem, to)
+					show_fleet()))
+			content.add_child(crow)
+		# 武器スロット(他の艦と交換)
+		var wrow := HBoxContainer.new()
+		wrow.add_theme_constant_override("separation", 6)
+		wrow.add_child(_p("    武器:"))
+		for sidx in e.weapons.size():
+			var wid: String = str(e.weapons[sidx])
+			var wn: String = Database.weapons[wid].name if Database.weapons.has(wid) else "空"
+			var sl: int = sidx
+			wrow.add_child(_btn("%d:%s" % [sidx + 1, wn], func():
+				if _weapon_pick.is_empty():
+					_weapon_pick = {"ship": idx, "slot": sl}       # 1回目=交換元を選択
+				else:
+					GameState.swap_weapon(int(_weapon_pick.ship), int(_weapon_pick.slot), idx, sl)
+					_weapon_pick = {}                              # 2回目=交換を実行
+					GameState.notice.emit("武器を入れ替えた")
+				show_fleet()))
+		if not _weapon_pick.is_empty() and int(_weapon_pick.ship) == idx:
+			wrow.add_child(_p("← 交換元を選択中。交換先のスロットを押してください"))
+			wrow.add_child(_btn("選択解除", func():
+				_weapon_pick = {}
+				show_fleet()))
+		content.add_child(wrow)
+
+	# --- ストック ---
+	content.add_child(_p(""))
+	content.add_child(_h("ストック(購入済み・未編入)", 18))
+	if GameState.ship_stock.is_empty():
+		content.add_child(_p("ストックはありません。造船所で購入した船がここに入ります。"))
+	for i in GameState.ship_stock.size():
+		var sid: String = GameState.ship_stock[i]
+		var sd2: Dictionary = Database.ships[sid]
+		var srow := HBoxContainer.new()
+		srow.add_theme_constant_override("separation", 8)
+		var slab := _p("%s  装甲%d 速%.0f 武器枠%d" % [sd2.name, sd2.armor, sd2.speed, sd2.slots])
+		slab.custom_minimum_size = Vector2(420, 0)
+		srow.add_child(slab)
+		var si := i
+		srow.add_child(_btn("船団に加える", func():
+			GameState.fleet_add(si)
+			show_fleet()))
+		srow.add_child(_btn("売却(+%d)" % int(float(sd2.price) * 0.8), func():
+			GameState.sell_stock(si)
+			show_fleet()))
+		content.add_child(srow)
+
+	# --- 陣形 ---
+	content.add_child(_p(""))
+	content.add_child(_h("陣形 — 航海中に 1〜4 キー(または画面のボタン)で切替", 18))
+	content.add_child(_p("陣形1が出港時のデフォルトです。"))
+	for slot in 4:
+		var frow := HBoxContainer.new()
+		frow.add_theme_constant_override("separation", 6)
+		frow.add_child(_p("陣形%d: %s" % [slot + 1, FORMATION_NAMES.get(str(GameState.formations[slot]), "?")]))
+		for fid in FORMATION_NAMES:
+			var sl2 := slot
+			var f := str(fid)
+			frow.add_child(_btn(str(FORMATION_NAMES[fid]), func():
+				GameState.formations[sl2] = f
+				GameState.notice.emit("陣形%d を %s に設定" % [sl2 + 1, FORMATION_NAMES[f]])
+				show_fleet()))
+		content.add_child(frow)
+
+var _weapon_pick: Dictionary = {}   # #196: 武器交換の選択中スロット
+
 func _stat_bb(label: String, v: int) -> String:
 	if v >= GameState.STAT_MAX:
 		return "[color=yellow]%s%d[/color]" % [label, v]

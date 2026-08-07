@@ -25,7 +25,7 @@ var _body_pts: PackedVector2Array
 
 func _ready() -> void:
 	add_to_group("player")
-	max_speed = float(GameState.ship().speed) * K
+	max_speed = GameState.fleet_speed() * K   # #196: 船団は最も遅い船に合わせる
 	_build_visual()
 
 # 蒸気船のドット絵(#28)。真上から見た16x30。文字→色のピクセルマップ。
@@ -565,7 +565,7 @@ func rebuild_visual() -> void:
 	_dmg_state = -1   # #178: 損傷煙の状態を作り直し後に再評価させる
 	for c in get_children():
 		c.queue_free()
-	max_speed = float(GameState.ship().speed) * K
+	max_speed = GameState.fleet_speed() * K   # #196: 船団は最も遅い船に合わせる
 	_build_visual()
 
 func forward() -> Vector2:

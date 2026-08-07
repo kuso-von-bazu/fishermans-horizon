@@ -28,8 +28,8 @@ var _travel: float = 0.0
 var _offscreen_t: float = 0.0   # #154: 画面外にいる時間
 
 func setup(p_dir: Vector2, w: Dictionary, p_target: Node2D = null) -> void:
-	# #149再3: 敵はレイヤー2へ移したので、弾は レイヤー1(自機/島/障害物)+2(敵) の両方を見る
-	collision_mask = 3
+	# #149再3/#196: レイヤー1(自機/島/障害物)+2(敵)+4(僚艦) をすべて見る
+	collision_mask = 7
 	dmg = float(w.get("dmg", 5))
 	speed = (70.0 + float(w.get("dmg", 5)) * 0.3) * K * float(w.get("speed_mult", 1.0))   # #65: 弾速倍率
 	slip = bool(w.get("slip", false))
@@ -287,6 +287,14 @@ func _on_hit(body: Node) -> void:
 			_spawn_effect("explosion", global_position)
 		Audio.play("sfx_hit", -6.0)
 		queue_free()
+	elif not from_player and body.is_in_group("fleet_ship"):
+		# #196: 敵弾は僚艦にも当たる(装甲0でその艦だけ離脱)
+		if body.has_method("take_damage"):
+			body.take_damage(_eff_dmg())
+		Audio.play("sfx_hit", -10.0)
+		queue_free()
+	elif from_player and body.is_in_group("fleet_ship"):
+		return   # 味方の弾は僚艦をすり抜ける(フレンドリーファイア無し)
 	elif body.is_in_group("island_body"):
 		queue_free()
 	elif body.is_in_group("obstacle"):

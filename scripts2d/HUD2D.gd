@@ -292,6 +292,44 @@ func set_location(text: String) -> void:
 	if lbl_loc:
 		lbl_loc.text = text
 
+# ---------------- 陣形ボタン(#196) ----------------
+var _form_box: HBoxContainer
+var _form_btns: Array = []
+
+# 船団が2隻以上のときだけ、画面下中央に陣形1〜4のボタンを出す
+func build_formation_bar(on_pick: Callable) -> void:
+	if _form_box:
+		_form_box.queue_free()
+		_form_box = null
+	_form_btns.clear()
+	if GameState.fleet.size() <= 1:
+		return
+	_form_box = HBoxContainer.new()
+	_form_box.add_theme_constant_override("separation", 6)
+	_form_box.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	_form_box.offset_left = -240
+	_form_box.offset_right = 240
+	_form_box.offset_top = -132
+	_form_box.offset_bottom = -96
+	_form_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	_root().add_child(_form_box)
+	for i in 4:
+		var b := Button.new()
+		b.text = "陣形%d" % (i + 1)
+		b.add_theme_font_size_override("font_size", 16)
+		b.focus_mode = Control.FOCUS_NONE
+		var idx: int = i
+		b.pressed.connect(func(): on_pick.call(idx))
+		_form_box.add_child(b)
+		_form_btns.append(b)
+	set_formation(GameState.formation_slot)
+
+# 選択中の陣形を強調
+func set_formation(slot: int) -> void:
+	for i in _form_btns.size():
+		var b: Button = _form_btns[i]
+		b.add_theme_color_override("font_color", Color(1, 0.95, 0.5) if i == slot else Color(0.85, 0.9, 0.95))
+
 func set_prompt(text: String) -> void:
 	if prompt:
 		prompt.text = text

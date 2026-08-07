@@ -9,6 +9,7 @@ const EnemyScript = preload("res://scripts2d/Enemy2D.gd")
 const ProjectileScript = preload("res://scripts2d/Projectile2D.gd")
 const RelicScript = preload("res://scripts2d/Relic2D.gd")
 const ObstacleScript = preload("res://scripts2d/Obstacle2D.gd")
+const EscortScript = preload("res://scripts2d/Escort2D.gd")
 const HUDScript = preload("res://scripts2d/HUD2D.gd")
 const PortUIScript = preload("res://scripts/PortUI.gd")
 const TitleScript = preload("res://scripts/TitleScreen.gd")
@@ -32,6 +33,7 @@ var fish_schools: Array = []
 var enemies: Array = []
 var relics_world: Array = []
 var obstacles: Array = []      # #193: 海上の障害物(岩礁/流氷)
+var escorts: Array = []        # #196: 船団の僚艦(2番艦〜5番艦)
 var slot_cooldowns: Array = [0.0, 0.0, 0.0, 0.0]
 var slot_ammo: Array = [0, 0, 0, 0]        # #27: 残弾。0でリロード(reload秒)
 var lock_target: Node2D = null
@@ -202,12 +204,36 @@ func _build_player() -> void:
 	camera.global_position = player.global_position
 
 func _input(event: InputEvent) -> void:
+	if phase != "sea":
+		return
 	# #16: マウスホイールでロックオン対象を切替(航海中のみ)
-	if phase == "sea" and event is InputEventMouseButton and event.pressed:
+	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			_cycle_lock(-1)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			_cycle_lock(1)
+		elif event.button_index == MOUSE_BUTTON_LEFT:
+			_click_lock(get_global_mouse_position())   # #196: 敵をクリックでもロック切替
+	# #196: 1〜4キーで陣形チェンジ
+	if event is InputEventKey and event.pressed and not event.echo:
+		match event.keycode:
+			KEY_1: _set_formation_slot(0)
+			KEY_2: _set_formation_slot(1)
+			KEY_3: _set_formation_slot(2)
+			KEY_4: _set_formation_slot(3)
+
+# #196: クリック位置に最も近い敵へロックを移す
+func _click_lock(pos: Vector2) -> void:
+	var best: Node2D = null
+	var best_d := 1e18
+	for e in _lockable_enemies():
+		var r: float = float(e.get("_radius")) if e.get("_radius") != null else 40.0
+		var d: float = e.global_position.distance_to(pos)
+		if d < r + 40.0 and d < best_d:
+			best_d = d
+			best = e
+	if best != null:
+		_set_lock(best)
 
 func _process(_d: float) -> void:
 	# カメラ追従 + 海シェーダにカメラ左上のワールド座標を渡す
@@ -283,6 +309,16 @@ func _on_set_sail() -> void:
 	if wages > 0:
 		GameState.add_money(-mini(wages, GameState.money))
 		GameState.notice.emit("クルーへ賃金 %d を支払った" % wages)
+	# #196: 離脱した船の修理費を徴収してから出港
+	var rep := GameState.fleet_repair_cost()
+	if rep > 0:
+		var paid_rep: int = mini(rep, GameState.money)
+		GameState.add_money(-paid_rep)
+		if paid_rep < rep:
+			GameState.notice.emit("修理費を踏み倒した!")
+		else:
+			GameState.notice.emit("離脱した船の修理費 %d を支払った" % rep)
+		GameState.clear_fleet_damage()
 	GameState.set_sail()
 	_apply_weather(str(Database.island(GameState.current_island).get("weather", "")))   # #190/#191/#192: 近海の天候
 	player.control_enabled = true
@@ -301,6 +337,10 @@ func _on_set_sail() -> void:
 	_food_dialog_open = false
 	slot_cooldowns = [0.0, 0.0, 0.0, 0.0]
 	_reset_ammo()
+	GameState.formation_slot = 0        # #196: 陣形1がデフォルト
+	_spawn_escorts_fleet()
+	if hud and hud.has_method("build_formation_bar"):
+		hud.build_formation_bar(_set_formation_slot)   # #196: 画面上の陣形ボタン
 	# #67: 出港時に未討伐の主が確実に海域へ出現しているようにする
 	_try_spawn_lord()
 
@@ -717,6 +757,85 @@ func _spawn_relic() -> void:
 	r.global_position = pos
 	relics_world.append(r)
 
+# ---------------- 船団(#196) ----------------
+# 陣形ごとの相対位置(旗艦の向きを基準にしたローカル座標。+Y=後方)
+const FORMATION_OFFSETS := {
+	"line":    [Vector2(-170, 40), Vector2(170, 40), Vector2(-330, 80), Vector2(330, 80)],       # 横並び
+	"column":  [Vector2(0, 180), Vector2(0, 350), Vector2(0, 520), Vector2(0, 690)],             # 縦並び
+	"vee":     [Vector2(-150, 160), Vector2(150, 160), Vector2(-290, 320), Vector2(290, 320)],   # V字型(後方へ広がる)
+	"inv_vee": [Vector2(-150, -20), Vector2(150, -20), Vector2(-290, 130), Vector2(290, 130)],   # 逆V字型(前方へ広がる)
+	"echelon": [Vector2(-150, 150), Vector2(-300, 300), Vector2(-450, 450), Vector2(-600, 600)], # 斜線陣
+}
+
+func _current_formation() -> String:
+	var i := clampi(GameState.formation_slot, 0, 3)
+	return str(GameState.formations[i])
+
+# 出港時に僚艦(副船長を乗せた艦)を生成する
+func _spawn_escorts_fleet() -> void:
+	_clear_escorts()
+	for i in range(1, GameState.fleet.size()):
+		if not GameState.can_sail(i):
+			continue
+		var e := CharacterBody2D.new()
+		e.set_script(EscortScript)
+		e.setup(i)
+		add_child(e)
+		e.detached.connect(_on_escort_detached)
+		escorts.append(e)
+	_apply_formation()
+	# 生成直後は陣形位置へ即座に配置(出港時に一列に固まらないように)
+	for e2 in escorts:
+		if is_instance_valid(e2):
+			e2.global_position = player.global_position + e2.slot_offset.rotated(player.rotation)
+
+func _clear_escorts() -> void:
+	for e in escorts:
+		if is_instance_valid(e):
+			e.queue_free()
+	escorts.clear()
+
+# 陣形スロットを僚艦へ割り当てる
+func _apply_formation() -> void:
+	var offs: Array = FORMATION_OFFSETS.get(_current_formation(), FORMATION_OFFSETS["line"])
+	var n := 0
+	for e in escorts:
+		if is_instance_valid(e):
+			e.slot_offset = offs[mini(n, offs.size() - 1)]
+			n += 1
+
+func _on_escort_detached(idx: int) -> void:
+	GameState.notice.emit("%sは離脱した!" % GameState.fleet_label(idx))
+	hud.show_big_message("%sは離脱した!" % GameState.fleet_label(idx), 2.0)
+	var lost := GameState.detach_lose_crew(idx)
+	if lost != "":
+		GameState.notice.emit("%s が海に消えた…" % lost)
+	escorts = escorts.filter(func(x): return is_instance_valid(x))
+
+# 1〜4キー/画面ボタンで陣形を切り替える
+func _set_formation_slot(slot: int) -> void:
+	if phase != "sea":
+		return
+	GameState.formation_slot = clampi(slot, 0, 3)
+	_apply_formation()
+	var nm: String = PortUIScript.FORMATION_NAMES.get(_current_formation(), "?")
+	GameState.notice.emit("陣形%d: %s" % [GameState.formation_slot + 1, nm])
+	if hud and hud.has_method("set_formation"):
+		hud.set_formation(GameState.formation_slot)
+
+# #196: 射線上に味方(旗艦・僚艦)がいると撃てない(魚雷は射線を無視)
+func _line_blocked_for_player(dir: Vector2, dist: float) -> bool:
+	for m in escorts:
+		if not is_instance_valid(m):
+			continue
+		var rel: Vector2 = m.global_position - player.global_position
+		var along := rel.dot(dir)
+		if along <= 0.0 or along > dist:
+			continue
+		if absf(rel.cross(dir)) < 46.0:
+			return true
+	return false
+
 # ---------------- 武器 ----------------
 func _reset_ammo() -> void:
 	slot_ammo = [0, 0, 0, 0]
@@ -785,8 +904,11 @@ func _crewed(w: Dictionary) -> Dictionary:
 	return w2
 
 func _fire_aim(w: Dictionary) -> void:
-	Audio.play(w.get("sfx", "sfx_gun"), -8.0, randf_range(0.95, 1.05))   # #47再: 攻撃音を少し小さく
 	var dir := (get_global_mouse_position() - player.global_position).normalized()
+	# #196: 味方に射線が重なるときは撃たない(フレンドリーファイア無し)。魚雷は射線を無視できる
+	if _line_blocked_for_player(dir, float(w.range) * K * 1.2):
+		return
+	Audio.play(w.get("sfx", "sfx_gun"), -8.0, randf_range(0.95, 1.05))   # #47再: 攻撃音を少し小さく
 	var proj := Area2D.new()
 	proj.set_script(ProjectileScript)
 	add_child(proj)
@@ -813,8 +935,8 @@ func _lockable_enemies() -> Array:
 	var cam_pos: Vector2 = camera.global_position if camera else player.global_position
 	var lock_r := 160.0 * K * GameState.lock_range_mult()
 	for e in enemies:
-		if not is_instance_valid(e) or e.aerial:
-			continue
+		if not is_instance_valid(e):
+			continue   # #196: 空中の敵もロック可能に(魚雷は当たらないが僚艦の砲撃対象になる)
 		if e.global_position.distance_to(player.global_position) > lock_r:
 			continue
 		# 画面内判定
@@ -1042,6 +1164,7 @@ func _build_food_dialog() -> void:
 
 # ---------------- クリーンアップ ----------------
 func _clear_sea_actors() -> void:
+	_clear_escorts()   # #196
 	for a in fish_schools + enemies + relics_world + obstacles:
 		if is_instance_valid(a):
 			a.queue_free()

@@ -10,14 +10,55 @@ signal notice(text: String)
 var money: int = 200
 var fame: int = 0
 
-var ship_id: String = "raft"
-var weapons: Array[String] = ["gatling"]   # 装備中の武器id(最大slots)
+# --- 船団(#196) ---
+# fleet[0]=旗艦, fleet[1..4]=2番艦〜5番艦。各要素:
+#   {ship_id: String, weapons: Array[String], crew: Array, armor: float, damaged: bool}
+# ship_id / weapons / crew / run_armor は「旗艦のもの」を指すプロキシとして残し、
+# 既存コード(クルー効果・武器発射・積荷など)をそのまま動かす。
+var fleet: Array = []
+var ship_stock: Array[String] = []        # 購入済みで船団に未編入の船
+const FLEET_MAX := 5
+# 陣形1〜4に割り当てた陣形id(航海中に1〜4キーで切替)
+var formations: Array[String] = ["line", "column", "vee", "inv_vee"]
+var formation_slot: int = 0               # 選択中の陣形(0〜3)
+var target_ship: int = 0                  # #196: 酒場での雇用・造船所での武器購入の対象艦
+
+func _f0() -> Dictionary:
+	if fleet.is_empty():
+		fleet.append(new_ship_entry("raft", ["gatling"]))
+	return fleet[0]
+
+# 船団の1隻ぶんの初期データ
+func new_ship_entry(sid: String, wpns: Array = []) -> Dictionary:
+	var w: Array[String] = []
+	var slots := int(Database.ships[sid].slots)
+	for i in slots:
+		w.append(str(wpns[i]) if i < wpns.size() else "")
+	return {"ship_id": sid, "weapons": w, "crew": [], "armor": float(Database.ships[sid].armor), "damaged": false}
+
+var ship_id: String:
+	get:
+		return str(_f0().ship_id)
+	set(v):
+		_f0().ship_id = v
+
+var weapons: Array[String]:
+	get:
+		return _f0().weapons
+	set(v):
+		_f0().weapons = v
+
+var crew: Array:
+	get:
+		return _f0().crew
+	set(v):
+		_f0().crew = v
+
 var ram_id: String = "none"
 var harpoon_debuff: String = "slip"        # 銛のデバフ種(造船所で設定・#37)
 
 # --- クルー(#39): キャプテン含め5人まで=雇用は4人まで ---
-# 各員: {name, job, hp, agi, sht, int_, vis}
-var crew: Array = []
+# 各員: {name, job, hp, agi, sht, int_, vis}。船団の各艦がそれぞれ最大CREW_MAX名を乗せる。
 const CREW_MAX := 4
 var jobs := {
 	"sailor":    {"name": "水夫",     "hire": 100,  "wage": 15, "growth": {"hp": 1, "agi": 1, "sht": 1, "int_": 1, "vis": 1}, "desc": "低賃金。すべての基本ジョブ。均等にパラメータが伸びる"},
@@ -30,15 +71,15 @@ var jobs := {
 const CREW_NAMES := ["ジン", "ハル", "カイ", "レン", "ソラ", "ウミ", "リク", "ナギ", "イサナ", "タツ", "シオン", "マキ"]
 
 # #58: 副船長は同時に1名まで(雇用/ジョブチェンジ共通)
+# #196: 副船長は「1隻につき」1名まで。既定は編成対象の艦を見る
 func has_firstmate() -> bool:
-	for c in crew:
-		if c.job == "firstmate":
-			return true
-	return false
+	return has_firstmate_on(clampi(target_ship, 0, maxi(fleet.size() - 1, 0)))
 
 func hire_crew(job_id: String) -> bool:
-	if crew.size() >= CREW_MAX:
-		notice.emit("船室が満員です(雇用は%d人まで)" % CREW_MAX)
+	var ti := clampi(target_ship, 0, maxi(fleet.size() - 1, 0))   # #196: 選択中の艦へ乗せる
+	var tcrew: Array = fleet[ti].crew
+	if tcrew.size() >= CREW_MAX:
+		notice.emit("%s は満員です(1隻%d人まで)" % [fleet_label(ti), CREW_MAX])
 		return false
 	if job_id == "firstmate" and has_firstmate():
 		notice.emit("副船長は同時に1名までです")
@@ -71,8 +112,8 @@ func hire_crew(job_id: String) -> bool:
 				m[k] = int(m[k]) + 1
 		else:
 			m[req[0]] = int(req[1]) + randi_range(0, 4 * bm)
-	crew.append(m)
-	notice.emit("%s(%s)を雇用" % [m.name, j.name])
+	tcrew.append(m)
+	notice.emit("%s に %s(%s)を雇用" % [fleet_label(ti), m.name, j.name])
 	stats_changed.emit()
 	return true
 
@@ -87,8 +128,9 @@ func hire_bonus_mult(job_id: String = "") -> int:
 # 使われていない名前を選ぶ(#52)。尽きたら「二代目〜」。
 func _unique_crew_name() -> String:
 	var used := []
-	for c in crew:
-		used.append(c.name)
+	for e in fleet:            # #196: 船団全体で名前が重複しないように
+		for c in e.crew:
+			used.append(c.name)
 	var avail := CREW_NAMES.filter(func(n): return not used.has(n))
 	if not avail.is_empty():
 		return avail[randi() % avail.size()]
@@ -100,16 +142,24 @@ func _unique_crew_name() -> String:
 
 # 解雇(#48)
 func fire_crew(m: Dictionary) -> void:
-	crew.erase(m)
+	for e in fleet:            # #196: どの艦に乗っていても解雇できる
+		e.crew.erase(m)
 	notice.emit("%s を解雇した" % m.name)
 	stats_changed.emit()
+
+# #196: そのクルーが乗っている艦のindex(見つからなければ0)
+func ship_index_of_crew(m: Dictionary) -> int:
+	for i in fleet.size():
+		if fleet[i].crew.has(m):
+			return i
+	return 0
 
 func can_jobchange(m: Dictionary, job_id: String) -> bool:
 	var j: Dictionary = jobs[job_id]
 	if not j.has("req") or m.job == job_id:
 		return false
-	if job_id == "firstmate" and has_firstmate():
-		return false   # #58: 副船長は同時に1名まで
+	if job_id == "firstmate" and has_firstmate_on(ship_index_of_crew(m)):
+		return false   # #58/#196: 副船長は1隻につき1名まで
 	if m.get("changed", false) and job_id != "firstmate":
 		return false   # #49: 1度だけ。ただし副船長へは2度目も可(#58)
 	var req: Array = j.req
@@ -127,7 +177,7 @@ func jobchange(m: Dictionary, job_id: String) -> void:
 const STAT_MAX := 50   # #140再: 各パラメータの上限
 
 func grow_crew() -> void:
-	for m in crew:
+	for m in all_crew():       # #196: 船団全員が成長
 		var g: Dictionary = jobs[m.job].growth
 		for k in g:
 			var cur := int(m[k])
@@ -147,9 +197,21 @@ func crew_wages() -> int:
 	if reached >= 3:
 		mult += 0.75   # #125再: 果ての島到達後はさらに賃金上昇
 	var total := 0.0
-	for m in crew:
+	for m in all_crew():       # #196: 船団全員に賃金
 		total += float(jobs[m.job].wage) * mult
 	return int(round(total))
+
+# #196: 船団に乗っている全クルー
+func all_crew() -> Array:
+	var out: Array = []
+	for e in fleet:
+		for m in e.crew:
+			out.append(m)
+	return out
+
+# 「旗艦」「2番艦」…の呼び名
+func fleet_label(i: int) -> String:
+	return "旗艦" if i == 0 else "%d番艦" % (i + 1)
 
 func _crew_sum(stat: String) -> int:
 	var s := 0
@@ -275,7 +337,11 @@ func fuel_cost() -> int:
 
 # --- 航海中ランタイム値(出港でリセット) ---
 var run_food: float = 0.0
-var run_armor: float = 0.0
+var run_armor: float:      # #196: 旗艦の装甲。2番艦以降は fleet[i].armor
+	get:
+		return float(_f0().armor)
+	set(v):
+		_f0().armor = v
 var fire_burn: float = 0.0   # ヒュドラの炎=時間経過で回復するスリップ被害
 var burn_t: float = 0.0      # #64: 炎上の残り秒数
 var burn_dps: float = 0.0
@@ -288,8 +354,10 @@ var docking_locked: bool = false   # #101/#105: 寄港確定後は被弾・積�
 func reset_all() -> void:
 	money = 200
 	fame = 0
-	ship_id = "raft"
-	weapons = ["gatling"]
+	fleet = [new_ship_entry("raft", ["gatling"])]   # #196
+	ship_stock = []
+	formations = ["line", "column", "vee", "inv_vee"]
+	formation_slot = 0
 	ram_id = "none"
 	cargo = {}
 	heads = {}
@@ -303,7 +371,6 @@ func reset_all() -> void:
 	guide_target = {}
 	has_departed = false   # #168
 	fire_burn = 0.0
-	crew = []
 	harpoon_debuff = "slip"
 	dock_reset()
 
@@ -317,9 +384,11 @@ func has_save() -> bool:
 
 func save_game() -> void:
 	var data := {
-		"money": money, "fame": fame, "ship_id": ship_id,
-		"weapons": weapons, "ram_id": ram_id, "harpoon_debuff": harpoon_debuff,
-		"crew": crew, "cargo": cargo, "heads": heads, "relics": relics,
+		"money": money, "fame": fame,
+		"fleet": fleet, "ship_stock": ship_stock,          # #196
+		"formations": formations, "formation_slot": formation_slot,
+		"ram_id": ram_id, "harpoon_debuff": harpoon_debuff,
+		"cargo": cargo, "heads": heads, "relics": relics,
 		"current_island": current_island,
 		"unlocked_islands": unlocked_islands, "visited_islands": visited_islands,
 		"defeated_lords": defeated_lords, "claimed_lords": claimed_lords,
@@ -349,12 +418,32 @@ func load_game() -> bool:
 		return false
 	money = int(data.get("money", 200))
 	fame = int(data.get("fame", 0))
-	ship_id = str(data.get("ship_id", "raft"))
 	ram_id = str(data.get("ram_id", "none"))
 	harpoon_debuff = str(data.get("harpoon_debuff", "slip"))
 	relics = int(data.get("relics", 0))
 	current_island = int(data.get("current_island", 0))
-	weapons.assign(data.get("weapons", ["gatling"]))
+	# #196: 船団。旧セーブ(ship_id/weapons/crew)は1隻の船団として読み込む
+	fleet = []
+	for e in data.get("fleet", []):
+		var w: Array[String] = []
+		for x in e.get("weapons", []):
+			w.append(str(x))
+		fleet.append({
+			"ship_id": str(e.get("ship_id", "raft")), "weapons": w,
+			"crew": _load_crew(e.get("crew", [])),
+			"armor": float(e.get("armor", 0.0)), "damaged": bool(e.get("damaged", false)),
+		})
+	if fleet.is_empty():
+		var w0: Array[String] = []
+		for x in data.get("weapons", ["gatling"]):
+			w0.append(str(x))
+		fleet.append(new_ship_entry(str(data.get("ship_id", "raft"))))
+		if not w0.is_empty():
+			fleet[0].weapons = w0
+		fleet[0].crew = _load_crew(data.get("crew", []))
+	ship_stock.assign(_to_str_array(data.get("ship_stock", [])))
+	formations.assign(_to_str_array(data.get("formations", ["line", "column", "vee", "inv_vee"])))
+	formation_slot = int(data.get("formation_slot", 0))
 	unlocked_islands.assign(_to_int_array(data.get("unlocked_islands", [0])))
 	visited_islands.assign(_to_int_array(data.get("visited_islands", [0])))
 	defeated_lords.assign(data.get("defeated_lords", []))
@@ -383,14 +472,6 @@ func load_game() -> bool:
 	cargo = _to_int_dict(data.get("cargo", {}))
 	heads = _to_int_dict(data.get("heads", {}))
 	kills = _to_int_dict(data.get("kills", {}))   # #177: 討伐記録
-	crew = []
-	for c in data.get("crew", []):
-		crew.append({
-			"name": str(c.get("name", "?")), "job": str(c.get("job", "sailor")),
-			"hp": int(c.get("hp", 1)), "agi": int(c.get("agi", 1)),
-			"sht": int(c.get("sht", 1)), "int_": int(c.get("int_", 1)),
-			"vis": int(c.get("vis", 1)), "changed": bool(c.get("changed", false)),
-		})
 	dock_reset()
 	stats_changed.emit()
 	return true
@@ -398,6 +479,24 @@ func load_game() -> bool:
 # #190: 旧セーブの島index(0始まり/1潮鳴り/2嵐越え/3果て)を新しい5島構成へ移す
 func _shift_island(i: int) -> int:
 	return i + 1 if i >= 2 else i
+
+# #196: セーブのクルー配列を復元
+func _load_crew(arr) -> Array:
+	var out: Array = []
+	for c in arr:
+		out.append({
+			"name": str(c.get("name", "?")), "job": str(c.get("job", "sailor")),
+			"hp": int(c.get("hp", 1)), "agi": int(c.get("agi", 1)),
+			"sht": int(c.get("sht", 1)), "int_": int(c.get("int_", 1)),
+			"vis": int(c.get("vis", 1)), "changed": bool(c.get("changed", false)),
+		})
+	return out
+
+func _to_str_array(a) -> Array:
+	var out := []
+	for v in a:
+		out.append(str(v))
+	return out
 
 func _to_int_array(a) -> Array:
 	var out := []
@@ -446,14 +545,19 @@ func free_hold() -> int:
 func dock_reset() -> void:
 	at_sea = false
 	run_food = max_food()
-	run_armor = max_armor()
+	_restore_fleet_armor()
 	stats_changed.emit()
+
+# #196: 船団全艦の装甲を満タンに戻す
+func _restore_fleet_armor() -> void:
+	for e in fleet:
+		e["armor"] = float(Database.ships[str(e.ship_id)].armor)
 
 func set_sail() -> void:
 	at_sea = true
 	docking_locked = false   # #105: 出港で解除
 	run_food = max_food()
-	run_armor = max_armor()
+	_restore_fleet_armor()
 	fire_burn = 0.0
 	burn_t = 0.0
 	poison_t = 0.0
@@ -554,6 +658,19 @@ func claim_bounties() -> int:
 	stats_changed.emit()
 	return total
 
+# #196: 指定した艦のスロットへ装備
+func equip_weapon_on(idx: int, slot: int, wid: String) -> void:
+	if idx < 0 or idx >= fleet.size():
+		return
+	var e: Dictionary = fleet[idx]
+	var slots := int(Database.ships[str(e.ship_id)].slots)
+	var w: Array = e.weapons
+	while w.size() < slots:
+		w.append("")
+	if slot >= 0 and slot < slots:
+		w[slot] = wid
+		stats_changed.emit()
+
 func equip_weapon(slot: int, wid: String) -> void:
 	while weapons.size() < int(ship().slots):
 		weapons.append("")
@@ -565,23 +682,157 @@ func ship_trade_in() -> int:
 	# #51再: 下取りは現在の船の定価の80%
 	return int(float(ship().price) * 0.8)
 
+# #196: 船は乗り換えでなく購入=ストックへ追加になったので、下取り無しの定価
 func ship_buy_cost(new_id: String) -> int:
-	# 差額。下取りが購入額を上回れば負(=返金)
-	return int(Database.ships[new_id].price) - ship_trade_in()
+	return int(Database.ships[new_id].price)
 
 func buy_ship(new_id: String) -> bool:
-	var cost := ship_buy_cost(new_id)   # #51再: 負なら返金
+	var cost := ship_buy_cost(new_id)
 	if cost > money:
 		notice.emit("資金が足りません")
 		return false
-	add_money(-cost)   # costが負なら資金が増える(返金)
-	ship_id = new_id
-	# スロット数に武器配列を合わせる
-	var slots := int(ship().slots)
-	weapons.resize(slots)
-	for i in slots:
-		if weapons[i] == null or weapons[i] == "":
-			weapons[i] = "gatling" if i == 0 else ""
-	dock_reset()
-	notice.emit("%s を購入" % ship().name)
+	add_money(-cost)
+	ship_stock.append(new_id)   # #196: 購入した船はストックされ、編成メニューで船団へ組み込む
+	notice.emit("%s を購入(ストックへ)" % Database.ships[new_id].name)
+	stats_changed.emit()
 	return true
+
+# ---------------- 船団(#196) ----------------
+# 島が進むごとに組める隻数が増える(潮鳴り=2隻 … 果て=5隻)
+func max_fleet() -> int:
+	return clampi(current_island + 1, 1, FLEET_MAX)
+
+func fleet_enabled() -> bool:
+	return current_island >= 1 or fleet.size() > 1   # 潮鳴りの島以降で編成メニューを開放
+
+func ship_def_of(i: int) -> Dictionary:
+	return Database.ships[str(fleet[i].ship_id)]
+
+# 2番艦以降は副船長が1名乗っていないと出港できない
+func has_firstmate_on(idx: int) -> bool:
+	for c in fleet[idx].crew:
+		if c.job == "firstmate":
+			return true
+	return false
+
+func can_sail(idx: int) -> bool:
+	return idx == 0 or has_firstmate_on(idx)
+
+# 出港できる艦(旗艦+副船長を乗せた僚艦)のindex一覧
+func sailing_ships() -> Array:
+	var out: Array = []
+	for i in fleet.size():
+		if can_sail(i):
+			out.append(i)
+	return out
+
+# 船団の移動速度は最も遅い船に合わせる
+func fleet_speed() -> float:
+	var sp := float(ship().speed)
+	for i in sailing_ships():
+		sp = minf(sp, float(ship_def_of(i).speed))
+	return sp
+
+func fleet_add(stock_idx: int) -> bool:
+	if stock_idx < 0 or stock_idx >= ship_stock.size():
+		return false
+	if fleet.size() >= max_fleet():
+		notice.emit("この島で組める船団は%d隻までです" % max_fleet())
+		return false
+	var sid: String = ship_stock[stock_idx]
+	ship_stock.remove_at(stock_idx)
+	fleet.append(new_ship_entry(sid))
+	notice.emit("%s を船団に加えた" % Database.ships[sid].name)
+	stats_changed.emit()
+	return true
+
+func fleet_remove(idx: int) -> bool:
+	if idx <= 0 or idx >= fleet.size():
+		return false   # 旗艦は外せない
+	var e: Dictionary = fleet[idx]
+	if not e.crew.is_empty():
+		notice.emit("先にクルーを降ろしてください")
+		return false
+	ship_stock.append(str(e.ship_id))
+	fleet.remove_at(idx)
+	notice.emit("%s を船団から外した(ストックへ)" % Database.ships[str(e.ship_id)].name)
+	stats_changed.emit()
+	return true
+
+# 旗艦と僚艦、僚艦同士の入れ替え
+func fleet_swap(a: int, b: int) -> void:
+	if a == b or a < 0 or b < 0 or a >= fleet.size() or b >= fleet.size():
+		return
+	var t = fleet[a]
+	fleet[a] = fleet[b]
+	fleet[b] = t
+	notice.emit("配置を入れ替えた")
+	stats_changed.emit()
+
+func sell_stock(stock_idx: int) -> void:
+	if stock_idx < 0 or stock_idx >= ship_stock.size():
+		return
+	var sid: String = ship_stock[stock_idx]
+	var gain := int(float(Database.ships[sid].price) * 0.8)   # 定価の80%で売却
+	ship_stock.remove_at(stock_idx)
+	add_money(gain)
+	notice.emit("%s を売却(+%d)" % [Database.ships[sid].name, gain])
+	stats_changed.emit()
+
+# クルーを船から船へ移す
+func move_crew(from_idx: int, member: Dictionary, to_idx: int) -> bool:
+	if from_idx == to_idx or to_idx < 0 or to_idx >= fleet.size():
+		return false
+	if fleet[to_idx].crew.size() >= CREW_MAX:
+		notice.emit("その船は満員です(%d名まで)" % CREW_MAX)
+		return false
+	if str(member.job) == "firstmate" and has_firstmate_on(to_idx):
+		notice.emit("副船長は1隻に1名までです")
+		return false
+	fleet[from_idx].crew.erase(member)
+	fleet[to_idx].crew.append(member)
+	stats_changed.emit()
+	return true
+
+# 武器を船同士で交換(スロット単位)
+func swap_weapon(a_idx: int, a_slot: int, b_idx: int, b_slot: int) -> void:
+	var wa: Array = fleet[a_idx].weapons
+	var wb: Array = fleet[b_idx].weapons
+	if a_slot >= wa.size() or b_slot >= wb.size():
+		return
+	var t: String = wa[a_slot]
+	wa[a_slot] = wb[b_slot]
+	wb[b_slot] = t
+	stats_changed.emit()
+
+# #196: 離脱した船の修理費(次回出港時に徴収)。定価の4%
+func fleet_repair_cost() -> int:
+	var total := 0
+	for e in fleet:
+		if bool(e.get("damaged", false)):
+			total += int(float(Database.ships[str(e.ship_id)].price) * 0.04)
+	return total
+
+func clear_fleet_damage() -> void:
+	for e in fleet:
+		e["damaged"] = false
+
+# 僚艦の離脱時: 旗艦の大破より低い確率でクルーを失う
+func detach_lose_crew(idx: int) -> String:
+	var c: Array = fleet[idx].crew
+	if c.is_empty() or randf() >= 0.22:   # 大破(50%)より大幅に低い
+		return ""
+	var m: Dictionary = c[randi() % c.size()]
+	c.erase(m)
+	stats_changed.emit()
+	return "%s(%s)" % [m.name, jobs[m.job].name]
+
+# 指定の船のクルー合計値(僚艦の攻撃力などに使う)
+func crew_sum_of(idx: int, stat: String) -> int:
+	var t := 0
+	for m in fleet[idx].crew:
+		t += int(m.get(stat, 0))
+	return t
+
+func attack_mult_of(idx: int) -> float:
+	return 1.0 + 0.02 * crew_sum_of(idx, "sht")
