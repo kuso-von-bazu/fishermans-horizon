@@ -34,7 +34,9 @@ func new_ship_entry(sid: String, wpns: Array = []) -> Dictionary:
 	var slots := int(Database.ships[sid].slots)
 	for i in slots:
 		w.append(str(wpns[i]) if i < wpns.size() else "")
-	return {"ship_id": sid, "weapons": w, "crew": [], "armor": float(Database.ships[sid].armor), "damaged": false}
+	# #196再: 衝角(ram)と銛の効果(harpoon)は艦ごとに持つ
+	return {"ship_id": sid, "weapons": w, "crew": [], "armor": float(Database.ships[sid].armor),
+		"damaged": false, "ram": "none", "harpoon": "slip"}
 
 var ship_id: String:
 	get:
@@ -54,8 +56,17 @@ var crew: Array:
 	set(v):
 		_f0().crew = v
 
-var ram_id: String = "none"
-var harpoon_debuff: String = "slip"        # 銛のデバフ種(造船所で設定・#37)
+var ram_id: String:                        # #196再: 旗艦の衝角
+	get:
+		return str(_f0().get("ram", "none"))
+	set(v):
+		_f0()["ram"] = v
+
+var harpoon_debuff: String:                # 銛の効果(#37)。#196再: 艦ごと
+	get:
+		return str(_f0().get("harpoon", "slip"))
+	set(v):
+		_f0()["harpoon"] = v
 
 # --- クルー(#39): キャプテン含め5人まで=雇用は4人まで ---
 # 各員: {name, job, hp, agi, sht, int_, vis}。船団の各艦がそれぞれ最大CREW_MAX名を乗せる。
@@ -160,8 +171,6 @@ func can_jobchange(m: Dictionary, job_id: String) -> bool:
 		return false
 	if job_id == "firstmate" and has_firstmate_on(ship_index_of_crew(m)):
 		return false   # #58/#196: 副船長は1隻につき1名まで
-	if m.get("changed", false) and job_id != "firstmate":
-		return false   # #49: 1度だけ。ただし副船長へは2度目も可(#58)
 	var req: Array = j.req
 	if req[0] == "total":
 		return int(m.hp) + int(m.agi) + int(m.sht) + int(m.int_) + int(m.vis) >= int(req[1])
@@ -358,7 +367,6 @@ func reset_all() -> void:
 	ship_stock = []
 	formations = ["line", "column", "vee", "inv_vee"]
 	formation_slot = 0
-	ram_id = "none"
 	cargo = {}
 	heads = {}
 	relics = 0
@@ -371,7 +379,6 @@ func reset_all() -> void:
 	guide_target = {}
 	has_departed = false   # #168
 	fire_burn = 0.0
-	harpoon_debuff = "slip"
 	dock_reset()
 
 # ---------------- オートセーブ(#93) ----------------
@@ -516,8 +523,12 @@ func ship() -> Dictionary:
 func max_food() -> float:
 	return float(ship().food)
 
+# #196再: 魚倉のキャパシティは船団に組み込んでいる全船の合計
 func max_hold() -> int:
-	return int(ship().hold)
+	var t := 0
+	for e in fleet:
+		t += int(Database.ships[str(e.ship_id)].hold)
+	return t
 
 func max_armor() -> float:
 	return float(ship().armor)
@@ -702,8 +713,9 @@ func buy_ship(new_id: String) -> bool:
 func max_fleet() -> int:
 	return clampi(current_island + 1, 1, FLEET_MAX)
 
+# #196再: 始まりの島でも編成メニューを使える(ここで買ってストックした船を扱えるように)
 func fleet_enabled() -> bool:
-	return current_island >= 1 or fleet.size() > 1   # 潮鳴りの島以降で編成メニューを開放
+	return true
 
 func ship_def_of(i: int) -> Dictionary:
 	return Database.ships[str(fleet[i].ship_id)]
@@ -743,6 +755,30 @@ func fleet_add(stock_idx: int) -> bool:
 	ship_stock.remove_at(stock_idx)
 	fleet.append(new_ship_entry(sid))
 	notice.emit("%s を船団に加えた" % Database.ships[sid].name)
+	stats_changed.emit()
+	return true
+
+# #196再: ストックの船と、すでに船団に組み込んでいる船を交換する
+# 乗員・武器・衝角・銛の設定はその船に紐づくので、船体だけを入れ替える
+func fleet_exchange(fleet_idx: int, stock_idx: int) -> bool:
+	if fleet_idx < 0 or fleet_idx >= fleet.size():
+		return false
+	if stock_idx < 0 or stock_idx >= ship_stock.size():
+		return false
+	var e: Dictionary = fleet[fleet_idx]
+	var new_sid: String = ship_stock[stock_idx]
+	var old_sid: String = str(e.ship_id)
+	var new_slots := int(Database.ships[new_sid].slots)
+	ship_stock[stock_idx] = old_sid
+	e.ship_id = new_sid
+	e.armor = float(Database.ships[new_sid].armor)
+	# 武器スロット数を新しい船に合わせる(あふれた武器は外れる)
+	var w: Array = e.weapons
+	while w.size() < new_slots:
+		w.append("")
+	while w.size() > new_slots:
+		w.pop_back()
+	notice.emit("%s を %s と交換した" % [Database.ships[old_sid].name, Database.ships[new_sid].name])
 	stats_changed.emit()
 	return true
 

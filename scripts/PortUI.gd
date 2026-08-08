@@ -346,7 +346,7 @@ func show_shipyard() -> void:
 	_refresh_header()
 	_clear()
 	content.add_child(_h("造船所 — 船・武器の購入", 22))
-	content.add_child(_p("#196: 購入した船はストックされます。編成メニューで船団に組み込んでください。"))
+	content.add_child(_p("購入した船はストックされます。編成メニューで船団に組み込んでください。"))
 	var tier := GameState.current_island
 	content.add_child(_h("船", 18))
 	for sid in Database.ships:
@@ -366,7 +366,7 @@ func show_shipyard() -> void:
 		content.add_child(row)
 
 	content.add_child(_p(""))
-	content.add_child(_h("武器スロット — 付替は差額制・現装備は8割下取り(#34)", 18))
+	content.add_child(_h("武器スロット — 付替は差額制・現装備は8割下取り", 18))
 	# #196: どの艦の武器を買うかを先に選ぶ
 	var tgt: int = clampi(GameState.target_ship, 0, GameState.fleet.size() - 1)
 	if GameState.fleet.size() > 1:
@@ -413,23 +413,23 @@ func show_shipyard() -> void:
 
 	# 銛のデバフ設定(#37): 主にのみ適用
 	content.add_child(_p(""))
-	content.add_child(_h("銛のデバフ設定(近海の主・戦闘モブに有効 / 海賊には無効)", 18))
+	content.add_child(_h("銛の効果設定(近海の主・戦闘モブに有効 / 海賊には無効)", 18))
 	var drow := HBoxContainer.new()
 	drow.add_theme_constant_override("separation", 8)
-	drow.add_child(_p("現在: %s" % Database.harpoon_debuffs[GameState.harpoon_debuff].name))
+	drow.add_child(_p("%s の現在: %s" % [GameState.fleet_label(tgt), Database.harpoon_debuffs[str(tship.get("harpoon", "slip"))].name]))
 	for did in Database.harpoon_debuffs:
 		var d: Dictionary = Database.harpoon_debuffs[did]
 		drow.add_child(_btn(d.name, func():
-			GameState.harpoon_debuff = did
-			GameState.notice.emit("銛のデバフ: %s(%s)" % [d.name, d.desc])
+			tship["harpoon"] = did      # #196再: 対象艦ごとに設定
+			GameState.notice.emit("%s の銛の効果: %s(%s)" % [GameState.fleet_label(tgt), d.name, d.desc])
 			show_shipyard()))
 	content.add_child(drow)
 
 	content.add_child(_p(""))
-	content.add_child(_h("衝角", 18))
+	content.add_child(_h("衝角(対象: %s)" % GameState.fleet_label(tgt), 18))
 	var rrow := HBoxContainer.new()
 	rrow.add_theme_constant_override("separation", 8)
-	rrow.add_child(_p("現在: %s" % Database.rams[GameState.ram_id].name))
+	rrow.add_child(_p("%s の現在: %s" % [GameState.fleet_label(tgt), Database.rams[str(tship.get("ram", "none"))].name]))
 	for rid in Database.rams:
 		var r: Dictionary = Database.rams[rid]
 		if int(r.get("tier", 0)) > tier:
@@ -438,8 +438,8 @@ func show_shipyard() -> void:
 			if rid == "none" or GameState.money >= int(Database.rams[rid].price):
 				if rid != "none":
 					GameState.add_money(-int(Database.rams[rid].price))
-				GameState.ram_id = rid
-				GameState.notice.emit("衝角: %s" % Database.rams[rid].name)
+				tship["ram"] = rid      # #196再: 対象艦ごとに設定
+				GameState.notice.emit("%s の衝角: %s" % [GameState.fleet_label(tgt), Database.rams[rid].name])
 			else:
 				GameState.notice.emit("資金が足りません")
 			show_shipyard()))
@@ -580,6 +580,12 @@ func show_fleet() -> void:
 		srow.add_child(_btn("船団に加える", func():
 			GameState.fleet_add(si)
 			show_fleet()))
+		# #196再: すでに船団に組み込んでいる船と交換する
+		for fi in GameState.fleet.size():
+			var f_idx: int = fi
+			srow.add_child(_btn("%sと交換" % GameState.fleet_label(fi), func():
+				GameState.fleet_exchange(f_idx, si)
+				show_fleet()))
 		srow.add_child(_btn("売却(+%d)" % int(float(sd2.price) * 0.8), func():
 			GameState.sell_stock(si)
 			show_fleet()))

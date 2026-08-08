@@ -18,6 +18,10 @@ var _half_h: float = 42.0
 var _cooldowns: Array = [0.0, 0.0, 0.0, 0.0]
 var _ammo: Array = [0, 0, 0, 0]
 var _wake: CPUParticles2D
+var _smoke: CPUParticles2D
+var _sprays: Array = []
+var _half_w: float = 30.0
+var _label: Label
 var _dead: bool = false
 var player: Node2D
 
@@ -42,14 +46,21 @@ func _build_visual() -> void:
 		c.queue_free()
 	var sc := _ship_scale()
 	_sc = sc
-	var tex := _build_ship_texture()
+	var map: Array = PlayerScript.SHIP_MAPS.get(ship_id, PlayerScript.SHIP_MAP)
+	var mw: int = map[0].length()
+	var half_cols := 0.0
+	for row in map:
+		for x in mw:
+			if row[x] != ".":
+				half_cols = maxf(half_cols, absf(float(x) + 0.5 - float(mw) / 2.0))
+	_half_w = half_cols * PlayerScript.PIX_SCALE * sc
+	_half_h = (float(map.size()) / 2.0 - 1.0) * PlayerScript.PIX_SCALE * sc
 	var spr := Sprite2D.new()
-	spr.texture = tex
+	spr.texture = _build_ship_texture()
 	spr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	spr.scale = Vector2.ONE * PlayerScript.PIX_SCALE * sc
+	spr.z_index = 2
 	add_child(spr)
-	var mh: Array = PlayerScript.SHIP_MAPS.get(ship_id, PlayerScript.SHIP_MAP)
-	_half_h = mh.size() * 0.5 * PlayerScript.PIX_SCALE * sc
 	# 当たり判定(障害物・島用)
 	var col := CollisionShape2D.new()
 	var cap := CapsuleShape2D.new()
@@ -57,21 +68,68 @@ func _build_visual() -> void:
 	cap.height = 60.0 * sc
 	col.shape = cap
 	add_child(col)
-	# 航跡
+	# #196再: 煙突の煙・航跡・舷側しぶきを旗艦と同じ表現に揃える
+	var smoke := CPUParticles2D.new()
+	smoke.amount = 20
+	smoke.lifetime = 3.8
+	smoke.local_coords = false
+	smoke.position = Vector2(0, -6 * sc)
+	smoke.spread = 180.0
+	smoke.gravity = Vector2.ZERO
+	smoke.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
+	smoke.emission_sphere_radius = 5.0 * sc
+	smoke.initial_velocity_min = 0.0
+	smoke.initial_velocity_max = 0.0
+	smoke.scale_amount_min = 4.0
+	smoke.scale_amount_max = 8.0
+	var scurve := Curve.new()
+	scurve.add_point(Vector2(0.0, 0.6))
+	scurve.add_point(Vector2(1.0, 2.6))
+	smoke.scale_amount_curve = scurve
+	var sramp := Gradient.new()
+	sramp.set_color(0, Color(0.88, 0.88, 0.9, 0.42))
+	sramp.set_color(1, Color(0.9, 0.9, 0.92, 0.0))
+	smoke.color_ramp = sramp
+	smoke.z_index = 3
+	add_child(smoke)
+	_smoke = smoke
 	_wake = CPUParticles2D.new()
-	_wake.amount = 14
-	_wake.lifetime = 0.7
+	_wake.amount = 70
+	_wake.lifetime = 3.2
 	_wake.local_coords = false
-	_wake.direction = Vector2(0, 1)
-	_wake.spread = 12.0
-	_wake.initial_velocity_min = 10.0
-	_wake.initial_velocity_max = 30.0
-	_wake.scale_amount_min = 2.0
-	_wake.scale_amount_max = 4.0
-	_wake.color = Color(0.9, 0.97, 1.0, 0.5)
 	_wake.position = Vector2(0, _half_h)
-	_wake.z_index = -1
+	_wake.spread = 12.0
+	_wake.gravity = Vector2.ZERO
+	_wake.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	_wake.emission_rect_extents = Vector2(_half_w, 1.5)
+	_wake.initial_velocity_min = 0.0
+	_wake.initial_velocity_max = 3.0
+	_wake.scale_amount_min = 2.5
+	_wake.scale_amount_max = 6.0
+	var wramp := Gradient.new()
+	wramp.set_color(0, Color(0.9, 0.97, 1.0, 0.5))
+	wramp.set_color(1, Color(0.9, 0.97, 1.0, 0.0))
+	_wake.color_ramp = wramp
 	add_child(_wake)
+	_sprays = []
+	for side in [-1.0, 1.0]:
+		var spray := CPUParticles2D.new()
+		spray.amount = 16
+		spray.lifetime = 1.0
+		spray.local_coords = false
+		spray.position = Vector2(side * _half_w, -10 * sc)
+		spray.spread = 60.0
+		spray.gravity = Vector2.ZERO
+		spray.initial_velocity_min = 4.0
+		spray.initial_velocity_max = 12.0
+		spray.scale_amount_min = 1.5
+		spray.scale_amount_max = 3.5
+		var spr_ramp := Gradient.new()
+		spr_ramp.set_color(0, Color(0.95, 1.0, 1.0, 0.45))
+		spr_ramp.set_color(1, Color(0.95, 1.0, 1.0, 0.0))
+		spray.color_ramp = spr_ramp
+		add_child(spray)
+		_sprays.append(spray)
 	# 艦名ラベル
 	var lbl := Label.new()
 	lbl.text = GameState.fleet_label(fleet_index)
@@ -82,7 +140,9 @@ func _build_visual() -> void:
 	lbl.position = Vector2(-60, -_half_h - 34)
 	lbl.custom_minimum_size = Vector2(120, 0)
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.z_index = 4
 	add_child(lbl)
+	_label = lbl
 
 # Player2D と同じドット絵マップから船体テクスチャを作る(衝角は旗艦のみなので描かない)
 func _build_ship_texture() -> ImageTexture:
@@ -131,21 +191,30 @@ func _physics_process(delta: float) -> void:
 	for i in _cooldowns.size():
 		if _cooldowns[i] > 0.0:
 			_cooldowns[i] -= delta
-	# 陣形スロットへ追従(旗艦の向きに合わせた相対位置)
+	# #196再: 独自に動かず、旗艦の操作(位置・向き)にそのまま追従する。
+	# 陣形上の相対位置を旗艦の向きで回した点を目標にし、そこへ剛体的に張り付く。
 	var target: Vector2 = player.global_position + slot_offset.rotated(player.rotation)
 	var to := target - global_position
-	var dist := to.length()
-	if dist > 6.0:
-		var want: float = minf(max_speed * clampf(dist / 120.0, 0.25, 1.6), max_speed * 1.6)
-		velocity = velocity.move_toward(to.normalized() * want, max_speed * 4.0 * delta)
-	else:
-		velocity = velocity.move_toward(Vector2.ZERO, max_speed * 4.0 * delta)
-	# 進行方向(ほぼ旗艦と同じ向き)へ艦首を向ける
-	var face: Vector2 = player.forward() if velocity.length() < 12.0 else velocity.normalized()
-	rotation = lerp_angle(rotation, face.angle() + PI / 2.0, 8.0 * delta)
+	velocity = to / maxf(delta, 0.0001)          # 1フレームで目標へ到達する速度
+	var cap: float = player.max_speed * 6.0      # 極端な瞬間移動だけ抑える
+	if velocity.length() > cap:
+		velocity = velocity.normalized() * cap
+	rotation = player.rotation                    # 向きも旗艦と同じ
+	if _label:
+		# ラベルは船と一緒に回ると裏返るので、常に画面上向き・船の真上に置く
+		_label.rotation = -rotation
+		_label.position = Vector2(-60, -_half_h - 34).rotated(-rotation)
 	move_and_slide()
+	var moving: bool = player.velocity.length() > player.max_speed * 0.15
+	var reversing: bool = player.velocity.dot(player.forward()) < -1.0
 	if _wake:
-		_wake.emitting = velocity.length() > max_speed * 0.15
+		_wake.emitting = moving
+		_wake.position = Vector2(0, -_half_h) if reversing else Vector2(0, _half_h)
+		_wake.direction = Vector2(0, -1) if reversing else Vector2(0, 1)
+	if _smoke:
+		_smoke.gravity = -player.velocity * 0.7
+	for spray in _sprays:
+		spray.emitting = player.velocity.length() > player.max_speed * 0.2 and not reversing
 	_auto_fire(delta)
 
 func forward() -> Vector2:
@@ -190,6 +259,7 @@ func _auto_fire(_delta: float) -> void:
 			continue
 		var w2 := w.duplicate()
 		w2.dmg = float(w.dmg) * GameState.attack_mult_of(fleet_index)
+		w2["debuff_kind"] = str(GameState.fleet[fleet_index].get("harpoon", "slip"))   # #196再: この艦の銛の効果
 		Audio.play(str(w.get("sfx", "sfx_gun")), -12.0, randf_range(0.95, 1.05))
 		var proj := Area2D.new()
 		proj.set_script(ProjectileScript)

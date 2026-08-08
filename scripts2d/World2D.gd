@@ -212,8 +212,8 @@ func _input(event: InputEvent) -> void:
 			_cycle_lock(-1)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			_cycle_lock(1)
-		elif event.button_index == MOUSE_BUTTON_LEFT:
-			_click_lock(get_global_mouse_position())   # #196: 敵をクリックでもロック切替
+		elif event.button_index == MOUSE_BUTTON_LEFT and not _pointer_on_ui():
+			_click_lock(get_global_mouse_position())   # #196: 敵をクリックでロック
 	# #196: 1〜4キーで陣形チェンジ
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
@@ -324,6 +324,7 @@ func _on_set_sail() -> void:
 	player.control_enabled = true
 	player.rebuild_visual()
 	player.global_position = island_pos(GameState.current_island) + Vector2(0, 300)
+	player.rotation = PI   # #196再: 出港時は船団ごと真南を向く(forward=+Y)
 	hud.visible = true
 	hud.rebuild_weapons()
 	hud.update_bars()
@@ -759,12 +760,13 @@ func _spawn_relic() -> void:
 
 # ---------------- 船団(#196) ----------------
 # 陣形ごとの相対位置(旗艦の向きを基準にしたローカル座標。+Y=後方)
+# #196再: 旗艦と僚艦の距離を短くして、船団がまとまって見えるようにする
 const FORMATION_OFFSETS := {
-	"line":    [Vector2(-170, 40), Vector2(170, 40), Vector2(-330, 80), Vector2(330, 80)],       # 横並び
-	"column":  [Vector2(0, 180), Vector2(0, 350), Vector2(0, 520), Vector2(0, 690)],             # 縦並び
-	"vee":     [Vector2(-150, 160), Vector2(150, 160), Vector2(-290, 320), Vector2(290, 320)],   # V字型(後方へ広がる)
-	"inv_vee": [Vector2(-150, -20), Vector2(150, -20), Vector2(-290, 130), Vector2(290, 130)],   # 逆V字型(前方へ広がる)
-	"echelon": [Vector2(-150, 150), Vector2(-300, 300), Vector2(-450, 450), Vector2(-600, 600)], # 斜線陣
+	"line":    [Vector2(-95, 15), Vector2(95, 15), Vector2(-185, 35), Vector2(185, 35)],      # 横並び
+	"column":  [Vector2(0, 95), Vector2(0, 185), Vector2(0, 275), Vector2(0, 365)],           # 縦並び
+	"vee":     [Vector2(-80, 80), Vector2(80, 80), Vector2(-155, 160), Vector2(155, 160)],    # V字型(後方へ広がる)
+	"inv_vee": [Vector2(-80, -10), Vector2(80, -10), Vector2(-155, 70), Vector2(155, 70)],    # 逆V字型(前方へ広がる)
+	"echelon": [Vector2(-80, 75), Vector2(-160, 150), Vector2(-240, 225), Vector2(-320, 300)],# 斜線陣
 }
 
 func _current_formation() -> String:
@@ -854,6 +856,10 @@ func _consume_ammo(i: int, w: Dictionary) -> void:
 	else:
 		slot_cooldowns[i] = float(w.cooldown)
 
+# #196再: 画面のUI(陣形ボタンなど)の上にカーソルがあるか
+func _pointer_on_ui() -> bool:
+	return hud != null and hud.get("pointer_on_ui") == true
+
 func _update_weapons(delta: float) -> void:
 	for i in slot_cooldowns.size():
 		if slot_cooldowns[i] > 0:
@@ -863,7 +869,7 @@ func _update_weapons(delta: float) -> void:
 	if _food_dialog_open:
 		return   # #24再: 食料選択ダイアログを開いている間はクリックしても射撃しない
 	var slots := int(GameState.ship().slots)
-	if Input.is_action_pressed("fire_primary"):
+	if Input.is_action_pressed("fire_primary") and not _pointer_on_ui():   # #196再: 陣形ボタン上では撃たない
 		for i in slots:
 			var wid: String = GameState.weapons[i] if i < GameState.weapons.size() else ""
 			if wid == "" or not Database.weapons.has(wid):
@@ -896,6 +902,7 @@ func _update_weapons(delta: float) -> void:
 # クルー効果(#39)を武器威力に反映した複製を返す
 func _crewed(w: Dictionary) -> Dictionary:
 	var w2 := w.duplicate()
+	w2["debuff_kind"] = GameState.harpoon_debuff   # #196再: 旗艦の銛の効果
 	var dmg: float = float(w.dmg) * GameState.attack_mult()
 	if randf() < GameState.crit_chance():
 		dmg *= 2.0   # 水兵のクリティカル
@@ -946,15 +953,15 @@ func _lockable_enemies() -> Array:
 		out.append(e)
 	return out
 
-# #16: ロック対象は倒すか画面外に出るまで固定。ホイールで切替
+# #16/#196再: ロック対象は倒すか画面外に出るまで固定。自動ロックは廃止し、
+# クリック(またはホイール切替)でのみロックする。
 func _update_lock_on() -> void:
-	var lockable := _lockable_enemies()
-	# 現在のロックが有効(生存・画面内・射程内)なら維持
-	if lock_target and is_instance_valid(lock_target) and lockable.has(lock_target):
+	if lock_target == null:
 		return
-	# 無効になったら最寄りを新規ロック
-	var t: Node2D = _pick_nearest_lock(lockable)
-	_set_lock(t)
+	var lockable := _lockable_enemies()
+	if is_instance_valid(lock_target) and lockable.has(lock_target):
+		return
+	_set_lock(null)   # 倒された/圏外に出たら解除(自動で次を掴まない)
 
 func _pick_nearest_lock(lockable: Array) -> Node2D:
 	var best := 1e18

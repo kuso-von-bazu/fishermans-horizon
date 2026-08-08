@@ -295,6 +295,7 @@ func set_location(text: String) -> void:
 # ---------------- 陣形ボタン(#196) ----------------
 var _form_box: HBoxContainer
 var _form_btns: Array = []
+var pointer_on_ui: bool = false   # #196再: 陣形ボタン上ではロック/射撃をしない
 
 # 船団が2隻以上のときだけ、画面下中央に陣形1〜4のボタンを出す
 func build_formation_bar(on_pick: Callable) -> void:
@@ -302,6 +303,7 @@ func build_formation_bar(on_pick: Callable) -> void:
 		_form_box.queue_free()
 		_form_box = null
 	_form_btns.clear()
+	pointer_on_ui = false
 	if GameState.fleet.size() <= 1:
 		return
 	_form_box = HBoxContainer.new()
@@ -320,6 +322,8 @@ func build_formation_bar(on_pick: Callable) -> void:
 		b.focus_mode = Control.FOCUS_NONE
 		var idx: int = i
 		b.pressed.connect(func(): on_pick.call(idx))
+		b.mouse_entered.connect(func(): pointer_on_ui = true)
+		b.mouse_exited.connect(func(): pointer_on_ui = false)
 		_form_box.add_child(b)
 		_form_btns.append(b)
 	set_formation(GameState.formation_slot)

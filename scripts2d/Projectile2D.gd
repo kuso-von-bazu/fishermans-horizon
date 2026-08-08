@@ -8,6 +8,7 @@ var dmg: float = 5.0
 var life: float = 2.6
 var slip: bool = false
 var debuff: bool = false
+var debuff_kind: String = ""   # #196再: 銛の効果は撃った艦の設定を使う
 var homing: bool = false
 var fire: bool = false
 var falloff: bool = false   # #63: ガトリング系は距離で威力減衰
@@ -34,6 +35,7 @@ func setup(p_dir: Vector2, w: Dictionary, p_target: Node2D = null) -> void:
 	speed = (70.0 + float(w.get("dmg", 5)) * 0.3) * K * float(w.get("speed_mult", 1.0))   # #65: 弾速倍率
 	slip = bool(w.get("slip", false))
 	debuff = bool(w.get("debuff", false))
+	debuff_kind = str(w.get("debuff_kind", ""))
 	homing = bool(w.get("homing", false))
 	falloff = bool(w.get("falloff", false))
 	pirate_burn = float(w.get("pirate_burn", 0.0))
@@ -252,7 +254,7 @@ func _on_hit(body: Node) -> void:
 		if homing and body.get("aerial") == true:
 			return
 		if body.has_method("take_hit"):
-			var res: int = body.take_hit(_eff_dmg(), slip, debuff, homing)   # #71: 魚雷(homing)は必中(no_dodge)
+			var res: int = body.take_hit(_eff_dmg(), slip, debuff, homing, debuff_kind)   # #71: 魚雷(homing)は必中(no_dodge)
 			if res == 2:
 				return   # #111: 回避(弾は後方へそのまま通過)
 			if res == 0:

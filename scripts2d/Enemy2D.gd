@@ -347,7 +347,7 @@ func _placeholder(c: Color) -> Texture2D:
 	return ImageTexture.create_from_image(img)
 
 # 戻り値: 0=命中, 1=回避(弾は消える), 2=回避(弾は後方へ通過)
-func take_hit(amount: float, slip: bool, debuff: bool, no_dodge: bool = false) -> int:
+func take_hit(amount: float, slip: bool, debuff: bool, no_dodge: bool = false, debuff_kind: String = "") -> int:
 	# #71/#111/#72: カリュブディス/ケツァル/ティアマット等は一定確率で攻撃をかわす。魚雷(no_dodge)は必中
 	if not no_dodge and float(def.get("dodge", 0.0)) > 0.0 and randf() < float(def.get("dodge", 0.0)):
 		if sprite:
@@ -367,7 +367,7 @@ func take_hit(amount: float, slip: bool, debuff: bool, no_dodge: bool = false) -
 		_slip += amount * 0.6
 	# #37再: 銛デバフは主+戦闘モブに有効(海賊は無効)。#114: 複数ヒットで減衰しつつ増加、最後のヒットから4.5秒
 	if debuff and (kind == "lord" or kind == "mob") and not bool(def.get("no_debuff", false)):   # #187: 幽霊船は銛デバフ無効
-		_debuff_kind = GameState.harpoon_debuff
+		_debuff_kind = debuff_kind if debuff_kind != "" else GameState.harpoon_debuff   # #196再: 撃った艦の設定
 		_debuff_power += 0.6 * pow(0.55, float(_debuff_stacks))
 		_debuff_stacks += 1
 		_debuff_t = 4.5 * GameState.debuff_dur_mult()
