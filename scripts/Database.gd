@@ -199,13 +199,13 @@ var ships := {
 # ---------------------------------------------------------------------------
 var islands := [
 	{"id": 0, "name": "始まりの島",   "fame_req": 0,   "price_mult": 1.0, "pos": Vector3(0, 0, 0),       "spawn": ["sardine","mackerel"], "lords": ["sawshark","dumbo"]},
-	# #174: 次の島到達に必要な名声を全体的に少し上げる
-	{"id": 1, "name": "潮鳴りの島",   "fame_req": 18,   "price_mult": 1.6, "pos": Vector3(900, 0, -300),  "spawn": ["bonito","squid","mackerel"], "lords": ["whale","walrus"]},   # #57再: 元の距離に戻す
+	# #174/#200: 次の島到達に必要な名声を全体的に引き上げ(その島の主だけでは足りず、海賊狩りが要る水準)
+	{"id": 1, "name": "潮鳴りの島",   "fame_req": 26,   "price_mult": 1.6, "pos": Vector3(900, 0, -300),  "spawn": ["bonito","squid","mackerel"], "lords": ["whale","walrus"]},   # #57再: 元の距離に戻す
 	# #190: 3つ目の島。砂漠とわずかな緑地。近海は常に夜(weather="night")
-	{"id": 2, "name": "月下の島",     "fame_req": 36,  "price_mult": 2.0, "pos": Vector3(1700, 0, 200),  "spawn": ["squid","octopus","bonito"], "lords": ["aspidochelone","legion"], "weather": "night"},
+	{"id": 2, "name": "月下の島",     "fame_req": 70,  "price_mult": 2.0, "pos": Vector3(1700, 0, 200),  "spawn": ["squid","octopus","bonito"], "lords": ["aspidochelone","legion"], "weather": "night"},
 	# #190: 月下の島の追加に伴い、嵐越え・果ては従来よりさらに遠方へ。#191/#192: 近海の天候演出
-	{"id": 3, "name": "嵐越えの島",   "fame_req": 60,  "price_mult": 2.4, "pos": Vector3(2600, 0, 900),  "spawn": ["octopus","squid","bonito"], "lords": ["hydra","quetzal"], "weather": "storm"},
-	{"id": 4, "name": "果ての島",     "fame_req": 155,  "price_mult": 3.6, "pos": Vector3(3600, 0, 300), "spawn": ["octopus","bonito"], "lords": ["ghost","leviathan"], "weather": "blizzard"},   # #187: 幽霊船はレヴィアタンの上(先に戦う想定)
+	{"id": 3, "name": "嵐越えの島",   "fame_req": 135,  "price_mult": 2.4, "pos": Vector3(2600, 0, 900),  "spawn": ["octopus","squid","bonito"], "lords": ["hydra","quetzal"], "weather": "storm"},
+	{"id": 4, "name": "果ての島",     "fame_req": 235,  "price_mult": 3.6, "pos": Vector3(3600, 0, 300), "spawn": ["octopus","bonito"], "lords": ["ghost","leviathan"], "weather": "blizzard"},   # #187: 幽霊船はレヴィアタンの上(先に戦う想定)
 ]
 
 func island(idx: int) -> Dictionary:
