@@ -12,6 +12,7 @@ var _toast_box: VBoxContainer   # #160: トーストを縦に積んで重なら�
 
 var _fleet_tab: Button   # #196: 編成タブ(潮鳴りの島以降だけ表示)
 var _scroll: ScrollContainer   # #211: 画面サイズに追従させる
+var _img_popup: Control        # #211再2: 挿絵の拡大表示
 
 func _ready() -> void:
 	layer = 20
@@ -176,6 +177,7 @@ func _refresh_header() -> void:
 		GameState.used_hold(), GameState.max_hold()]
 
 func _clear() -> void:
+	_close_image_popup()   # #211再2
 	for c in content.get_children():
 		c.queue_free()
 
@@ -528,6 +530,7 @@ func show_travel() -> void:
 # ---------------- 編成(#196) ----------------
 const FORMATION_NAMES := {
 	"line": "横並び", "column": "縦並び", "vee": "V字型", "inv_vee": "逆V字型", "echelon": "斜線陣",
+	"ring": "輪形陣",   # #196再8
 }
 
 func show_fleet() -> void:
@@ -714,9 +717,62 @@ func _portrait(id: String, h: float) -> Control:
 		# ウインドウを広げた際に挿絵が巨大化してしまう。指定サイズを最小として扱わせる。
 		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tr.custom_minimum_size = Vector2(h * 1.7, h)
+		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		holder.add_child(tr)
+		# #211再2: 挿絵をクリックすると拡大表示する
+		holder.mouse_filter = Control.MOUSE_FILTER_STOP
+		holder.tooltip_text = "クリックで拡大"
+		var tex_path := path
+		holder.gui_input.connect(func(ev: InputEvent):
+			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+				_show_image_popup(tex_path))
 	holder.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	return holder
+
+# #211再2: 挿絵の拡大表示(どこかをクリック/Escで閉じる)
+func _show_image_popup(path: String) -> void:
+	if path == "" or not ResourceLoader.exists(path):
+		return
+	if _img_popup:
+		_img_popup.queue_free()
+	_img_popup = Control.new()
+	_img_popup.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_img_popup.mouse_filter = Control.MOUSE_FILTER_STOP
+	_img_popup.z_index = 100
+	_root.add_child(_img_popup)
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.82)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_img_popup.add_child(dim)
+	var cc := CenterContainer.new()
+	cc.set_anchors_preset(Control.PRESET_FULL_RECT)
+	cc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_img_popup.add_child(cc)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 10)
+	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cc.add_child(vb)
+	var big := TextureRect.new()
+	big.texture = load(path)
+	big.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	big.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	big.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var vp := get_viewport().get_visible_rect().size
+	big.custom_minimum_size = Vector2(minf(vp.x * 0.8, 900.0), minf(vp.y * 0.75, 620.0))
+	vb.add_child(big)
+	var hint := _p("クリックで閉じる")
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(hint)
+	_img_popup.gui_input.connect(func(ev: InputEvent):
+		if ev is InputEventMouseButton and ev.pressed:
+			_close_image_popup())
+
+func _close_image_popup() -> void:
+	if _img_popup:
+		_img_popup.queue_free()
+		_img_popup = null
 
 func _h(t: String, sz: int) -> Label:
 	var l := Label.new()

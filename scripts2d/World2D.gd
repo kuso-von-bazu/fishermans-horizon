@@ -963,6 +963,8 @@ const FORMATION_OFFSETS := {
 	"vee":     [Vector2(-80, 80), Vector2(80, 80), Vector2(-155, 160), Vector2(155, 160)],    # V字型(後方へ広がる)
 	"inv_vee": [Vector2(-45, -95), Vector2(45, -95), Vector2(-90, -190), Vector2(90, -190)],  # 逆V字型(#196再2: 角度を急に)
 	"echelon": [Vector2(-80, 75), Vector2(-160, 150), Vector2(-240, 225), Vector2(-320, 300)],# 斜線陣
+	# #196再8: 輪形陣。旗艦を中心に僚艦が等間隔で取り囲む
+	"ring":    [Vector2(0, -115), Vector2(115, 0), Vector2(0, 115), Vector2(-115, 0)],
 }
 
 func _current_formation() -> String:
