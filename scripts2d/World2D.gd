@@ -608,7 +608,8 @@ func _spawn_enemy() -> void:
 		# #197: 先の島ほど、海賊が2〜3隻の船団を組んで現れる(単独のこともある)
 		var pos_p := _ring_pos(70, 150)
 		for pid in _pirate_group(id, isle):
-			_make_enemy("pirate", pid, pos_p + Vector2.RIGHT.rotated(randf() * TAU) * randf_range(60.0, 170.0))
+			# #197再2: 海賊船同士の距離を少し開ける
+			_make_enemy("pirate", pid, pos_p + Vector2.RIGHT.rotated(randf() * TAU) * randf_range(170.0, 330.0))
 		return
 	elif roll < 0.38:
 		kind = "mob"
@@ -622,7 +623,7 @@ func _spawn_enemy() -> void:
 			var king := _make_enemy("pirate", "king", kpos)
 			var escort_ids := _king_group(isle)
 			for i in escort_ids.size():
-				var e := _make_enemy("pirate", str(escort_ids[i]), kpos + Vector2.RIGHT.rotated(randf() * TAU) * randf_range(90.0, 200.0))
+				var e := _make_enemy("pirate", str(escort_ids[i]), kpos + Vector2.RIGHT.rotated(randf() * TAU) * randf_range(200.0, 360.0))
 				e.is_escort = true   # 海賊王と一緒に行動させる(上限・デスポーン免除)
 				king.escorts.append(e)
 			GameState.notice.emit("海賊王の旗艦が現れた!" if escort_ids.is_empty() else "海賊王の船団が現れた!")

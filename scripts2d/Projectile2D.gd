@@ -292,8 +292,16 @@ func _on_hit(body: Node) -> void:
 		queue_free()
 	elif not from_player and body.is_in_group("fleet_ship"):
 		# #196: 敵弾は僚艦にも当たる(装甲0でその艦だけ離脱)
-		if body.has_method("take_damage"):
+		# #215: 旗艦と同様に炎上・毒のスリップも入る
+		if fire and body.has_method("ignite"):
 			body.take_damage(_eff_dmg())
+			body.ignite(4.0)
+		elif poison_only and body.has_method("apply_poison"):
+			body.apply_poison(6.0, 4.0)   # ダゴンの弾は直接ダメージ無し
+		elif body.has_method("take_damage"):
+			body.take_damage(_eff_dmg())
+			if burn_chance > 0.0 and randf() < burn_chance and body.has_method("ignite"):
+				body.ignite(4.0)
 		Audio.play("sfx_hit", -10.0)
 		queue_free()
 	elif from_player and body.is_in_group("fleet_ship"):

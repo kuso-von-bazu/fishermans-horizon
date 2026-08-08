@@ -102,8 +102,9 @@ func _build_splash() -> void:
 	_splash.scale_amount_min = 2.5
 	_splash.scale_amount_max = 6.0
 	var g := Gradient.new()
-	g.set_color(0, Color(0.95, 1.0, 1.0, 0.9))
-	g.set_color(1, Color(0.6, 0.85, 0.95, 0.0))
+	# #213再: 薄い水色
+	g.set_color(0, Color(0.68, 0.90, 0.98, 0.9))
+	g.set_color(1, Color(0.72, 0.93, 1.0, 0.0))
 	_splash.color_ramp = g
 	_splash.z_index = 3
 	add_child(_splash)

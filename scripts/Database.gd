@@ -30,7 +30,7 @@ var combat_mobs := {
 	"starfish":      {"name": "オニヒトデ",     "hp": 620, "dmg": 20, "cap": 5, "price": 640, "ranged": true,  "aerial": false, "speed": 6.0,  "atk_cd": 1.7, "range_mult": 1.7, "spin": 2.2, "scatter": 12, "star_shot": true, "way": 0, "shot_dmg_mult": 0.42, "shot_speed_mult": 0.75, "death_shot": {"count": 20, "mode": "radial", "shape": "star", "speeds": [1.0], "dmg_mult": 0.35}, "color": Color(0.75,0.3,0.35)},
 	"zaratan":       {"name": "ザラタン",       "hp": 900, "dmg": 28, "cap": 6, "price": 720, "ranged": false, "aerial": false, "speed": 11.0, "atk_cd": 1.9, "reach": 3.0, "wave_melee": true, "face_left": true, "death_shot": {"count": 1, "mode": "aim", "dmg_mult": 0.7}, "color": Color(0.55,0.35,0.25)},
 	# #71: 嵐越え以降。merman=群れ+俊敏+好戦的, charybdis=渦潮+確率回避。#98再: マーマンHP350
-	"merman":        {"name": "マーマン",       "hp": 350, "dmg": 16, "cap": 2, "price": 304,  "ranged": false, "aerial": false, "speed": 13.0, "group": 3, "aggro": 1400.0, "face_left": true, "color": Color(0.25,0.55,0.4)},
+	"merman":        {"name": "マーマン",       "hp": 350, "dmg": 16, "cap": 2, "price": 304,  "ranged": false, "aerial": false, "speed": 13.0, "size_mult": 0.8, "group": 3, "aggro": 1400.0, "face_left": true, "color": Color(0.25,0.55,0.4)},
 	# #71再: カリュブディスの能力を全体的に強化
 	"charybdis":     {"name": "カリュブディス", "hp": 1050, "dmg": 31, "cap": 8, "price": 960, "ranged": true,  "aerial": false, "speed": 11.0,  "dodge": 0.20, "entangle": true, "aim_color": Color(0.12,0.18,0.48), "death_shot": {"count": 18, "mode": "shotgun", "spread": 0.5, "speeds": [0.55, 0.95, 1.45], "dmg_mult": 0.22, "shape": "grain", "color": Color(0.12,0.18,0.48)}, "color": Color(0.15,0.3,0.45)},
 	# #71: 嵐越え以降。amphiptere=空中(魚雷ロック不可)+近接のみ+高速で追尾(竜×蛇の有翼)
@@ -192,9 +192,9 @@ var ships := {
 	"corvette": {"name": "コルベット",     "food": 200, "hold": 40,  "armor": 480,  "slots": 4, "range": 2, "speed": 12.5, "price": 32000,  "trade": 12000},   # #190: 月下の島で追加
 	"hunter_h": {"name": "猟特化フリゲート","food": 170, "hold": 32,  "armor": 600,  "slots": 4, "range": 3, "speed": 13.5, "price": 50000,  "trade": 18000},
 	"hauler":   {"name": "大型運搬艦",     "food": 240, "hold": 70,  "armor": 720,  "slots": 4, "range": 3, "speed": 11.0, "price": 50000,  "trade": 18000},
-	"dread":    {"name": "弩級戦艦",       "food": 220, "hold": 60,  "armor": 1300, "slots": 4, "range": 4, "speed": 13.0, "price": 110000, "trade": 40000},
+	"dread":    {"name": "弩級戦艦",       "food": 350, "hold": 60,  "armor": 1300, "slots": 4, "range": 4, "speed": 13.0, "price": 110000, "trade": 40000},
 	# #151: 巡洋戦艦。弩級と対。低装甲・高速・中型・後退が得意(reverse=後退速度倍率)
-	"cruiser":  {"name": "巡洋戦艦",       "food": 200, "hold": 45,  "armor": 1000, "slots": 4, "range": 4, "speed": 14.5, "price": 110000, "trade": 40000, "reverse": 0.9},
+	"cruiser":  {"name": "巡洋戦艦",       "food": 300, "hold": 45,  "armor": 1000, "slots": 4, "range": 4, "speed": 14.5, "price": 110000, "trade": 40000, "reverse": 0.9},
 }
 
 # ---------------------------------------------------------------------------

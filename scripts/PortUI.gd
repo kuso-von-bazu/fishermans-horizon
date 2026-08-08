@@ -127,8 +127,9 @@ func _show_toast(text: String) -> void:
 		_toast_box = VBoxContainer.new()
 		_toast_box.anchor_left = 0.0
 		_toast_box.anchor_right = 1.0
-		_toast_box.anchor_top = 0.78
-		_toast_box.anchor_bottom = 0.92
+		# #211再3: 出港ボタン(画面下部)と重ならないよう上へずらす
+		_toast_box.anchor_top = 0.58
+		_toast_box.anchor_bottom = 0.76
 		_toast_box.alignment = BoxContainer.ALIGNMENT_END
 		_toast_box.add_theme_constant_override("separation", 4)
 		_toast_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -562,6 +563,14 @@ func show_fleet() -> void:
 			row.add_child(_btn("旗艦と交代", func():
 				GameState.fleet_swap(0, idx)
 				show_fleet()))
+			# #196再10: 2〜5番艦同士の入れ替え
+			for j in range(1, GameState.fleet.size()):
+				if j == idx:
+					continue
+				var other_i: int = j
+				row.add_child(_btn("%sと交代" % GameState.fleet_label(j), func():
+					GameState.fleet_swap(idx, other_i)
+					show_fleet()))
 			row.add_child(_btn("船団から外す", func():
 				GameState.fleet_remove(idx)
 				show_fleet()))

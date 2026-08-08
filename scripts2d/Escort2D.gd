@@ -23,6 +23,12 @@ var _sprays: Array = []
 var _half_w: float = 30.0
 var _label: Label
 var _ram_cd: float = 0.0
+var _bump_cd: float = 0.0     # #193再3: 障害物の接触ダメージのクールダウン
+var _burn_t: float = 0.0      # #215: 炎上(旗艦と同様)
+var _burn_dps: float = 0.0
+var _poison_t: float = 0.0    # #215: 毒のスリップ
+var _poison_dps: float = 0.0
+var _flame: CPUParticles2D
 var _dead: bool = false
 var player: Node2D
 
@@ -131,6 +137,26 @@ func _build_visual() -> void:
 		spray.color_ramp = spr_ramp
 		add_child(spray)
 		_sprays.append(spray)
+	# #215: 炎上アニメ(炎上中のみ噴く)
+	_flame = CPUParticles2D.new()
+	_flame.amount = 18
+	_flame.lifetime = 0.7
+	_flame.emitting = false
+	_flame.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	_flame.emission_rect_extents = Vector2(12.0 * sc, 20.0 * sc)
+	_flame.direction = Vector2(0, -1)
+	_flame.gravity = Vector2(0, -80)
+	_flame.spread = 20.0
+	_flame.initial_velocity_min = 20.0
+	_flame.initial_velocity_max = 50.0
+	_flame.scale_amount_min = 2.0
+	_flame.scale_amount_max = 5.0
+	var framp := Gradient.new()
+	framp.set_color(0, Color(1.0, 0.85, 0.35, 0.9))
+	framp.set_color(1, Color(0.7, 0.15, 0.05, 0.0))
+	_flame.color_ramp = framp
+	_flame.z_index = 5
+	add_child(_flame)
 	# 艦名ラベル
 	var lbl := Label.new()
 	lbl.text = GameState.fleet_label(fleet_index)
@@ -205,6 +231,60 @@ func _draw() -> void:
 		var col := Color(1, 0.2, 0.15).lerp(Color(0.35, 1.0, 0.4), frac)
 		draw_arc(Vector2.ZERO, r, -PI / 2, -PI / 2 + TAU * frac, 40, col, 5.0)
 
+# #215: 旗艦と同様に炎上する
+func ignite(dps := 4.0) -> void:
+	if _dead or GameState.docking_locked:
+		return
+	_burn_t = 4.5
+	_burn_dps = dps
+	GameState.notice.emit("%sが炎上!" % GameState.fleet_label(fleet_index))
+
+# #215: ダゴンの毒などのスリップダメージ
+func apply_poison(dur: float, dps: float) -> void:
+	if _dead or GameState.docking_locked:
+		return
+	if _poison_t <= 0.0:
+		GameState.notice.emit("%sが毒液を浴びた!" % GameState.fleet_label(fleet_index))
+	_poison_t = maxf(_poison_t, dur)
+	_poison_dps = dps
+
+# 炎上・毒の時間経過(敏捷カットは掛からない=旗艦のtick_slipsと同じ扱い)
+func _tick_slips(delta: float) -> void:
+	var e: Dictionary = GameState.fleet[fleet_index]
+	var dmg := 0.0
+	if _burn_t > 0.0:
+		_burn_t -= delta
+		dmg += _burn_dps * delta
+	if _poison_t > 0.0:
+		_poison_t -= delta
+		dmg += _poison_dps * delta
+	if dmg > 0.0:
+		e.armor = maxf(float(e.armor) - dmg, 0.0)
+		GameState.stats_changed.emit()
+		queue_redraw()
+		if float(e.armor) <= 0.0:
+			_detach()
+	if _flame:
+		_flame.emitting = _burn_t > 0.0
+
+# #193再3: 障害物に接触すると旗艦と同様に小ダメージ
+func _check_obstacle_bump() -> void:
+	if _bump_cd > 0.0 or GameState.docking_locked or _dead:
+		return
+	for i in get_slide_collision_count():
+		var c := get_slide_collision(i)
+		var o := c.get_collider()
+		if o == null or not (o is Node) or not (o as Node).is_in_group("obstacle"):
+			continue
+		var maxa := float(Database.ships[ship_id].armor)
+		var impact: float = clampf(player.velocity.length() / maxf(player.max_speed, 1.0), 0.0, 1.0)
+		var dmg: float = clampf(maxa * 0.012, 3.0, 20.0) * (0.6 + 0.8 * impact)
+		take_damage(dmg)
+		var nm := "流氷" if str(o.get("kind")) == "ice" else "岩礁"
+		GameState.notice.emit("%sが%sに接触! %d ダメージ" % [GameState.fleet_label(fleet_index), nm, int(dmg)])
+		_bump_cd = 1.2
+		return
+
 func armor() -> float:
 	return float(GameState.fleet[fleet_index].armor)
 
@@ -233,6 +313,9 @@ func _physics_process(delta: float) -> void:
 	for i in _cooldowns.size():
 		if _cooldowns[i] > 0.0:
 			_cooldowns[i] -= delta
+	if _bump_cd > 0.0:
+		_bump_cd -= delta
+	_tick_slips(delta)   # #215: 炎上・毒
 	# #196再: 独自に動かず、旗艦の操作(位置・向き)にそのまま追従する。
 	# 陣形上の相対位置を旗艦の向きで回した点を目標にし、そこへ剛体的に張り付く。
 	var target: Vector2 = player.global_position + slot_offset.rotated(player.rotation)
@@ -249,6 +332,7 @@ func _physics_process(delta: float) -> void:
 		_label.rotation = -rotation
 		_label.position = Vector2(-60, -_half_h - 34).rotated(-rotation)
 	move_and_slide()
+	_check_obstacle_bump()   # #193再3
 	var moving: bool = player.velocity.length() > player.max_speed * 0.15
 	var reversing: bool = player.velocity.dot(player.forward()) < -1.0
 	if _wake:
