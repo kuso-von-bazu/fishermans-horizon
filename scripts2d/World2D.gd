@@ -700,7 +700,11 @@ func _king_alive() -> bool:
 
 # #62: 主の取り巻き。戦闘モブ2体を主の周囲に出現させる(#67: 上限・デスポーン免除)
 # #119再: レヴィアタンはザッハーク/ティアマット/ダゴンから2種。#120: マーマンは取り巻きにしない
-func _spawn_escorts(center: Vector2, lord_id: String = "") -> Array:
+# #209再: tier で取り巻きの選定元(島index)を指定できる。既定は現在の海域。
+# ボスラッシュでは「そのボスが本来出現する島」の海域から選ぶ。
+func _spawn_escorts(center: Vector2, lord_id: String = "", tier: int = -1) -> Array:
+	if tier < 0:
+		tier = GameState.current_island
 	var out: Array = []
 	var ids: Array = []
 	if bool(Database.lords.get(lord_id, {}).get("no_escort", false)):
@@ -714,10 +718,10 @@ func _spawn_escorts(center: Vector2, lord_id: String = "") -> Array:
 		ids = ["charybdis", "starfish"]
 	else:
 		for i in 2:
-			var mid: String = Database.pick_mob(GameState.current_island)
+			var mid: String = Database.pick_mob(tier)
 			var guard := 0
 			while mid == "merman" and guard < 8:   # #120: マーマン除外
-				mid = Database.pick_mob(GameState.current_island)
+				mid = Database.pick_mob(tier)
 				guard += 1
 			if mid == "merman":
 				mid = "wyrm"
@@ -904,7 +908,9 @@ func _br_spawn_next() -> void:
 			e.is_escort = true
 			boss.escorts.append(e)
 	else:
-		boss.escorts = _spawn_escorts(pos, str(spec.id))   # 本編と同じ取り巻き
+		# #209再: 取り巻きは、そのボスが本来出現する島の海域のモブから選ぶ
+		var home: int = int(Database.lords[str(spec.id)].island)
+		boss.escorts = _spawn_escorts(pos, str(spec.id), home)
 	_br_boss = boss
 	_br_active = true
 	var nm: String = Database.lords[str(spec.id)].name if str(spec.kind) == "lord" else Database.pirates[str(spec.id)].name
