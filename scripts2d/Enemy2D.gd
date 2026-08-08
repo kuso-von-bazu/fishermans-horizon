@@ -57,7 +57,9 @@ func setup(p_kind: String, p_id: String) -> void:
 		"mob": def = Database.combat_mobs[id]
 		"pirate": def = Database.pirates[id]
 		"lord": def = Database.lords[id]
-	hp = float(def.hp)
+	# #202: 出現する海域に応じて敵(主・戦闘モブ・海賊・海賊王)のHPを一律で引き上げる。
+	# 1の位は切り上げ(=10の倍数へ繰り上げ)。
+	hp = _scaled_hp(float(def.hp))
 	max_hp = hp
 	dmg = float(def.dmg)
 	ranged = bool(def.get("ranged", false))
@@ -65,7 +67,7 @@ func setup(p_kind: String, p_id: String) -> void:
 	# #73: 海賊王は出現海域が先の島ほど強化(hp/dmg)
 	if id == "king":
 		var tier := 1.0 + 0.4 * float(GameState.current_island)
-		hp *= tier
+		hp = ceilf(hp * tier / 10.0) * 10.0
 		max_hp = hp
 		dmg *= (1.0 + 0.2 * float(GameState.current_island))
 	var base_speed: float = float(def.get("speed", 5.0 if kind == "lord" else 7.0))
@@ -83,6 +85,14 @@ func setup(p_kind: String, p_id: String) -> void:
 	# #55: 海賊は高頻度射撃。#70: ワイアーム等は def の atk_cd を優先
 	var cd_default := 0.55 if kind == "pirate" else 1.4
 	attack_cd = float(def.get("atk_cd", cd_default))
+
+# #202: 海域ごとのHP倍率(始まり=等倍 / 潮鳴り1.5 / 月下1.9 / 嵐越え2.7 / 果て3.3)。
+# 1の位は切り上げて10の倍数にする。
+const HP_TIER_MULT := [1.0, 1.5, 1.9, 2.7, 3.3]
+
+func _scaled_hp(base: float) -> float:
+	var m: float = HP_TIER_MULT[clampi(GameState.current_island, 0, HP_TIER_MULT.size() - 1)]
+	return ceilf(base * m / 10.0) * 10.0
 
 func _ready() -> void:
 	add_to_group("enemy")

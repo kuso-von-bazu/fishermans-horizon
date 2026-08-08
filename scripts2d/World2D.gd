@@ -612,7 +612,8 @@ const PIRATE_RANKS := ["raider", "corsair", "dread"]
 
 func _pirate_group(top_id: String, isle: int) -> Array:
 	var out: Array = [top_id]
-	var fleet_rate: float = [0.0, 0.25, 0.35, 0.45, 0.55][clampi(isle, 0, 4)]
+	# #197再: 単独出現の確率を上げ、船団を組む確率を下げる
+	var fleet_rate: float = [0.0, 0.12, 0.18, 0.24, 0.30][clampi(isle, 0, 4)]
 	if randf() >= fleet_rate:
 		return out                      # 単独で現れる
 	var extra := 1 if randf() < (0.65 - 0.1 * float(isle)) else 2   # 先の島ほど3隻になりやすい
@@ -623,8 +624,8 @@ func _pirate_group(top_id: String, isle: int) -> Array:
 
 # 海賊王の船団(海賊王を除く随伴艦)。2〜4隻=随伴0〜3隻
 func _king_group(isle: int) -> Array:
-	if randf() < 0.45:
-		return []                       # 単独の海賊王
+	if randf() < 0.70:
+		return []                       # #197再: 単独の海賊王の確率を上げる
 	var top := PIRATE_RANKS.find(["raider", "corsair", "dread", "dread", "dread"][clampi(isle, 0, 4)])
 	var n := randi_range(1, 3)
 	var out: Array = []

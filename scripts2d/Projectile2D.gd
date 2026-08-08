@@ -127,30 +127,31 @@ func _build_visual() -> void:
 	elif homing:
 		# 魚雷: 細長いカプセル型(尾びれ付き)・くすんだ緑
 		poly = PackedVector2Array([
-			Vector2(-3, -9), Vector2(0, -12), Vector2(3, -9), Vector2(3, 7),
-			Vector2(6, 12), Vector2(0, 9), Vector2(-6, 12), Vector2(-3, 7)])
+			Vector2(-3.6, -10.8), Vector2(0, -14.4), Vector2(3.6, -10.8), Vector2(3.6, 8.4),
+			Vector2(7.2, 14.4), Vector2(0, 10.8), Vector2(-7.2, 14.4), Vector2(-3.6, 8.4)])   # #78再: 少しだけ大きく
 		mcol = Color(0.42, 0.66, 0.46) if from_player else Color(0.55, 0.66, 0.34)
-		r = 5.0
+		r = 6.0
 	elif falloff:
-		# ガトリング: 細い曳光弾・くすんだ琥珀
+		# #78再: ガトリング=細長い銃弾の形(先端が尖り、後端は平ら)。大きさは従来と同程度
 		poly = PackedVector2Array([
-			Vector2(-1.6, -8), Vector2(1.6, -8), Vector2(1.6, 8), Vector2(-1.6, 8)])
+			Vector2(0, -9.0), Vector2(1.5, -5.5), Vector2(1.7, 6.5), Vector2(1.2, 8.0),
+			Vector2(-1.2, 8.0), Vector2(-1.7, 6.5), Vector2(-1.5, -5.5)])
 		mcol = Color(0.82, 0.74, 0.42) if from_player else Color(0.78, 0.6, 0.38)
 		r = 3.0
 	elif debuff:
 		# 銛: 長い柄+返しのある穂先・くすんだ青緑
 		poly = PackedVector2Array([
-			Vector2(0, -13), Vector2(4, -6.5), Vector2(1.4, -6.5), Vector2(1.4, 11),
-			Vector2(-1.4, 11), Vector2(-1.4, -6.5), Vector2(-4, -6.5)])
+			Vector2(0, -15.5), Vector2(4.8, -7.8), Vector2(1.7, -7.8), Vector2(1.7, 13.2),
+			Vector2(-1.7, 13.2), Vector2(-1.7, -7.8), Vector2(-4.8, -7.8)])   # #78再: 少しだけ大きく
 		mcol = Color(0.45, 0.62, 0.66)
-		r = 4.5
+		r = 5.4
 	else:
 		# 砲弾: 丸弾・くすんだ赤茶(自機)/暗赤(敵)
 		for i in 12:
 			var a := TAU * i / 12.0
-			poly.append(Vector2(cos(a), sin(a)) * 6.0)
+			poly.append(Vector2(cos(a), sin(a)) * 7.2)   # #78再: 少しだけ大きく
 		mcol = Color(0.72, 0.45, 0.32) if from_player else Color(0.6, 0.3, 0.28)
-		r = 6.0
+		r = 7.2
 	# #71再: bcolor指定があれば形状によらず色を上書き(紺色のカリュブディス弾など)
 	if bcolor.a > 0.0:
 		mcol = bcolor

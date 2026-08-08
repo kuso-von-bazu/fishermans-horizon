@@ -258,7 +258,7 @@ func show_tavern() -> void:
 		content.add_child(hrow)
 	if GameState.current_island >= 3:   # #190: 月下の島(2)は潮鳴りまでと同じ雇用条件
 		content.add_child(_p("※この港は契約金3倍(水夫を除く)だが、他の港より格段に強力なクルーを雇用できる"))
-	content.add_child(_p("効果: 体力=燃料減少↓ 敏捷=被ダメ減 射撃=威力↑ 知力=デバフ強化 視力=ロック距離↑"))
+	content.add_child(_p("効果: 体力=燃料減少↓ 敏捷=被ダメ減 射撃=威力↑ 知力=デバフ強化 視力=ソナー範囲↑"))
 
 	content.add_child(_p(""))
 	content.add_child(_h("この近海の主", 18))

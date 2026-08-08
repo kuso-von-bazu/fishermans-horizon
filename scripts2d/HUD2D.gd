@@ -433,7 +433,7 @@ func _draw_sonar() -> void:
 	sonar.draw_arc(center, r, 0, TAU, 48, Color(0.3, 0.8, 0.9, 0.6), 2.0)
 	if _player_node == null:
 		return
-	var range_px := 220.0 * 6.0
+	var range_px := 220.0 * 6.0 * GameState.sonar_range_mult()   # #201: 視力でソナー範囲が広がる
 	var pp := _player_node.global_position
 	var rot := _player_node.rotation
 	# 東西南北(#18): 自機の向きが上
