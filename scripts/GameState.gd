@@ -830,6 +830,24 @@ func move_crew(from_idx: int, member: Dictionary, to_idx: int) -> bool:
 	stats_changed.emit()
 	return true
 
+# #196再3: 満員の船へ乗り換えるとき、相手のクルーと入れ替える
+func swap_crew(from_idx: int, a: Dictionary, to_idx: int, b: Dictionary) -> bool:
+	if from_idx == to_idx or from_idx < 0 or to_idx < 0:
+		return false
+	if from_idx >= fleet.size() or to_idx >= fleet.size():
+		return false
+	var ca: Array = fleet[from_idx].crew
+	var cb: Array = fleet[to_idx].crew
+	if not ca.has(a) or not cb.has(b):
+		return false
+	ca.erase(a)
+	cb.erase(b)
+	ca.append(b)
+	cb.append(a)
+	notice.emit("%s と %s を交代した" % [a.name, b.name])
+	stats_changed.emit()
+	return true
+
 # 武器を船同士で交換(スロット単位)
 func swap_weapon(a_idx: int, a_slot: int, b_idx: int, b_slot: int) -> void:
 	var wa: Array = fleet[a_idx].weapons

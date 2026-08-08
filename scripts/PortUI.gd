@@ -537,9 +537,29 @@ func show_fleet() -> void:
 				var to := j
 				var mem: Dictionary = m
 				crow.add_child(_btn("→%s" % GameState.fleet_label(to), func():
-					GameState.move_crew(idx, mem, to)
+					# #196再3: 乗り換え先が満員なら「誰と交代するか」を聞く
+					if GameState.fleet[to].crew.size() >= GameState.CREW_MAX:
+						_crew_swap = {"from": idx, "member": mem, "to": to}
+					else:
+						GameState.move_crew(idx, mem, to)
 					show_fleet()))
 			content.add_child(crow)
+			# 交代相手の選択(この乗員を移そうとしていて、行き先が満員のとき)
+			if not _crew_swap.is_empty() and _crew_swap.member == m:
+				var tgt_i: int = int(_crew_swap.to)
+				var srow2 := HBoxContainer.new()
+				srow2.add_theme_constant_override("separation", 6)
+				srow2.add_child(_p("      %s は満員です。交代する相手を選んでください:" % GameState.fleet_label(tgt_i)))
+				for om in GameState.fleet[tgt_i].crew.duplicate():
+					var other: Dictionary = om
+					srow2.add_child(_btn("%s(%s)" % [om.name, GameState.jobs[om.job].name], func():
+						GameState.swap_crew(int(_crew_swap.from), _crew_swap.member, tgt_i, other)
+						_crew_swap = {}
+						show_fleet()))
+				srow2.add_child(_btn("やめる", func():
+					_crew_swap = {}
+					show_fleet()))
+				content.add_child(srow2)
 		# 武器スロット(他の艦と交換)
 		var wrow := HBoxContainer.new()
 		wrow.add_theme_constant_override("separation", 6)
@@ -609,6 +629,7 @@ func show_fleet() -> void:
 		content.add_child(frow)
 
 var _weapon_pick: Dictionary = {}   # #196: 武器交換の選択中スロット
+var _crew_swap: Dictionary = {}     # #196再3: 満員の船へ乗り換える際の交代待ち
 
 func _stat_bb(label: String, v: int) -> String:
 	if v >= GameState.STAT_MAX:

@@ -399,6 +399,7 @@ func _physics_process(delta: float) -> void:
 	if _facing_cd > 0.0:
 		_facing_cd -= delta   # #187再: 向き切替クールダウン
 	_tick_burst(delta)        # #65再2/#72再: 一定でないタイミングのバラマキ弾
+	_update_line_of_fire()    # #193再3: 島・障害物で射線が遮られていないか
 	if _debuff_t > 0.0:
 		_debuff_t -= delta
 		if _debuff_t <= 0.0:
@@ -470,6 +471,9 @@ func _physics_process(delta: float) -> void:
 		elif bool(def.get("zigzag", false)):
 			var perp := move_dir.rotated(PI / 2)
 			move_dir = (move_dir + perp * sin(_bob * 1.8) * float(def.get("zigzag_amp", 4.2))).normalized()   # #149再2: 振幅はdefで調整
+		# #193再3: 射線が島・障害物で遮られている遠隔敵は、横へ回り込んで射線を通す
+		if ranged and _cover_blocked:
+			move_dir = _flank_dir(move_dir)
 		# #150: 地上の敵は島を迂回して追う(島から離れる向きを混ぜる)
 		if not aerial:
 			move_dir = _avoid_islands(move_dir)
@@ -577,6 +581,8 @@ func _attack(delta: float, dist: float) -> void:
 func _ranged_attack(is_fire: bool) -> void:
 	if GameState.docking_locked:
 		return   # #121: 寄港確定/寄港中は敵は遠隔攻撃をしない(紛らわしさ解消)
+	if _cover_blocked:
+		return   # #193再3: 島・障害物で射線が遮られている間は撃たない(回り込んでから撃つ)
 	var eff_dmg := dmg
 	if _debuff_kind == "atk":
 		eff_dmg *= 1.0 - 0.35 * clampf(_debuff_power, 0.0, 1.0)   # #91/#114
@@ -685,6 +691,8 @@ func _tick_burst(delta: float) -> void:
 		return
 	if player.global_position.distance_to(global_position) > attack_range * 1.15:
 		return
+	if _cover_blocked:
+		return   # #193再3: 射線が遮られている間は撃たない
 	# #65再: ケツァルは引き撃ちモードへ移行してからのみ撃つ
 	if bool(b.get("kite_only", false)) and not (_escorts_cleared() and hp / maxf(max_hp, 1.0) <= float(def.get("kite_hp", 1.0))):
 		return
@@ -782,6 +790,54 @@ func ignite_slip(amount: float) -> void:
 		sprite.modulate = Color(1.8, 0.9, 0.5)
 		var tw := create_tween()
 		tw.tween_property(sprite, "modulate", Color.WHITE, 0.3)
+
+# #193再3: 島や障害物で射線が遮られていないかを毎フレーム判定する。
+# 遮られている間、遠隔敵は撃たずに遮蔽物の横へ回り込む。
+var _cover_at: Vector2 = Vector2.ZERO
+var _cover_blocked: bool = false
+
+func _update_line_of_fire() -> void:
+	_cover_blocked = false
+	_cover_at = Vector2.ZERO
+	if not is_instance_valid(player) or not ranged:
+		return
+	var to: Vector2 = player.global_position - global_position
+	var dist := to.length()
+	if dist < 1.0:
+		return
+	var dir := to / dist
+	# 島(当たり判定の半径100)と障害物(実効半径)を見る
+	for isle in get_tree().get_nodes_in_group("island_body"):
+		if is_instance_valid(isle) and _segment_hits(isle.global_position, 100.0, dir, dist):
+			_cover_blocked = true
+			_cover_at = isle.global_position
+			return
+	for ob in get_tree().get_nodes_in_group("obstacle"):
+		if not is_instance_valid(ob):
+			continue
+		var orad: float = float(ob.get("radius")) if ob.get("radius") != null else 50.0
+		if _segment_hits(ob.global_position, orad * 0.8, dir, dist):
+			_cover_blocked = true
+			_cover_at = ob.global_position
+			return
+
+# 自分→プレイヤーの線分が、中心center・半径radiusの円と交差するか
+func _segment_hits(center: Vector2, radius: float, dir: Vector2, dist: float) -> bool:
+	var rel: Vector2 = center - global_position
+	var along := rel.dot(dir)
+	if along <= 0.0 or along >= dist:
+		return false          # 後方、またはプレイヤーより遠い
+	return absf(rel.cross(dir)) < radius
+
+# 遮蔽物の横へ回り込むための横方向ステアリング
+func _flank_dir(move_dir: Vector2) -> Vector2:
+	var away: Vector2 = global_position - _cover_at
+	if away.length() < 1.0:
+		return move_dir
+	var perp := away.rotated(PI / 2).normalized()
+	if move_dir.dot(perp) < 0.0:
+		perp = -perp          # 進行方向に近い側へ回り込む
+	return (move_dir + perp * 1.6).normalized()
 
 # #150: 島を迂回するステアリング。近い島から離れる+接線方向を混ぜて回り込む
 # #193再: 海上の障害物(岩礁/流氷)も同じ仕組みで迂回し、引っかかって動けなくなるのを防ぐ
