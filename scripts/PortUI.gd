@@ -47,7 +47,7 @@ func _build() -> void:
 	sb.border_width_bottom = 2
 	sb.border_color = Color(0.3, 0.6, 0.7)
 	panel.add_theme_stylebox_override("panel", sb)
-	panel.custom_minimum_size = Vector2(720, 540)
+	panel.custom_minimum_size = Vector2(1100, 620)   # #211再: 実際は _fit_panel で画面に合わせる
 	center.add_child(panel)
 	# #211: 画面が小さい場合もパネルが画面外へはみ出さないように追従させる
 	get_viewport().size_changed.connect(_fit_panel)
@@ -74,7 +74,7 @@ func _build() -> void:
 	vb.add_child(sep)
 
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(680, 330)
+	scroll.custom_minimum_size = Vector2(1060, 410)
 	# #211: 横スクロールを無効にしていたため、造船所など横に長い行があると
 	# パネル自体が画面幅を超えて広がり、フルスクリーンで右側が見切れていた。
 	# 自動横スクロールにすると、パネル幅は固定のまま行だけがスクロールする。
@@ -91,7 +91,9 @@ func _build() -> void:
 	sail.add_theme_color_override("font_color", Color(1, 1, 0.6))
 	vb.add_child(sail)
 
-# #211: パネルとスクロール領域を画面サイズに収める
+# #211再: 港のウインドウは画面の広さに合わせて大きくする。
+# 横に長い行(造船所・討伐記録など)も収まるので横スクロールは基本的に不要。
+# それでも収まらない場合だけ自動で横スクロールが出る(見切れは起きない)。
 func _fit_panel() -> void:
 	if panel == null:
 		return
@@ -99,8 +101,8 @@ func _fit_panel() -> void:
 	if vp == null:
 		return
 	var sz := vp.get_visible_rect().size
-	var w: float = minf(720.0, maxf(360.0, sz.x - 48.0))
-	var h: float = minf(540.0, maxf(300.0, sz.y - 48.0))
+	var w: float = clampf(sz.x - 40.0, 360.0, 1680.0)
+	var h: float = clampf(sz.y - 40.0, 300.0, 960.0)
 	panel.custom_minimum_size = Vector2(w, h)
 	if _scroll:
 		_scroll.custom_minimum_size = Vector2(w - 40.0, h - 210.0)
@@ -708,8 +710,12 @@ func _portrait(id: String, h: float) -> Control:
 		var tr := TextureRect.new()
 		tr.texture = load(path)
 		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		# #211再: expand_mode を指定しないと TextureRect の最小サイズが元画像サイズになり、
+		# ウインドウを広げた際に挿絵が巨大化してしまう。指定サイズを最小として扱わせる。
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tr.custom_minimum_size = Vector2(h * 1.7, h)
 		holder.add_child(tr)
+	holder.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	return holder
 
 func _h(t: String, sz: int) -> Label:

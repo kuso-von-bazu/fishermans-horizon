@@ -1390,6 +1390,7 @@ func _maybe_screenshot() -> void:
 	var want_food := false
 	var want_tavern := false
 	var want_bestiary := false
+	var want_yard := false     # #211再: 造船所の撮影
 	var want_guide := false
 	var want_bullets := false
 	var want_isle := 0        # #190: 撮影する海域(島index)
@@ -1403,6 +1404,7 @@ func _maybe_screenshot() -> void:
 			want_food = a.find("food") != -1
 			want_tavern = a.find("tavern") != -1
 			want_bestiary = a.find("bestiary") != -1
+			want_yard = a.find("yard") != -1
 			want_guide = a.find("guide") != -1
 			want_bullets = a.find("bullets") != -1
 			want_brwin = a.find("brwin") != -1   # #209: ボスラッシュ制覇画面
@@ -1490,10 +1492,17 @@ func _maybe_screenshot() -> void:
 			await get_tree().create_timer(1.0).timeout
 	elif want_port:
 		title.visible = false
+		if want_isle > 0:   # #211再: 先の島の港も撮影できるように
+			GameState.current_island = want_isle
+			GameState.unlocked_islands.assign(range(Database.islands.size()))
+			GameState.money = 999999
+			GameState.dock_reset()
 		phase = "dock"
 		port_ui.open()
 		if want_tavern:
 			port_ui.show_tavern()
+		if want_yard:
+			port_ui.show_shipyard()
 		if want_bestiary:   # #177: 討伐記録タブの確認(一部を討伐済みにして表示)
 			GameState.record_kill("mob", "narwhal")
 			GameState.record_kill("mob", "charybdis")

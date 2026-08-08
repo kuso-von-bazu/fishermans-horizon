@@ -906,7 +906,7 @@ func clear_fleet_damage() -> void:
 # 僚艦の離脱時: 旗艦の大破より低い確率でクルーを失う
 func detach_lose_crew(idx: int) -> String:
 	var c: Array = fleet[idx].crew
-	if c.is_empty() or randf() >= 0.22:   # 大破(50%)より大幅に低い
+	if c.is_empty() or randf() >= 0.35:   # #196再7: 22%→35%(旗艦の大破50%よりは低い)
 		return ""
 	var m: Dictionary = c[randi() % c.size()]
 	c.erase(m)
