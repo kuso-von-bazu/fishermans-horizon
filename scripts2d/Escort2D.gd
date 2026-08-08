@@ -293,7 +293,13 @@ func take_damage(amount: float) -> void:
 		return
 	var cut: float = minf(0.015 * GameState.crew_sum_of(fleet_index, "agi"), 0.40)
 	var e: Dictionary = GameState.fleet[fleet_index]
-	e.armor = maxf(float(e.armor) - amount * (1.0 - cut), 0.0)
+	var dealt := amount * (1.0 - cut)
+	e.armor = maxf(float(e.armor) - dealt, 0.0)
+	# #215再2: 旗艦(GameState.damage_player)と同じく、被弾時12%で炎上する
+	if amount >= 3.0 and _burn_t <= 0.0 and randf() < 0.12:
+		_burn_t = 4.5
+		_burn_dps = 2.5 + amount * 0.12
+		GameState.notice.emit("%sが炎上!" % GameState.fleet_label(fleet_index))
 	GameState.stats_changed.emit()
 	queue_redraw()   # #212
 	if float(e.armor) <= 0.0:

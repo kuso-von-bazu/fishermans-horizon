@@ -530,7 +530,8 @@ func show_travel() -> void:
 # #140再: パラメータ表記。上限到達で黄色に
 # ---------------- 編成(#196) ----------------
 const FORMATION_NAMES := {
-	"line": "横並び", "column": "縦並び", "vee": "V字型", "inv_vee": "逆V字型", "echelon": "斜線陣",
+	# #216: 陣形の呼び名
+	"line": "単横陣", "column": "単縦陣", "vee": "鋒矢陣", "inv_vee": "鶴翼陣", "echelon": "斜線陣",
 	"ring": "輪形陣",   # #196再8
 }
 
