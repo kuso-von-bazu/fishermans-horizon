@@ -791,7 +791,9 @@ func _spawn_relic() -> void:
 			return
 	var r := Area2D.new()
 	r.set_script(RelicScript)
-	r.setup(randi_range(200, 500) * (GameState.current_island + 1))
+	# #207: 島ごとの価値を引き上げ(潮鳴り1.2 月下1.4 嵐越え1.7 果て2.0倍)。ランダムのぶれは維持
+	var relic_mult: float = [1.0, 1.2, 1.4, 1.7, 2.0][clampi(GameState.current_island, 0, 4)]
+	r.setup(int(round(float(randi_range(200, 500) * (GameState.current_island + 1)) * relic_mult)))
 	add_child(r)
 	r.global_position = pos
 	relics_world.append(r)
