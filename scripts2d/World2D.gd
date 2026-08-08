@@ -576,6 +576,11 @@ func _spawn_enemy() -> void:
 		kind = "pirate"
 		# #190: 島が5つになったので island index → 海賊の格 を明示表で対応させる
 		id = ["raider", "corsair", "dread", "dread", "dread"][clampi(isle, 0, 4)]
+		# #197: 先の島ほど、海賊が2〜3隻の船団を組んで現れる(単独のこともある)
+		var pos_p := _ring_pos(70, 150)
+		for pid in _pirate_group(id, isle):
+			_make_enemy("pirate", pid, pos_p + Vector2.RIGHT.rotated(randf() * TAU) * randf_range(60.0, 170.0))
+		return
 	elif roll < 0.38:
 		kind = "mob"
 		id = Database.pick_mob(isle)   # #38: 島tierごとの出現割合
@@ -583,8 +588,16 @@ func _spawn_enemy() -> void:
 		# #73再: 海賊王。島の周り以外の全海域で出現。先の島ほど出やすい(始0.02/潮0.04/嵐0.08/果0.12)。同時1体
 		var king_rate: float = [0.02, 0.04, 0.06, 0.08, 0.12][clampi(isle, 0, 4)]   # #190: 月下の島ぶんを追加
 		if not near_island and not _king_alive() and randf() < king_rate:
-			kind = "pirate"
-			id = "king"
+			# #197: 海賊王は自身を含めて2〜4隻の船団を組むことがある(単独のことも)
+			var kpos := _ring_pos(70, 150)
+			var king := _make_enemy("pirate", "king", kpos)
+			var escort_ids := _king_group(isle)
+			for i in escort_ids.size():
+				var e := _make_enemy("pirate", str(escort_ids[i]), kpos + Vector2.RIGHT.rotated(randf() * TAU) * randf_range(90.0, 200.0))
+				e.is_escort = true   # 海賊王と一緒に行動させる(上限・デスポーン免除)
+				king.escorts.append(e)
+			GameState.notice.emit("海賊王の旗艦が現れた!" if escort_ids.is_empty() else "海賊王の船団が現れた!")
+			return
 	if id == "":
 		return
 	# #71: マーマン等は必ず群れで出現
@@ -592,8 +605,32 @@ func _spawn_enemy() -> void:
 	var pos := _ring_pos(70, 150)
 	for gi in grp:
 		_make_enemy(kind, id, pos + Vector2.RIGHT.rotated(randf() * TAU) * (0.0 if gi == 0 else randf_range(70.0, 160.0)))
-	if id == "king":
-		GameState.notice.emit("海賊王の旗艦が現れた!")
+
+# #197: 通常の海賊船団の編成。
+# 少なくとも1隻はその海域の海賊。残りはその海域の海賊か、より弱い海賊からランダム。
+const PIRATE_RANKS := ["raider", "corsair", "dread"]
+
+func _pirate_group(top_id: String, isle: int) -> Array:
+	var out: Array = [top_id]
+	var fleet_rate: float = [0.0, 0.25, 0.35, 0.45, 0.55][clampi(isle, 0, 4)]
+	if randf() >= fleet_rate:
+		return out                      # 単独で現れる
+	var extra := 1 if randf() < (0.65 - 0.1 * float(isle)) else 2   # 先の島ほど3隻になりやすい
+	var top := PIRATE_RANKS.find(top_id)
+	for i in extra:
+		out.append(str(PIRATE_RANKS[randi() % (maxi(top, 0) + 1)]))
+	return out
+
+# 海賊王の船団(海賊王を除く随伴艦)。2〜4隻=随伴0〜3隻
+func _king_group(isle: int) -> Array:
+	if randf() < 0.45:
+		return []                       # 単独の海賊王
+	var top := PIRATE_RANKS.find(["raider", "corsair", "dread", "dread", "dread"][clampi(isle, 0, 4)])
+	var n := randi_range(1, 3)
+	var out: Array = []
+	for i in n:
+		out.append(str(PIRATE_RANKS[randi() % (maxi(top, 0) + 1)]))
+	return out
 
 # #67再: 未討伐の主は全て、それぞれの定位置の沖に同時出現させる
 func _try_spawn_lord() -> void:

@@ -586,31 +586,44 @@ func _ranged_attack(is_fire: bool) -> void:
 	var eff_dmg := dmg
 	if _debuff_kind == "atk":
 		eff_dmg *= 1.0 - 0.35 * clampf(_debuff_power, 0.0, 1.0)   # #91/#114
-	var base_dir := (player.global_position - global_position).normalized()
+	# #199: 船団を組んでいる場合、たまに2〜5番艦を狙う
+	var aim: Node2D = _aim_target()
+	var base_dir := (aim.global_position - global_position).normalized()
 	# #187: volley_pool から volley_pick 個をランダムに選んで同時発射(幽霊船=3種中2種)
 	if def.has("volley_pool"):
 		var pool: Array = (def.volley_pool as Array).duplicate()
 		pool.shuffle()
 		for i in mini(int(def.get("volley_pick", 2)), pool.size()):
-			_fire_weapon(str(pool[i]), eff_dmg, base_dir, is_fire)
+			_fire_weapon(str(pool[i]), eff_dmg, base_dir, is_fire, aim)
 		return
 	# #66: volley=複数武器を同時発射(海賊中/大)
 	if def.has("volley"):
 		for wp in def.volley:
-			_fire_weapon(str(wp), eff_dmg, base_dir, is_fire)
+			_fire_weapon(str(wp), eff_dmg, base_dir, is_fire, aim)
 		return
 	var wpn := str(def.get("wpn", ""))
 	if wpn == "all":
 		wpn = ["cannon", "gatling", "torpedo"][randi() % 3]   # #73: 海賊王は全武装
-	_fire_weapon(wpn, eff_dmg, base_dir, is_fire)
+	_fire_weapon(wpn, eff_dmg, base_dir, is_fire, aim)
 
-func _fire_weapon(wpn: String, eff_dmg: float, base_dir: Vector2, is_fire: bool) -> void:
+# #199: 遠隔攻撃の狙い先。船団の僚艦がいるときは3割の確率でそちらを狙う
+func _aim_target() -> Node2D:
+	var mates := get_tree().get_nodes_in_group("fleet_ship")
+	if not mates.is_empty() and randf() < 0.3:
+		var m = mates[randi() % mates.size()]
+		if is_instance_valid(m):
+			return m
+	return player
+
+func _fire_weapon(wpn: String, eff_dmg: float, base_dir: Vector2, is_fire: bool, aim: Node2D = null) -> void:
+	if aim == null:
+		aim = player
 	match wpn:
 		"gatling":
 			for i in 3:
 				_shoot(base_dir.rotated(randf_range(-0.07, 0.07)), {"dmg": eff_dmg * 0.35, "falloff": true}, false)
 		"torpedo":
-			_shoot(base_dir, {"dmg": eff_dmg, "homing": true}, false, player)
+			_shoot(base_dir, {"dmg": eff_dmg, "homing": true}, false, aim)
 		_:
 			# #65再: leviathan=全方向弾(radial)+照準の密な3way(aim_tight)+追跡弾。hydra=炎7way+追跡弾。他主=way
 			var has_radial := bool(def.get("radial", false))
@@ -670,7 +683,7 @@ func _fire_weapon(wpn: String, eff_dmg: float, base_dir: Vector2, is_fire: bool)
 				var wh := {"dmg": eff_dmg * 0.8 * dm, "homing": true, "speed_mult": hs}
 				if spread_h:
 					wh["spread_homing"] = true
-				_shoot(hd, wh, is_fire, player)
+				_shoot(hd, wh, is_fire, aim)
 
 # #65再2/#72再: 通常攻撃とは別系統の「バラマキ弾」。
 # def.burst = {count, spread(rad), speeds[](弾速倍率の混在), dmg_mult, color, shape,
@@ -696,7 +709,7 @@ func _tick_burst(delta: float) -> void:
 	# #65再: ケツァルは引き撃ちモードへ移行してからのみ撃つ
 	if bool(b.get("kite_only", false)) and not (_escorts_cleared() and hp / maxf(max_hp, 1.0) <= float(def.get("kite_hp", 1.0))):
 		return
-	_fire_spray(b, (player.global_position - global_position).normalized())
+	_fire_spray(b, (_aim_target().global_position - global_position).normalized())
 
 # バラマキ弾の実射出。扇状に散らし、速度を speeds から順に混ぜる
 func _fire_spray(b: Dictionary, base_dir: Vector2) -> void:

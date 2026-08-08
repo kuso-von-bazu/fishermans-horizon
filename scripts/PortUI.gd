@@ -445,6 +445,18 @@ func show_shipyard() -> void:
 			show_shipyard()))
 	content.add_child(rrow)
 
+	# #198: 造船所の最下段に武器の説明
+	content.add_child(_p(""))
+	content.add_child(_h("武器の説明", 18))
+	for line in [
+		"・ガトリングガン  弾幕を張るのに向いた武装。距離が離れると威力が低下する。",
+		"・大砲  単発高火力の大砲。",
+		"・銛  様々な種類の毒を塗ることができ、生物に有効。",
+		"・魚雷  僚艦に射線が遮られていても発射可能。空中の敵には発射できない。",
+		"・衝角  体当たりで攻撃する。空中の敵には攻撃できない。",
+	]:
+		content.add_child(_p(line))
+
 # ---------------- 航路(ファストトラベル) ----------------
 func show_travel() -> void:
 	_refresh_header()
