@@ -50,6 +50,12 @@ var _food_dialog: CanvasLayer
 var _food_msg: Label
 var _boss_bgm_on: String = ""    # #79: 主接近中の緊迫BGM("" / "bgm_boss" / "bgm_leviathan")
 var _return_hold: float = 0.0    # #68: 帰還キー長押しの累積秒
+# #209: ボスラッシュ
+var _boss_rush: bool = false
+var _br_index: int = 0
+var _br_boss: Node = null
+var _br_active: bool = false   # ボスが出現中(解放済み参照は null 比較で真になるため別途フラグで持つ)
+var _br_wait: float = 0.0
 
 func island_pos(idx: int) -> Vector2:
 	var p: Vector3 = Database.island(idx).pos
@@ -71,6 +77,7 @@ func _ready() -> void:
 	add_child(title)
 	title.start_pressed.connect(_on_title_start)
 	title.continue_pressed.connect(_on_title_continue)
+	title.boss_rush_pressed.connect(_on_boss_rush)   # #209
 	GameState.dock_reset()
 	_enter_dock(0, false)
 	port_ui.close()
@@ -246,6 +253,8 @@ func _process(_d: float) -> void:
 
 # ---------------- フェーズ ----------------
 func _on_title_start() -> void:
+	_boss_rush = false          # #209
+	GameState.boss_rush = false
 	if _victory_shown:
 		_victory_shown = false
 		GameState.reset_all()
@@ -403,10 +412,22 @@ func _forced_return(reason: String, wrecked: bool = false) -> void:
 func _physics_process(delta: float) -> void:
 	if phase != "sea":
 		return
-	if _dock_grace > 0.0:
-		_dock_grace -= delta
 	GameState.regen_fire(delta)
 	GameState.tick_slips(delta)   # #64/#72: 炎上・毒のスリップ
+	# #209: ボスラッシュ(燃料・魚倉・寄港なし。装甲は回復しない)
+	if _boss_rush:
+		_br_update(delta)
+		_update_spawns(delta)
+		_update_weapons(delta)
+		_update_lock_on()
+		_update_sonar()
+		if hud:
+			hud.update_bars()
+		if GameState.run_armor <= 0.0:
+			_br_fail()
+		return
+	if _dock_grace > 0.0:
+		_dock_grace -= delta
 	GameState.run_food = maxf(GameState.run_food - delta * 1.5 * GameState.food_drain_mult(), 0.0)
 	# #68: Rキーを5秒長押しで直近の島へ帰還。長押し中に装甲0なら大破(後段の装甲チェックで処理)
 	if Input.is_action_pressed("fast_return") and not _returning and not _food_dialog_open:
@@ -451,8 +472,8 @@ func _on_stats_changed() -> void:
 	_check_victory()
 
 func _check_victory() -> void:
-	if _victory_shown:
-		return
+	if _victory_shown or _boss_rush:
+		return   # #209: ボスラッシュの勝利判定は _br_finish で行う
 	if GameState.defeated_lords.has("leviathan") or GameState.claimed_lords.has("leviathan"):
 		_victory_shown = true
 		phase = "title"
@@ -460,6 +481,7 @@ func _check_victory() -> void:
 		port_ui.close()
 		_clear_sea_actors()
 		Audio.play_bgm("bgm_ending")   # #80: 厳かなエンディングBGM
+		GameState.mark_cleared()       # #209: ボスラッシュを解放
 		title.show_victory()
 
 # ---------------- 漁 ----------------
@@ -510,6 +532,13 @@ func _update_spawns(delta: float) -> void:
 	if spawn_timer > 0:
 		return
 	spawn_timer = 1.5
+	if _boss_rush:
+		# #209: ボスラッシュは流氷だけの海。魚群・遺産・通常の敵は出さない
+		for i in 3:
+			if obstacles.size() >= _obstacle_max():
+				break
+			_spawn_obstacle()
+		return
 	_try_spawn_lord()   # #67: 未討伐の主は全て海域に出現している(各主ごとに存在チェック)
 	if fish_schools.size() < MAX_FISH:
 		_spawn_fish()
@@ -797,6 +826,133 @@ func _spawn_relic() -> void:
 	add_child(r)
 	r.global_position = pos
 	relics_world.append(r)
+
+# ---------------- ボスラッシュ(#209) ----------------
+# 出現順: 主を順に、7番目に海賊王(取り巻きは海賊(大)1+海賊(中)1で固定)
+const BOSS_RUSH_ORDER := [
+	{"kind": "lord", "id": "sawshark"},
+	{"kind": "lord", "id": "dumbo"},
+	{"kind": "lord", "id": "whale"},
+	{"kind": "lord", "id": "walrus"},
+	{"kind": "lord", "id": "aspidochelone"},
+	{"kind": "lord", "id": "legion"},
+	{"kind": "pirate", "id": "king", "escorts": ["dread", "corsair"]},
+	{"kind": "lord", "id": "hydra"},
+	{"kind": "lord", "id": "quetzal"},
+	{"kind": "lord", "id": "ghost"},
+	{"kind": "lord", "id": "leviathan"},
+]
+# 島から遠く離れた海域(島の存在しないステージ)
+const BR_ARENA := Vector2(0.0, 120000.0)
+
+func _on_boss_rush() -> void:
+	if not GameState.load_game():
+		GameState.notice.emit("セーブデータが見つかりません")
+		return
+	_boss_rush = true
+	GameState.boss_rush = true
+	_victory_shown = false
+	_returning = false
+	_br_index = 0
+	_br_boss = null
+	_br_active = false
+	_br_wait = 0.0
+	# 討伐済みの記録は持ち込まない(勝利判定が即座に走らないように)
+	GameState.defeated_lords.clear()
+	GameState.claimed_lords.clear()
+	GameState.current_island = Database.islands.size() - 1   # 果ての島相当の強さ・天候
+	title.visible = false
+	port_ui.close()
+	phase = "sea"
+	GameState.set_sail()      # 装甲を満タンにして出撃(以後は回復しない)
+	_clear_sea_actors()
+	player.global_position = BR_ARENA
+	player.rotation = PI
+	player.velocity = Vector2.ZERO
+	player.control_enabled = true
+	player.rebuild_visual()
+	camera.global_position = player.global_position
+	hud.visible = true
+	hud.rebuild_weapons()
+	hud.update_bars()
+	hud.set_location("Boss Rush")
+	Audio.play_bgm("bgm_boss")
+	_boss_bgm_on = "bgm_boss"
+	slot_cooldowns = [0.0, 0.0, 0.0, 0.0]
+	_reset_ammo()
+	GameState.formation_slot = 0
+	_spawn_escorts_fleet()
+	if hud and hud.has_method("build_formation_bar"):
+		hud.build_formation_bar(_set_formation_slot)
+	_apply_weather("blizzard")   # 果ての島近海を模した海
+	_br_spawn_next()
+
+# 次のボスを少しだけ離れた位置に出す
+func _br_spawn_next() -> void:
+	if _br_index >= BOSS_RUSH_ORDER.size():
+		_br_finish()
+		return
+	var spec: Dictionary = BOSS_RUSH_ORDER[_br_index]
+	var ang := randf() * TAU
+	var pos: Vector2 = player.global_position + Vector2(cos(ang), sin(ang)) * randf_range(700.0, 950.0)
+	var boss := _make_enemy(str(spec.kind), str(spec.id), pos)
+	boss._aggro = true
+	if spec.has("escorts"):
+		for eid in spec.escorts:          # 海賊王は取り巻き固定
+			var e := _make_enemy("pirate", str(eid), pos + Vector2.RIGHT.rotated(randf() * TAU) * randf_range(120.0, 200.0))
+			e.is_escort = true
+			boss.escorts.append(e)
+	else:
+		boss.escorts = _spawn_escorts(pos, str(spec.id))   # 本編と同じ取り巻き
+	_br_boss = boss
+	_br_active = true
+	var nm: String = Database.lords[str(spec.id)].name if str(spec.kind) == "lord" else Database.pirates[str(spec.id)].name
+	hud.show_big_message("%d / %d  %s" % [_br_index + 1, BOSS_RUSH_ORDER.size(), nm], 2.0)
+
+# ボス撃破の監視(取り巻きは倒さなくてもボスを倒せば消える)
+func _br_update(delta: float) -> void:
+	if _br_wait > 0.0:
+		_br_wait -= delta
+		if _br_wait <= 0.0:
+			_br_spawn_next()
+		return
+	# 解放済みのNode参照は `!= null` が偽になるため、_br_active で「出現中」を管理する
+	if _br_active and not is_instance_valid(_br_boss):
+		_br_active = false
+		_br_boss = null
+		for e in enemies.duplicate():     # 残った取り巻きを消す
+			if is_instance_valid(e):
+				e.queue_free()
+		enemies.clear()
+		_br_index += 1
+		_br_wait = 1.6
+
+func _br_finish() -> void:
+	if _victory_shown:
+		return
+	_victory_shown = true
+	phase = "title"
+	if hud: hud.visible = false
+	_clear_sea_actors()
+	Audio.play_bgm("bgm_ending")
+	title.show_victory(true)   # #209: 夜の背景+専用メッセージ
+
+func _br_fail() -> void:
+	if _returning:
+		return
+	_returning = true
+	GameState.docking_locked = true
+	if player:
+		player.control_enabled = false
+	hud.show_big_message("旗艦が大破! Boss Rush 終了", 3.0)
+	await get_tree().create_timer(3.2).timeout
+	_boss_rush = false
+	GameState.boss_rush = false
+	phase = "title"
+	if hud: hud.visible = false
+	_clear_sea_actors()
+	Audio.play_bgm("bgm_port")
+	title.show_title()
 
 # ---------------- 船団(#196) ----------------
 # 陣形ごとの相対位置(旗艦の向きを基準にしたローカル座標。+Y=後方)

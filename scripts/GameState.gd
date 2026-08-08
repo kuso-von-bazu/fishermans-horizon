@@ -402,6 +402,20 @@ const WORLD_VERSION := 190
 func has_save() -> bool:
 	return FileAccess.file_exists(SAVE_PATH)
 
+# #209: 一度でもエンディングに到達したか(ボスラッシュ解放用)。
+# 本編のセーブ(クリア直前の船団)を上書きしないよう別ファイルで持つ。
+const CLEARED_PATH := "user://cleared.dat"
+var boss_rush: bool = false        # ボスラッシュ中(燃料・魚倉の概念なし)
+
+func has_cleared() -> bool:
+	return FileAccess.file_exists(CLEARED_PATH)
+
+func mark_cleared() -> void:
+	var f := FileAccess.open(CLEARED_PATH, FileAccess.WRITE)
+	if f:
+		f.store_string("1")
+		f.close()
+
 func save_game() -> void:
 	var data := {
 		"money": money, "fame": fame,
@@ -603,6 +617,8 @@ func regen_fire(_delta: float) -> void:
 
 # 漁獲を魚倉へ。入りきらなければ false。
 func add_cargo(id: String, cap_needed: int = -1) -> bool:
+	if boss_rush:
+		return true   # #209: ボスラッシュは魚倉の概念なし
 	if docking_locked:
 		return false   # #101: 大破/寄港確定後は積荷に入れない
 	var need := cap_needed if cap_needed >= 0 else _cap_of(id)

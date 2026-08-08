@@ -5,6 +5,7 @@ extends CanvasLayer
 
 signal start_pressed
 signal continue_pressed
+signal boss_rush_pressed   # #209
 
 var _root: Control
 var _title: Label
@@ -14,6 +15,7 @@ var _continue_button: Button
 var _bg: ColorRect
 var _art: TextureRect
 var _logo: TextureRect   # #175: タイトルロゴ(錨・船・大砲・羅針盤の紋章)
+var _boss_rush_button: Button   # #209: エンディング到達後に右上へ表示
 
 func _ready() -> void:
 	layer = 30
@@ -99,6 +101,19 @@ func _build() -> void:
 	cc2.add_child(_continue_button)
 	vb.add_child(cc2)
 
+	# #209: 画面右上のボスラッシュボタン(エンディング到達後のみ表示)
+	_boss_rush_button = Button.new()
+	_boss_rush_button.text = "Boss Rush"
+	_boss_rush_button.add_theme_font_size_override("font_size", 22)
+	_boss_rush_button.custom_minimum_size = Vector2(180, 48)
+	_boss_rush_button.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_boss_rush_button.offset_left = -204
+	_boss_rush_button.offset_right = -24
+	_boss_rush_button.offset_top = 24
+	_boss_rush_button.offset_bottom = 72
+	_boss_rush_button.pressed.connect(func(): emit_signal("boss_rush_pressed"))
+	_root.add_child(_boss_rush_button)
+
 	# #90: BGM著作権表示(MusMus)
 	var credit := Label.new()
 	credit.text = "BGM: フリーBGM・音楽素材MusMus  https://musmus.main.jp"
@@ -132,22 +147,38 @@ func show_title() -> void:
 		_title.visible = false
 	if _continue_button:
 		_continue_button.visible = GameState.has_save()   # #93: セーブがある時のみ
+	if _boss_rush_button:
+		# #209: エンディング到達後、かつ本編のセーブ(船団)がある時だけ遊べる
+		_boss_rush_button.visible = GameState.has_cleared() and GameState.has_save()
 	visible = true
 
-func show_victory() -> void:
+func show_victory(night := false) -> void:
 	# #80: 厳かな雰囲気(深い闇+金色に沈む景色+金文字)
-	_title.text = "Fisherman's Horizon 到達!"
-	_body.text = "レヴィアタンは討たれた。\nあなたは伝説の漁場 Fisherman's Horizon へ至り、\n人類の食糧難を一挙に解決する英雄となった。\n\n── 完 ──"
-	_button.text = "もう一度遊ぶ"
-	if _bg:
-		_bg.color = Color(0.015, 0.02, 0.045, 1.0)
-	if _art:
-		_art.modulate = Color(0.85, 0.7, 0.45, 0.25)
-	_title.add_theme_color_override("font_color", Color(0.95, 0.85, 0.55))
+	if night:
+		# #209: ボスラッシュ制覇。通常エンディングを夜にした背景+専用メッセージ
+		_title.text = "Boss Rush 制覇!"
+		_body.text = "おめでとう!あなたこそ真の海の王者です!"
+		_button.text = "タイトルへ"
+		if _bg:
+			_bg.color = Color(0.005, 0.008, 0.022, 1.0)
+		if _art:
+			_art.modulate = Color(0.30, 0.42, 0.72, 0.22)   # 夜の青
+		_title.add_theme_color_override("font_color", Color(0.72, 0.84, 1.0))
+	else:
+		_title.text = "Fisherman's Horizon 到達!"
+		_body.text = "レヴィアタンは討たれた。\nあなたは伝説の漁場 Fisherman's Horizon へ至り、\n人類の食糧難を一挙に解決する英雄となった。\n\n── 完 ──"
+		_button.text = "もう一度遊ぶ"
+		if _bg:
+			_bg.color = Color(0.015, 0.02, 0.045, 1.0)
+		if _art:
+			_art.modulate = Color(0.85, 0.7, 0.45, 0.25)
+		_title.add_theme_color_override("font_color", Color(0.95, 0.85, 0.55))
 	# #175: 勝利画面ではロゴを隠して文字タイトル(到達!)を見せる
 	if _logo:
 		_logo.visible = false
 	_title.visible = true
 	if _continue_button:
 		_continue_button.visible = false   # 勝利画面では非表示
+	if _boss_rush_button:
+		_boss_rush_button.visible = false
 	visible = true

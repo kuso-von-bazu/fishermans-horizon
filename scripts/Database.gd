@@ -212,6 +212,14 @@ var islands := [
 	{"id": 4, "name": "果ての島",     "fame_req": 235,  "price_mult": 10.8, "pos": Vector3(3600, 0, 300), "spawn": ["octopus","bonito"], "lords": ["ghost","leviathan"], "weather": "blizzard"},   # #187: 幽霊船はレヴィアタンの上(先に戦う想定)
 ]
 
+# #202: 出現海域ごとの敵HP倍率(始まり=等倍 / 潮鳴り1.5 / 月下1.9 / 嵐越え2.7 / 果て3.3)。
+# 1の位は切り上げて10の倍数にする。Enemy2Dの実HPと、酒場・討伐記録の表示で共用する。
+const HP_TIER_MULT := [1.0, 1.5, 1.9, 2.7, 3.3]
+
+func scaled_hp(base: float, island_idx: int) -> int:
+	var m: float = HP_TIER_MULT[clampi(island_idx, 0, HP_TIER_MULT.size() - 1)]
+	return int(ceilf(base * m / 10.0) * 10.0)
+
 func island(idx: int) -> Dictionary:
 	return islands[clampi(idx, 0, islands.size() - 1)]
 

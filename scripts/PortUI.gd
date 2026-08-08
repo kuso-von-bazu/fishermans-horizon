@@ -270,7 +270,7 @@ func show_tavern() -> void:
 		row.add_child(_portrait(lid, 72))
 		var compass: String = Database.compass(float(ld.get("dir", 0)))
 		# #112: 主の説明(lore)を併記。長文は折り返して横幅が間延びしないようにする
-		var info := _p("%s\nHP:%d  賞金:%d  [%s]\n情報: 港の【%s】の沖にいるらしい\n%s" % [ld.name, ld.hp, ld.bounty, st, compass, str(ld.get("lore", ""))])
+		var info := _p("%s\nHP:%d  賞金:%d  [%s]\n情報: 港の【%s】の沖にいるらしい\n%s" % [ld.name, Database.scaled_hp(float(ld.hp), isle), ld.bounty, st, compass, str(ld.get("lore", ""))])   # #202: 海域のHP倍率を反映
 		info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		info.custom_minimum_size = Vector2(380, 0)
 		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -307,7 +307,8 @@ func show_bestiary() -> void:
 		row.add_theme_constant_override("separation", 12)
 		if cnt > 0:
 			row.add_child(_portrait(e.id, 72))
-			var stat := "HP:%d  攻撃:%d" % [int(d.get("hp", 0)), int(d.get("dmg", 0))]
+			# #202: 今いる海域のHP倍率を反映した値を表示
+			var stat := "HP:%d  攻撃:%d" % [Database.scaled_hp(float(d.get("hp", 0)), GameState.current_island), int(d.get("dmg", 0))]
 			if d.has("speed"):
 				stat += "  速度:%d" % int(d.get("speed", 0))
 			if e.kind == "pirate":
