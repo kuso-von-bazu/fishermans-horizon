@@ -195,6 +195,16 @@ func _ship_scale() -> float:
 	var extra: float = 1.15 if ship_id == "cruiser" else 1.0
 	return clampf(0.9 + float(Database.ships[ship_id].armor) / 1500.0, 0.9, 1.8) * extra
 
+# #212: 敵と同じ円形の装甲ゲージを描く(上から時計回り。残量で緑→赤)
+func _draw() -> void:
+	var maxa := float(Database.ships[ship_id].armor)
+	var frac := clampf(armor() / maxf(maxa, 1.0), 0.0, 1.0)
+	var r := maxf(_half_w, _half_h) + 10.0
+	draw_arc(Vector2.ZERO, r, 0, TAU, 40, Color(0, 0, 0, 0.35), 5.0)
+	if frac > 0.0:
+		var col := Color(1, 0.2, 0.15).lerp(Color(0.35, 1.0, 0.4), frac)
+		draw_arc(Vector2.ZERO, r, -PI / 2, -PI / 2 + TAU * frac, 40, col, 5.0)
+
 func armor() -> float:
 	return float(GameState.fleet[fleet_index].armor)
 
@@ -205,6 +215,7 @@ func take_damage(amount: float) -> void:
 	var e: Dictionary = GameState.fleet[fleet_index]
 	e.armor = maxf(float(e.armor) - amount * (1.0 - cut), 0.0)
 	GameState.stats_changed.emit()
+	queue_redraw()   # #212
 	if float(e.armor) <= 0.0:
 		_detach()
 
@@ -232,6 +243,7 @@ func _physics_process(delta: float) -> void:
 	if velocity.length() > cap:
 		velocity = velocity.normalized() * cap
 	rotation = player.rotation                    # 向きも旗艦と同じ
+	queue_redraw()                                # #212: 装甲ゲージの更新
 	if _label:
 		# ラベルは船と一緒に回ると裏返るので、常に画面上向き・船の真上に置く
 		_label.rotation = -rotation

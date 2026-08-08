@@ -11,6 +11,7 @@ var _root: Control
 var _toast_box: VBoxContainer   # #160: トーストを縦に積んで重ならないようにする
 
 var _fleet_tab: Button   # #196: 編成タブ(潮鳴りの島以降だけ表示)
+var _scroll: ScrollContainer   # #211: 画面サイズに追従させる
 
 func _ready() -> void:
 	layer = 20
@@ -48,6 +49,8 @@ func _build() -> void:
 	panel.add_theme_stylebox_override("panel", sb)
 	panel.custom_minimum_size = Vector2(720, 540)
 	center.add_child(panel)
+	# #211: 画面が小さい場合もパネルが画面外へはみ出さないように追従させる
+	get_viewport().size_changed.connect(_fit_panel)
 
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 10)
@@ -72,8 +75,12 @@ func _build() -> void:
 
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(680, 330)
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	# #211: 横スクロールを無効にしていたため、造船所など横に長い行があると
+	# パネル自体が画面幅を超えて広がり、フルスクリーンで右側が見切れていた。
+	# 自動横スクロールにすると、パネル幅は固定のまま行だけがスクロールする。
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	vb.add_child(scroll)
+	_scroll = scroll
 	content = VBoxContainer.new()
 	content.add_theme_constant_override("separation", 6)
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -84,7 +91,22 @@ func _build() -> void:
 	sail.add_theme_color_override("font_color", Color(1, 1, 0.6))
 	vb.add_child(sail)
 
+# #211: パネルとスクロール領域を画面サイズに収める
+func _fit_panel() -> void:
+	if panel == null:
+		return
+	var vp := get_viewport()
+	if vp == null:
+		return
+	var sz := vp.get_visible_rect().size
+	var w: float = minf(720.0, maxf(360.0, sz.x - 48.0))
+	var h: float = minf(540.0, maxf(300.0, sz.y - 48.0))
+	panel.custom_minimum_size = Vector2(w, h)
+	if _scroll:
+		_scroll.custom_minimum_size = Vector2(w - 40.0, h - 210.0)
+
 func open(arrival := false) -> void:
+	_fit_panel()
 	if _fleet_tab:
 		_fleet_tab.visible = GameState.fleet_enabled()   # #196
 	visible = true
@@ -517,7 +539,7 @@ func show_fleet() -> void:
 
 	# --- 船団の各艦 ---
 	content.add_child(_p(""))
-	content.add_child(_h("船団", 18))
+	content.add_child(_h("船団(船速は船団の最も遅い船に依存する)", 18))
 	for i in GameState.fleet.size():
 		var e: Dictionary = GameState.fleet[i]
 		var sd: Dictionary = Database.ships[str(e.ship_id)]

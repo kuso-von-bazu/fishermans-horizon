@@ -1142,9 +1142,11 @@ func _lockable_enemies() -> Array:
 			continue   # #196: 空中の敵もロック可能に(魚雷は当たらないが僚艦の砲撃対象になる)
 		if e.global_position.distance_to(player.global_position) > lock_r:
 			continue
-		# 画面内判定
+		# #210: 画面外へある程度出てもロックは外れない(横=1/3画面, 縦=1/2画面まで許容)
+		var mx := vp.x / 3.0
+		var my := vp.y / 2.0
 		var rel: Vector2 = e.global_position - (cam_pos - vp * 0.5)
-		if rel.x < -40 or rel.y < -40 or rel.x > vp.x + 40 or rel.y > vp.y + 40:
+		if rel.x < -mx or rel.y < -my or rel.x > vp.x + mx or rel.y > vp.y + my:
 			continue
 		out.append(e)
 	return out
@@ -1391,6 +1393,7 @@ func _maybe_screenshot() -> void:
 	var want_guide := false
 	var want_bullets := false
 	var want_isle := 0        # #190: 撮影する海域(島index)
+	var want_brwin := false   # #209: ボスラッシュ制覇画面
 	for a in args:
 		if a.begins_with("--shot"):
 			want_shot = true
@@ -1402,6 +1405,7 @@ func _maybe_screenshot() -> void:
 			want_bestiary = a.find("bestiary") != -1
 			want_guide = a.find("guide") != -1
 			want_bullets = a.find("bullets") != -1
+			want_brwin = a.find("brwin") != -1   # #209: ボスラッシュ制覇画面
 			# #190: isle<N> で撮影する海域(島index)を指定(天候・障害物の確認用)
 			var ip := a.find("isle")
 			if ip != -1 and ip + 4 < a.length():
@@ -1411,6 +1415,10 @@ func _maybe_screenshot() -> void:
 	if not want_shot:
 		return
 	await get_tree().create_timer(0.6).timeout
+	if want_brwin:
+		# #209: ボスラッシュ制覇のエンディング画面を撮影
+		title.show_victory(true)
+		await get_tree().create_timer(0.4).timeout
 	if want_sea:
 		title.visible = false
 		if want_isle > 0:
