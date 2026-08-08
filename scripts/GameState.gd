@@ -268,10 +268,11 @@ func debuff_dur_mult() -> float:   # 知力: デバフ強化(持続延長)
 # #201: 自動ロックオン廃止に伴い、視力の効果は「ソナーの探知範囲」に変更。
 # 視力が高いほど広範囲の敵・漁獲物・旧文明の遺産をソナーに表示できる。
 func sonar_range_mult() -> float:   # 視力+航海士: ソナー範囲拡大
-	var m := 1.0 + 0.03 * _crew_sum("vis")
+	# #201再: 向上幅を従来の半分に(視力3%→1.5%, 航海士+20%→+10%)
+	var m := 1.0 + 0.015 * _crew_sum("vis")
 	for c in crew:
 		if c.job == "navigator":
-			m *= 1.2
+			m *= 1.1
 	return m
 
 func lock_range_mult() -> float:   # #201: ロック距離は視力に依存しない
@@ -437,8 +438,6 @@ func load_game() -> bool:
 		return false
 	money = int(data.get("money", 200))
 	fame = int(data.get("fame", 0))
-	ram_id = str(data.get("ram_id", "none"))
-	harpoon_debuff = str(data.get("harpoon_debuff", "slip"))
 	relics = int(data.get("relics", 0))
 	current_island = int(data.get("current_island", 0))
 	# #196: 船団。旧セーブ(ship_id/weapons/crew)は1隻の船団として読み込む
@@ -451,6 +450,8 @@ func load_game() -> bool:
 			"ship_id": str(e.get("ship_id", "raft")), "weapons": w,
 			"crew": _load_crew(e.get("crew", [])),
 			"armor": float(e.get("armor", 0.0)), "damaged": bool(e.get("damaged", false)),
+			# #204: 衝角と銛の効果は艦ごとの設定。復元漏れがあったので明示的に読み込む
+			"ram": str(e.get("ram", "none")), "harpoon": str(e.get("harpoon", "slip")),
 		})
 	if fleet.is_empty():
 		var w0: Array[String] = []
@@ -460,6 +461,9 @@ func load_game() -> bool:
 		if not w0.is_empty():
 			fleet[0].weapons = w0
 		fleet[0].crew = _load_crew(data.get("crew", []))
+		# 旧セーブは衝角・銛が全体設定だったので旗艦へ引き継ぐ
+		fleet[0]["ram"] = str(data.get("ram_id", "none"))
+		fleet[0]["harpoon"] = str(data.get("harpoon_debuff", "slip"))
 	ship_stock.assign(_to_str_array(data.get("ship_stock", [])))
 	formations.assign(_to_str_array(data.get("formations", ["line", "column", "vee", "inv_vee"])))
 	formation_slot = int(data.get("formation_slot", 0))

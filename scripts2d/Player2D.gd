@@ -25,6 +25,10 @@ var _body_pts: PackedVector2Array
 
 func _ready() -> void:
 	add_to_group("player")
+	# #184再2/#149再3: 敵は専用レイヤー2にいるので、プレイヤーはレイヤー1+2と衝突する
+	# (敵同士は衝突しないまま。#184のすり抜けは撤回してリアリティを戻す)
+	collision_layer = 1
+	collision_mask = 3
 	max_speed = GameState.fleet_speed() * K   # #196: 船団は最も遅い船に合わせる
 	_build_visual()
 
@@ -603,8 +607,8 @@ func _physics_process(delta: float) -> void:
 	var steer_factor: float = clampf(spd / maxf(eff_max, 1.0), 0.2, 1.0)
 	rotation += steer * turn_speed * steer_factor * delta
 	velocity = velocity.move_toward(forward() * throttle * eff_max, accel * delta)
-	# #184再: 敵とはすり抜ける(Enemy2D側でcollision_exception)ので、押し出しによる加速は起きない。
-	# velocityはmove_towardで最高速度以下に保たれるため、船が本来の速度を超えることはない。
+	# #184再2: 敵とは物理的に衝突する(すり抜けを撤回)。
+	# 高速な敵に押し出されて最高速度を超える件は別途対応予定。
 	move_and_slide()
 	_check_obstacle_bump()   # #193: 岩礁・流氷に接触で小ダメージ(障害物は壊れない)
 	if _flame:

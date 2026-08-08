@@ -434,6 +434,9 @@ func show_shipyard() -> void:
 		var r: Dictionary = Database.rams[rid]
 		if int(r.get("tier", 0)) > tier:
 			continue   # #102: 上位衝角は対応する島以降でのみ販売
+		if rid == str(tship.get("ram", "none")):
+			rrow.add_child(_p("[%s 装着中]" % r.name))   # #205: 同じ衝角は買えない
+			continue
 		rrow.add_child(_btn("%s(%d)" % [r.name, r.price], func():
 			if rid == "none" or GameState.money >= int(Database.rams[rid].price):
 				if rid != "none":

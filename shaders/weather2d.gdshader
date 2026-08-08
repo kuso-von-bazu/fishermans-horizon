@@ -42,7 +42,9 @@ void fragment() {
 			float fi = float(i);
 			float sc = 30.0 + fi * 20.0;
 			vec2 p = uv * vec2(sc, sc * 0.6);
-			p -= vec2(-1.0, 0.38) * TIME * (3.2 + fi * 1.8);   // #191再: 雨と同様に上→下へ流す
+			// #192再: 右上から左下へ、画面上で約30度(垂直から)傾けて流す。
+			// pは vec2(sc, sc*0.6) で歪めているぶんを見込んだ係数。
+			p -= vec2(-0.50, 1.0) * TIME * (2.6 + fi * 1.5);
 			p.x += sin(TIME * (0.8 + fi * 0.35) + uv.y * 9.0) * 0.9;
 			vec2 c = floor(p);
 			vec2 f = fract(p);

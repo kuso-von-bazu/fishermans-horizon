@@ -152,10 +152,7 @@ func _ready() -> void:
 	var ps := get_tree().get_first_node_in_group("player")
 	if ps:
 		player = ps
-		# #184: プレイヤーと敵は物理的にすり抜ける(押し出しでプレイヤーが最高速度超で飛ばされるバグ防止)。
-		# 衝角はPlayer2D側の近接判定で当てる。
-		if ps is CollisionObject2D:
-			(ps as CollisionObject2D).add_collision_exception_with(self)
+		# #184再2: リアリティのため、プレイヤーと敵はすり抜けず物理的に衝突する(#184のすり抜けを撤回)
 	# #149再3: 敵は専用レイヤー(2)に置き、敵同士では衝突しない。
 	# ティアマットのジグザグ移動がレヴィアタン等を押してしまう問題の対策。
 	# 島・障害物・プレイヤー(レイヤー1)とは従来どおり衝突する。
