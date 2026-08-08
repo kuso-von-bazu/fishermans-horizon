@@ -308,11 +308,12 @@ func build_formation_bar(on_pick: Callable) -> void:
 		return
 	_form_box = HBoxContainer.new()
 	_form_box.add_theme_constant_override("separation", 6)
-	_form_box.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	# #196再9: 画面上部中央へ配置
+	_form_box.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	_form_box.offset_left = -240
 	_form_box.offset_right = 240
-	_form_box.offset_top = -132
-	_form_box.offset_bottom = -96
+	_form_box.offset_top = 14
+	_form_box.offset_bottom = 50
 	_form_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	_root().add_child(_form_box)
 	for i in 4:

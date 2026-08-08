@@ -675,9 +675,12 @@ func _handle_ram() -> void:
 	var rd := float(Database.rams[GameState.ram_id].dmg)
 	if rd <= 0.0 or velocity.length() < 3.0 * K:
 		return
-	# #184再: 敵とは物理的にすり抜けるため、衝角は近接判定で当てる(進行方向=前方の敵のみ突く)。
+	# #54再: バック中は衝角ダメージなし。正面から突撃したときだけ当たる
+	if velocity.dot(forward()) <= 0.0:
+		return
+	# 衝角は近接判定で当てる(船首の正面にいる敵のみ突く)
 	var reach := 28.0 * _sc
-	var vdir := velocity.normalized()
+	var vdir := forward()
 	for e in get_tree().get_nodes_in_group("enemy"):
 		if not is_instance_valid(e) or not e.has_method("take_hit"):
 			continue

@@ -216,9 +216,16 @@ var islands := [
 # 1の位は切り上げて10の倍数にする。Enemy2Dの実HPと、酒場・討伐記録の表示で共用する。
 const HP_TIER_MULT := [1.0, 1.5, 1.9, 2.7, 3.3]
 
+# #202再2: 桁数で丸め方を変える。
+#   3桁以下 … そのまま / 4桁 … 十の位を切り上げ(=100の倍数へ切り上げ) / 5桁以上 … 999以下を切り捨て
 func scaled_hp(base: float, island_idx: int) -> int:
 	var m: float = HP_TIER_MULT[clampi(island_idx, 0, HP_TIER_MULT.size() - 1)]
-	return int(ceilf(base * m / 10.0) * 10.0)
+	var v := int(round(base * m))
+	if v < 1000:
+		return v
+	if v < 10000:
+		return int(ceilf(float(v) / 100.0) * 100.0)
+	return int(floorf(float(v) / 1000.0) * 1000.0)
 
 func island(idx: int) -> Dictionary:
 	return islands[clampi(idx, 0, islands.size() - 1)]

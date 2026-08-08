@@ -8,6 +8,8 @@ const FISH_TIME := 0.7
 var label: Label
 var _fishes: Array = []   # {node, base:Vector2, phase:float}
 var _t: float = 0.0
+var _splash: CPUParticles2D   # #213: 網縄漁の水しぶき
+var _splash_t: float = 0.0    # 漁をしている間だけ噴かせるための残り時間
 
 func setup(id: String, count: int) -> void:
 	fish_id = id
@@ -15,6 +17,7 @@ func setup(id: String, count: int) -> void:
 
 func _ready() -> void:
 	add_to_group("fishable")
+	_build_splash()
 	var def: Dictionary = Database.fish_def(fish_id)
 	var rare: bool = def.get("rare", false)
 	var tex := _load_tex()
@@ -67,6 +70,13 @@ func _placeholder(c: Color) -> Texture2D:
 
 func _process(delta: float) -> void:
 	_t += delta
+	# #213: 漁をしている間だけ水しぶきを出す(やめたら少し余韻を残して止める)
+	if _splash_t > 0.0:
+		_splash_t -= delta
+		if _splash and not _splash.emitting:
+			_splash.emitting = true
+	elif _splash and _splash.emitting:
+		_splash.emitting = false
 	for fd in _fishes:
 		var node: Sprite2D = fd.node
 		if not is_instance_valid(node):
@@ -76,9 +86,32 @@ func _process(delta: float) -> void:
 		node.position = fd.base + off
 		node.flip_h = cos(_t * 0.8 + ph) > 0.0   # 進行方向に応じて左右反転
 
+# #213: 網縄漁の演出。魚群のまわりにざぶざぶと水しぶきを上げる
+func _build_splash() -> void:
+	_splash = CPUParticles2D.new()
+	_splash.emitting = false
+	_splash.amount = 34
+	_splash.lifetime = 0.55
+	_splash.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
+	_splash.emission_sphere_radius = 46.0
+	_splash.direction = Vector2(0, -1)
+	_splash.spread = 55.0
+	_splash.gravity = Vector2(0, 220.0)     # 上がって落ちる=しぶきらしく
+	_splash.initial_velocity_min = 70.0
+	_splash.initial_velocity_max = 170.0
+	_splash.scale_amount_min = 2.5
+	_splash.scale_amount_max = 6.0
+	var g := Gradient.new()
+	g.set_color(0, Color(0.95, 1.0, 1.0, 0.9))
+	g.set_color(1, Color(0.6, 0.85, 0.95, 0.0))
+	_splash.color_ramp = g
+	_splash.z_index = 3
+	add_child(_splash)
+
 func try_fish(delta: float) -> String:
 	if remaining <= 0:
 		return ""
+	_splash_t = 0.18        # #213: 漁の間だけ水しぶきを出す
 	fish_timer += delta
 	if fish_timer >= FISH_TIME:
 		fish_timer = 0.0

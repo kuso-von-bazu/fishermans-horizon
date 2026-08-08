@@ -277,8 +277,10 @@ func _handle_ram(delta: float) -> void:
 	var pv: Vector2 = player.velocity
 	if pv.length() < 3.0 * K:
 		return
+	if pv.dot(player.forward()) <= 0.0:
+		return   # #54再: 船団がバックしている間は衝角ダメージなし
 	var reach := 28.0 * _sc
-	var vdir := pv.normalized()
+	var vdir := forward()
 	for e in get_tree().get_nodes_in_group("enemy"):
 		if not is_instance_valid(e) or not e.has_method("take_hit"):
 			continue
