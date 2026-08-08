@@ -542,9 +542,16 @@ func show_fleet() -> void:
 		for m in e.crew.duplicate():
 			var crow := HBoxContainer.new()
 			crow.add_theme_constant_override("separation", 6)
-			var info := _p("    %s [%s] 体%d 敏%d 射%d 知%d 視%d" % [
-				m.name, GameState.jobs[m.job].name, int(m.hp), int(m.agi), int(m.sht), int(m.int_), int(m.vis)])
+			# #196再4: 酒場と同様、上限(STAT_MAX)に達したパラメータは黄色で表示
+			var info := RichTextLabel.new()
+			info.bbcode_enabled = true
+			info.fit_content = true
+			info.scroll_active = false
 			info.custom_minimum_size = Vector2(420, 0)
+			info.add_theme_font_size_override("normal_font_size", 18)
+			info.text = "    %s [%s] %s %s %s %s %s" % [m.name, GameState.jobs[m.job].name,
+				_stat_bb("体", int(m.hp)), _stat_bb("敏", int(m.agi)), _stat_bb("射", int(m.sht)),
+				_stat_bb("知", int(m.int_)), _stat_bb("視", int(m.vis))]
 			crow.add_child(info)
 			for j in GameState.fleet.size():
 				if j == idx:
