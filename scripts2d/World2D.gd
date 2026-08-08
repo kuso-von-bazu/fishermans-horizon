@@ -765,7 +765,7 @@ const FORMATION_OFFSETS := {
 	"line":    [Vector2(-95, 15), Vector2(95, 15), Vector2(-185, 35), Vector2(185, 35)],      # 横並び
 	"column":  [Vector2(0, 95), Vector2(0, 185), Vector2(0, 275), Vector2(0, 365)],           # 縦並び
 	"vee":     [Vector2(-80, 80), Vector2(80, 80), Vector2(-155, 160), Vector2(155, 160)],    # V字型(後方へ広がる)
-	"inv_vee": [Vector2(-80, -10), Vector2(80, -10), Vector2(-155, 70), Vector2(155, 70)],    # 逆V字型(前方へ広がる)
+	"inv_vee": [Vector2(-45, -95), Vector2(45, -95), Vector2(-90, -190), Vector2(90, -190)],  # 逆V字型(#196再2: 角度を急に)
 	"echelon": [Vector2(-80, 75), Vector2(-160, 150), Vector2(-240, 225), Vector2(-320, 300)],# 斜線陣
 }
 

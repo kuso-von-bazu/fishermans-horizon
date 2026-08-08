@@ -22,6 +22,7 @@ var _smoke: CPUParticles2D
 var _sprays: Array = []
 var _half_w: float = 30.0
 var _label: Label
+var _ram_cd: float = 0.0
 var _dead: bool = false
 var player: Node2D
 
@@ -144,19 +145,49 @@ func _build_visual() -> void:
 	add_child(lbl)
 	_label = lbl
 
-# Player2D と同じドット絵マップから船体テクスチャを作る(衝角は旗艦のみなので描かない)
+# Player2D と同じドット絵マップから船体テクスチャを作る。
+# #196再2: 僚艦にも衝角を装着できるので、旗艦と同じ描き方で衝角を描く。
 func _build_ship_texture() -> ImageTexture:
 	var map: Array = PlayerScript.SHIP_MAPS.get(ship_id, PlayerScript.SHIP_MAP)
 	var w: int = map[0].length()
 	var h := map.size()
-	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	var ram: String = str(GameState.fleet[fleet_index].get("ram", "none"))
+	var with_ram: bool = ram != "none"
+	# 船幅(実際の最大ビーム)を走査して衝角のサイズを船体に比例させる
+	var beam := 0
+	for row0 in map:
+		var lo := -1
+		var hi := -1
+		for x0 in w:
+			if row0[x0] != ".":
+				if lo < 0:
+					lo = x0
+				hi = x0
+		if lo >= 0:
+			beam = maxi(beam, hi - lo + 1)
+	var ram_extend := int(round(float(h) / 4.0)) if with_ram else 0
+	var embed := int(round(float(h) / 6.0)) if with_ram else 0
+	var img := Image.create(w, h + ram_extend, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
+	if with_ram:
+		var rc := Color(0.78, 0.82, 0.88) if ram == "steel" else Color(0.5, 0.46, 0.4)
+		var rc_edge := rc.darkened(0.28)
+		var cx := w / 2
+		var base_half := float(beam) / 4.0
+		var ram_len := ram_extend + embed
+		for ry in ram_len:
+			var t: float = float(ry) / float(maxi(ram_len - 1, 1))
+			var half: int = int(round(base_half * pow(t, 1.25)))
+			for x1 in range(cx - half, cx + half + 1):
+				if x1 >= 0 and x1 < w:
+					var edge: bool = half >= 2 and (x1 == cx - half or x1 == cx + half)
+					img.set_pixel(x1, ry, rc_edge if edge else rc)
 	for y in h:
 		var row: String = map[y]
 		for x in w:
 			var ch := row[x]
 			if PlayerScript.PIX.has(ch):
-				img.set_pixel(x, y, PlayerScript.PIX[ch])
+				img.set_pixel(x, y + ram_extend, PlayerScript.PIX[ch])
 	return ImageTexture.create_from_image(img)
 
 # 旗艦(Player2D._ship_scale)と同じ基準でスケールを決める(艦の大きさが揃うように)
@@ -195,8 +226,9 @@ func _physics_process(delta: float) -> void:
 	# 陣形上の相対位置を旗艦の向きで回した点を目標にし、そこへ剛体的に張り付く。
 	var target: Vector2 = player.global_position + slot_offset.rotated(player.rotation)
 	var to := target - global_position
-	velocity = to / maxf(delta, 0.0001)          # 1フレームで目標へ到達する速度
-	var cap: float = player.max_speed * 6.0      # 極端な瞬間移動だけ抑える
+	velocity = to / maxf(delta, 0.0001)          # 目標へ張り付く速度
+	# #196再2: 陣形切替などで目標が大きく動いても、僚艦の速度は船団全体の速度までに制限する
+	var cap: float = player.max_speed
 	if velocity.length() > cap:
 		velocity = velocity.normalized() * cap
 	rotation = player.rotation                    # 向きも旗艦と同じ
@@ -216,6 +248,44 @@ func _physics_process(delta: float) -> void:
 	for spray in _sprays:
 		spray.emitting = player.velocity.length() > player.max_speed * 0.2 and not reversing
 	_auto_fire(delta)
+	_handle_ram(delta)
+
+# #196再2: 僚艦も衝角で体当たりできる。旗艦と同じく前方の敵を近接判定で突く。
+func _handle_ram(delta: float) -> void:
+	if _ram_cd > 0.0:
+		_ram_cd -= delta
+		return
+	if GameState.docking_locked:
+		return
+	var ram: String = str(GameState.fleet[fleet_index].get("ram", "none"))
+	var rd := float(Database.rams[ram].dmg) if Database.rams.has(ram) else 0.0
+	if rd <= 0.0:
+		return
+	# 船団としての進行速度で判定する(僚艦は陣形追従で速度が変動するため)
+	var pv: Vector2 = player.velocity
+	if pv.length() < 3.0 * K:
+		return
+	var reach := 28.0 * _sc
+	var vdir := pv.normalized()
+	for e in get_tree().get_nodes_in_group("enemy"):
+		if not is_instance_valid(e) or not e.has_method("take_hit"):
+			continue
+		if e.get("aerial") == true:
+			continue   # 空中の敵には衝角は届かない
+		var to_e: Vector2 = e.global_position - global_position
+		var er: float = float(e.get("_radius")) if e.get("_radius") != null else 30.0
+		if to_e.length() > reach + er:
+			continue
+		if vdir.dot(to_e.normalized()) < 0.3:
+			continue   # 進行方向(前方)の敵だけ
+		var dmg := rd * (0.5 + pv.length() / maxf(player.max_speed, 1.0))
+		e.take_hit(dmg, false, false)
+		GameState.notice.emit("%sの衝角の一撃! %d ダメージ" % [GameState.fleet_label(fleet_index), int(dmg)])
+		if e is CharacterBody2D:
+			e.velocity += vdir * 220.0
+		Audio.play("sfx_cannon", -8.0, 1.3)
+		_ram_cd = 0.8
+		return
 
 func forward() -> Vector2:
 	return Vector2.UP.rotated(rotation)
