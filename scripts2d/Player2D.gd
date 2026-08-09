@@ -76,23 +76,27 @@ const PIX_SCALE := 2.27
 # #130: 船ごとに描き分けたドット絵(見た目を差別化)。未定義はSHIP_MAP(弩級)。
 # #130再: 船ごとに船らしいドット絵へ描き分け(ドット数を増やして精細化)。bow=上。
 const SHIP_MAPS := {
-	# #186: 粗末な漁船=小さな漁船(尖った船首・小屋・漁具の網)。木の筏から刷新。
+	# #186再: 粗末な漁船=笹の葉のように細長い小舟(船首・船尾が尖り、中央がいちばん広い)
 	"raft": [
-		".......H.......",
-		"......HhH......",
-		".....HhDhH.....",
-		"....HhDDDhH....",
-		"...HhDDDDDhH...",
-		"..HhDDDDDDDhH..",
-		"..HhDWWWWWDhH..",
-		"..HhDWBBBWDhH..",
-		"..HhDWWWWWDhH..",
-		"..HhDDDDDDDhH..",
-		"..HhDDPPPDDhH..",
-		"..HhDDDDDDDhH..",
-		"...HhDDDDDhH...",
-		"....HhhhhhH....",
-		".....HHHHH.....",
+		".....H.....",
+		"....HhH....",
+		"....HDH....",
+		"...HhDhH...",
+		"...HDDDH...",
+		"..HhDDDhH..",
+		"..HDDDDDH..",
+		"..HDWWWDH..",
+		"..HDWBWDH..",
+		"..HDWWWDH..",
+		"..HDDDDDH..",
+		"..HDDPDDH..",
+		"..HDDDDDH..",
+		"..HhDDDhH..",
+		"...HDDDH...",
+		"...HhDhH...",
+		"....HDH....",
+		"....HhH....",
+		".....H.....",
 	],
 	# 武装スキフ: 尖った船首・前部砲・船橋・小煙突
 	"skiff": [

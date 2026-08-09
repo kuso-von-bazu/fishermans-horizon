@@ -487,9 +487,11 @@ func _physics_process(delta: float) -> void:
 		eff_speed *= 0.3
 	# スプライトの向き(#26: 横/正面/後ろ姿の切替+左右反転)
 	_update_facing(face_dir if face_dir != Vector2.ZERO else move_dir)
+	var melee_r0: float = _radius + (12.0 if kind == "lord" else 9.0) * K * float(def.get("reach", 1.0))
+	var mate_near: bool = _melee_victim(melee_r0) != null   # #222: 近接圏の僚艦
 	if not _aggro:
 		velocity = move_dir * eff_speed
-	elif dist > attack_range:
+	elif dist > attack_range and not mate_near:
 		velocity = move_dir * eff_speed
 	else:
 		# #94: 主は射程内でも停止せずプレイヤーを追いながら撃つ。近接圏では減速
@@ -524,6 +526,31 @@ func _check_offscreen_despawn(delta: float) -> void:
 	else:
 		_offscreen_t = 0.0
 
+# #222: 旗艦を追う挙動はそのままに、近接圏に入った僚艦がいればそちらを殴る。
+# (旗艦に追いつけていないのに、隣にいる僚艦を無視するのが不自然だったため)
+func _melee_victim(melee_r: float) -> Node2D:
+	var best: Node2D = null
+	var best_d := melee_r
+	for m in get_tree().get_nodes_in_group("fleet_ship"):
+		if not is_instance_valid(m):
+			continue
+		var d: float = global_position.distance_to(m.global_position)
+		if d < best_d:
+			best_d = d
+			best = m
+	return best
+
+# 近接ダメージを対象へ与える(僚艦なら僚艦の装甲へ)
+func _damage_victim(amount: float, victim: Node2D) -> void:
+	if victim == null:
+		_damage_player(amount)
+		return
+	if victim.has_method("take_damage"):
+		victim.take_damage(amount)
+	if bool(def.get("poison", false)) and victim.has_method("apply_poison"):
+		victim.apply_poison(6.0, 4.0)
+	Audio.play("sfx_hit", -5.0)
+
 func _attack(delta: float, dist: float) -> void:
 	_atk_timer -= delta
 	if _atk_timer > 0:
@@ -546,35 +573,39 @@ func _attack(delta: float, dist: float) -> void:
 			GameState.notice.emit("レヴィアタンの薙ぎ払い!")
 			if randf() < 0.4:   # #161: 近接圏でも時折遠隔攻撃を織り交ぜる
 				_ranged_attack(false)
-		elif dist <= melee_r:
+		elif dist <= melee_r or _melee_victim(melee_r) != null:
 			# #190: melee_mult=体当たりなど近接が強い主(アスピドケロン)
+			var victim := _melee_victim(melee_r)   # #222: 近接圏の僚艦を優先
 			var mm := float(def.get("melee_mult", 1.0))
 			if mm > 1.0:
-				_nagiharai_splash((player.global_position - global_position).normalized(), melee_r)
+				var tgt_pos: Vector2 = victim.global_position if victim != null else player.global_position
+				_nagiharai_splash((tgt_pos - global_position).normalized(), melee_r)
 				GameState.notice.emit("%s の体当たり!" % def.name)
-			_damage_player(eff_dmg * mm)
+			_damage_victim(eff_dmg * mm, victim)
 		else:
 			_ranged_attack(bool(def.get("fire", false)))
 	elif kind == "pirate":
 		# #77: 海賊は近接圏では近接攻撃もする
-		if dist <= melee_r:
+		var pv := _melee_victim(melee_r)   # #222
+		if dist <= melee_r or pv != null:
 			if str(def.get("wpn", "")) == "all":
-				_damage_player(eff_dmg * 1.6)   # #73: 海賊王の衝角突撃
+				_damage_victim(eff_dmg * 1.6, pv)   # #73: 海賊王の衝角突撃
 				GameState.notice.emit("海賊王の衝角突撃!")
 			else:
-				_damage_player(eff_dmg)
+				_damage_victim(eff_dmg, pv)
 		else:
 			_ranged_attack(false)
 	elif ranged:
-		if dist <= melee_r:
-			_damage_player(eff_dmg)
+		var rv := _melee_victim(melee_r)   # #222
+		if dist <= melee_r or rv != null:
+			_damage_victim(eff_dmg, rv)
 		else:
 			_ranged_attack(false)
-	elif dist <= attack_range:
+	elif dist <= attack_range or _melee_victim(melee_r) != null:
 		# #190: wave_melee=離れた距離からの範囲近接(ザラタン)。攻撃範囲を波の輪で表示
 		if bool(def.get("wave_melee", false)):
 			_wave_ring(attack_range)
-		_damage_player(eff_dmg)
+		_damage_victim(eff_dmg, _melee_victim(attack_range))   # #222
 
 # #65/#66: way=扇状同時弾, homing=追跡弾を追加, wpn=gatling(3連小弾)/torpedo(追尾)/cannon
 func _ranged_attack(is_fire: bool) -> void:

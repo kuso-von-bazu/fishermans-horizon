@@ -483,7 +483,7 @@ func show_shipyard() -> void:
 		"・ガトリングガン  弾幕を張るのに向いた武装。距離が離れると威力が低下する。",
 		"・大砲  単発高火力の大砲。海賊船を炎上させやすい。",
 		"・銛  様々な種類の毒を塗ることができ、生物に有効。",
-		"・魚雷  僚艦に射線が遮られていても発射可能。空中の敵には発射できない。",
+		"・魚雷  敵をクリックしてロックオンし、右クリックで発射。僚艦に射線が遮られていても発射可能。空中の敵には発射できない。",
 		"・衝角  体当たりで攻撃する。空中の敵には攻撃できない。",
 	]:
 		content.add_child(_p(line))
@@ -526,6 +526,9 @@ func show_travel() -> void:
 			content.add_child(row)
 		else:
 			content.add_child(_p("・%s  [未開放 / 必要名声 %d]  方角:【%s】" % [isle.name, isle.fame_req, compass]))
+	# #219: 名声の稼ぎ方を最後に案内する
+	content.add_child(_p(""))
+	content.add_child(_p("名声は近海の主を討伐したり、海賊を撃退することで稼ぐことができます。"))
 
 # #140再: パラメータ表記。上限到達で黄色に
 # ---------------- 編成(#196) ----------------
@@ -546,7 +549,7 @@ func show_fleet() -> void:
 
 	# --- 船団の各艦 ---
 	content.add_child(_p(""))
-	content.add_child(_h("船団(船速は船団の最も遅い船に依存する)", 18))
+	content.add_child(_h("船団(船速は船団の最も遅い船に依存する、クリックしロックオンした敵を僚艦は自動的に攻撃する)", 18))
 	for i in GameState.fleet.size():
 		var e: Dictionary = GameState.fleet[i]
 		var sd: Dictionary = Database.ships[str(e.ship_id)]

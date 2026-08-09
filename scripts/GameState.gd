@@ -200,7 +200,8 @@ func grow_crew() -> void:
 			# #153再: 30を超えると上限(50)に近づくほど伸びにくい
 			var falloff := 1.0
 			if cur > 30:
-				falloff = clampf(1.0 - float(cur - 30) / float(STAT_MAX - 30), 0.05, 1.0)
+				# #153再2: 30超はさらに上がりにくく(従来の逓減を2乗)
+				falloff = pow(clampf(1.0 - float(cur - 30) / float(STAT_MAX - 30), 0.02, 1.0), 2.0)
 			if randf() < (0.5 + float(g[k]) * 0.18) * 0.8 * falloff:   # #153: 成長速度8割+高値で逓減
 				m[k] = mini(cur + maxi(int(g[k]), 0), STAT_MAX)   # #140: 上限50
 
@@ -268,8 +269,8 @@ func debuff_dur_mult() -> float:   # 知力: デバフ強化(持続延長)
 # #201: 自動ロックオン廃止に伴い、視力の効果は「ソナーの探知範囲」に変更。
 # 視力が高いほど広範囲の敵・漁獲物・旧文明の遺産をソナーに表示できる。
 func sonar_range_mult() -> float:   # 視力+航海士: ソナー範囲拡大
-	# #201再: 向上幅を従来の半分に(視力3%→1.5%, 航海士+20%→+10%)
-	var m := 1.0 + 0.015 * _crew_sum("vis")
+	# #201再2: 視力1ポイントあたり1%(航海士の補正+10%は据え置き)
+	var m := 1.0 + 0.01 * _crew_sum("vis")
 	for c in crew:
 		if c.job == "navigator":
 			m *= 1.1

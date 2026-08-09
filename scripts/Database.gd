@@ -78,10 +78,10 @@ var harpoon_debuffs := {
 # #208: 主の売値(price)と賞金(bounty)を引き上げ
 # #65: 全主が遠隔攻撃を持つ。way=同時弾数(扇状), homing=追跡弾, radial=全方向, homing_count=追跡弾数
 var lords := {
-	"sawshark":  {"name": "電動ノコギリザメ",         "hp": 730,  "dmg": 21, "cap": 8,  "price": 800,  "bounty": 1500,  "fame": 8,  "island": 0, "ranged": true, "aerial": false, "pair": false, "speed": 9.5, "way": 1, "dir": 0, "face_left": true, "lore": "旧人類の狂気が生んだ悲しきモンスター。"},   # #189: 3way→1way
-	"dumbo":     {"name": "ウミダンボ",               "hp": 1000, "dmg": 18, "cap": 9,  "price": 1200, "bounty": 2500,  "fame": 10, "island": 0, "ranged": true, "aerial": false, "pair": false, "speed": 7.5, "way": 1, "dir": 135, "lore": "大きな耳で器用に泳ぐ。旧大陸が極度の海面上昇で沈没していく中、海に適応した象。"},   # #189: 3way→1way
+	"sawshark":  {"name": "電動ノコギリザメ",         "hp": 730,  "dmg": 21, "cap": 8,  "price": 800,  "bounty": 1500,  "fame": 8,  "island": 0, "ranged": true, "aerial": false, "pair": false, "speed": 9.5, "way": 1, "shot_speed_mult": 0.6, "dir": 0, "face_left": true, "lore": "旧人類の狂気が生んだ悲しきモンスター。"},   # #189: 3way→1way
+	"dumbo":     {"name": "ウミダンボ",               "hp": 1000, "dmg": 18, "cap": 9,  "price": 1200, "bounty": 2500,  "fame": 10, "island": 0, "ranged": true, "aerial": false, "pair": false, "speed": 7.5, "way": 1, "shot_speed_mult": 0.6, "dir": 135, "lore": "大きな耳で器用に泳ぐ。旧大陸が極度の海面上昇で沈没していく中、海に適応した象。"},   # #189: 3way→1way
 	"whale":     {"name": "ヒゲマッコウナガスクジラ", "hp": 1640, "dmg": 27, "cap": 14, "price": 2700, "bounty": 4500,  "fame": 16, "island": 1, "ranged": true, "aerial": false, "pair": false, "speed": 8.5, "way": 3, "homing": true, "burst": {"count": 16, "spread": 0.42, "speeds": [0.55, 0.9], "dmg_mult": 0.22, "color": Color(0.55,0.85,0.95), "every": [5.0, 8.5]}, "dir": 45, "face_left": true, "lore": "富栄養化の影響で体長は50メートルにも達する。"},
-	"walrus":    {"name": "ギガントセイウチ",         "hp": 870,  "dmg": 24, "cap": 7,  "price": 1800, "bounty": 6000,  "fame": 18, "island": 1, "ranged": true, "aerial": false, "pair": true, "speed": 8.5,  "way": 3, "burst": {"count": 15, "spread": 0.45, "speeds": [0.55, 0.95, 1.45], "dmg_mult": 0.22, "color": Color(0.62,0.45,0.28), "every": [5.0, 8.5]}, "dir": 225, "lore": "おしどり夫婦でいつも夫婦で行動している。"},
+	"walrus":    {"name": "ギガントセイウチ",         "hp": 870,  "dmg": 24, "cap": 7,  "price": 1800, "bounty": 6000,  "fame": 18, "island": 1, "ranged": true, "aerial": false, "pair": true, "speed": 8.5,  "way": 3, "spawn_dist_mult": 1.35, "burst": {"count": 15, "spread": 0.45, "speeds": [0.55, 0.95, 1.45], "dmg_mult": 0.22, "color": Color(0.62,0.45,0.28), "every": [5.0, 8.5]}, "dir": 225, "lore": "おしどり夫婦でいつも夫婦で行動している。"},
 	# #190: 月下の島の主。aspidochelone=高速回転しつつ弾をばら撒きながら体当たり(charge_cycleで緩急)
 	"aspidochelone": {"name": "アスピドケロン",       "hp": 2400, "dmg": 38, "cap": 12, "price": 3000, "bounty": 8000,  "fame": 22, "island": 2, "ranged": true,  "aerial": false, "pair": false, "speed": 13.5, "atk_cd": 0.6, "spin": 5.0, "scatter": 14, "way": 0, "shot_dmg_mult": 0.5, "shot_speed_mult": 0.8, "charge_cycle": true, "melee_mult": 1.4, "dir": 180, "color": Color(0.35,0.5,0.4), "lore": "島と間違えて上陸した船乗りが、目を覚ましたアスピドケロンに丸呑みされたという伝説がある。"},
 	# #190: legion=小魚の群れが大魚の陣形。被弾で陣形が縮み(shrink_hp)、複数箇所(multi_origin)から小型弾を大量発射
@@ -92,7 +92,7 @@ var lords := {
 	"quetzal":   {"name": "ケツァルコアトル",         "hp": 4500, "dmg": 50, "cap": 13, "price": 6000, "bounty": 21000,  "fame": 30, "island": 3, "ranged": true, "aerial": true,  "pair": false, "speed": 13.0, "way": 5, "aim_tight": true, "aim_shape": "ellipse", "aim_color": Color(0.95,0.85,0.2), "homing_count": 2, "spread_homing": true, "dodge": 0.10, "dodge_pass": true, "kite": true, "burst": {"count": 16, "spread": 0.42, "speeds": [0.55, 0.9], "dmg_mult": 0.22, "color": Color(0.95,0.85,0.2), "every": [4.5, 7.5], "kite_only": true}, "always_front": true, "dir": 270, "lore": "空中から攻撃してくるので、衝角による攻撃や魚雷でのロックオンは不可能。旧人類がレヴィアタンへの対抗策として創造したが、彼らはそれぞれ空と海を荒らしまわるばかりであった。"},
 	# #187: 果ての島の主(レヴィアタンの前に戦う想定)。挙動は海賊王準拠=ガトリング/大砲/魚雷から2つを同時使用。
 	# HPが2/3以下で引き撃ち(kite_hp)。銛のデバフ無効(no_debuff)。取り巻きなし。
-	"ghost":     {"name": "幽霊船",                   "hp": 8000, "dmg": 43, "cap": 20, "price": 7000, "bounty": 60000, "fame": 45, "island": 4, "ranged": true,  "aerial": false, "pair": false, "speed": 13.0, "atk_cd": 0.9, "volley_pool": ["gatling", "cannon", "torpedo"], "volley_pick": 2, "kite": true, "kite_hp": 0.667, "no_debuff": true, "no_escort": true, "dodge": 0.15, "dodge_pass": true, "size_mult": 0.72, "no_cargo": true, "dir": 225, "face_left": true, "color": Color(0.55,0.75,0.8), "lore": "レヴィアタンに轟沈させられた過去の勇士の魂が、いつしか幽霊船の形をとり辺りを彷徨うようになった。"},
+	"ghost":     {"name": "幽霊船",                   "hp": 8000, "dmg": 43, "cap": 20, "price": 7000, "bounty": 60000, "fame": 45, "island": 4, "ranged": true,  "aerial": false, "pair": false, "speed": 13.0, "atk_cd": 0.9, "volley_pool": ["gatling", "cannon", "torpedo"], "volley_pick": 2, "kite": true, "kite_hp": 0.667, "no_debuff": true, "no_escort": true, "dodge": 0.15, "dodge_pass": true, "size_mult": 0.72, "no_cargo": true, "dir": 239, "spawn_dist_mult": 1.6, "face_left": true, "color": Color(0.55,0.75,0.8), "lore": "レヴィアタンに轟沈させられた過去の勇士の魂が、いつしか幽霊船の形をとり辺りを彷徨うようになった。"},
 	# #155: 出現方角を果ての島の東(dir=90)。#65: 追跡弾速0.5。#110再: 速度10.5。#163: range_mult=1.6でより遠距離から。#65再: 照準3wayを緑の楕円弾に、追跡弾は扇状に広がってから急加速(spread_homing)。#112再: 説明文(バイオテクノロジー→テクノロジー)
 	"leviathan": {"name": "レヴィアタン",             "hp": 8500, "dmg": 47, "cap": 25, "price": 9999, "bounty": 100000, "fame": 60, "island": 4, "ranged": true,  "aerial": false, "pair": false, "speed": 10.5, "range_mult": 1.6, "spawn_dist_mult": 1.75, "radial": true, "radial_count": 24, "way": 3, "aim_tight": true, "aim_shape": "ellipse", "aim_color": Color(0.35,0.95,0.4), "shot_speed_mult": 0.8, "homing_speed_mult": 0.5, "shot_dmg_mult": 0.7, "homing_count": 4, "spread_homing": true, "dir": 90, "face_left": true, "lore": "旧人類が創り出した神。神の領域に達した旧人類のテクノロジーは神をも創造したが、皮肉にもそれは人類種の天敵となり、残されたわずかな陸地を除いて人類の生存可能領域はなくなった。"},
 }
@@ -121,7 +121,7 @@ var pirates := {
 	"dread":    {"name": "海賊(大)", "hp": 900, "dmg": 24, "bounty": 1200, "fame": 4, "ranged": true, "volley": ["gatling", "torpedo"], "face_left": true, "color": Color(0.25,0.18,0.1)},
 	# #73: レアスポーンの強敵。かつてFisherman's Horizonを目指し、心折れて海賊に落ちた男。
 	# hp/dmgは出現海域(island)に応じてEnemy2Dで強化。
-	"king":     {"name": "海賊王",   "hp": 2200, "dmg": 28, "bounty": 4000, "fame": 30, "ranged": true, "wpn": "all", "speed": 12.0, "atk_cd": 0.9, "always_aggro": true, "face_left": true, "color": Color(0.1,0.08,0.1)},
+	"king":     {"name": "海賊王",   "hp": 2200, "dmg": 28, "bounty": 4000, "fame": 30, "ranged": true, "wpn": "all", "volley_pool": ["cannon", "gatling", "torpedo"], "volley_pick": 2, "speed": 12.0, "atk_cd": 0.9, "always_aggro": true, "face_left": true, "color": Color(0.1,0.08,0.1)},
 }
 
 # #177: 討伐記録(図鑑)。戦闘能力があるモブ及び海賊のみ(近海の主は酒場で別掲)。
@@ -185,7 +185,7 @@ var rams := {
 # ---------------------------------------------------------------------------
 var ships := {
 	"raft":     {"name": "粗末な漁船",     "food": 100, "hold": 12,  "armor": 60,   "slots": 1, "range": 0, "speed": 11.0, "price": 0,     "trade": 0},
-	"skiff":    {"name": "武装スキフ",     "food": 140, "hold": 18,  "armor": 140,  "slots": 2, "range": 0, "speed": 11.5, "price": 1500,  "trade": 1000},
+	"skiff":    {"name": "武装スキフ",     "food": 140, "hold": 22,  "armor": 140,  "slots": 2, "range": 0, "speed": 11.5, "price": 1500,  "trade": 1000},
 	# #157再々: 燃料(food)を共有者指定値に再調整
 	"cutter":   {"name": "外洋カッター",   "food": 150, "hold": 30,  "armor": 260,  "slots": 3, "range": 1, "speed": 12.0, "price": 9000,   "trade": 3500},
 	# #190: rangeは「販売が解禁される島index」。月下の島(2)の追加でコルベット以降を1つずつ後ろへずらす
@@ -204,7 +204,7 @@ var ships := {
 var islands := [
 	{"id": 0, "name": "始まりの島",   "fame_req": 0,   "price_mult": 1.0, "pos": Vector3(0, 0, 0),       "spawn": ["sardine","mackerel"], "lords": ["sawshark","dumbo"]},
 	# #174/#200: 次の島到達に必要な名声を全体的に引き上げ(その島の主だけでは足りず、海賊狩りが要る水準)
-	{"id": 1, "name": "潮鳴りの島",   "fame_req": 26,   "price_mult": 2.08, "pos": Vector3(900, 0, -300),  "spawn": ["bonito","squid","mackerel"], "lords": ["whale","walrus"]},   # #57再: 元の距離に戻す
+	{"id": 1, "name": "潮鳴りの島",   "fame_req": 22,   "price_mult": 2.08, "pos": Vector3(900, 0, -300),  "spawn": ["bonito","squid","mackerel"], "lords": ["whale","walrus"]},   # #57再: 元の距離に戻す
 	# #190: 3つ目の島。砂漠とわずかな緑地。近海は常に夜(weather="night")
 	{"id": 2, "name": "月下の島",     "fame_req": 70,  "price_mult": 3.0, "pos": Vector3(1700, 0, 200),  "spawn": ["squid","octopus","bonito"], "lords": ["aspidochelone","legion"], "weather": "night"},
 	# #190: 月下の島の追加に伴い、嵐越え・果ては従来よりさらに遠方へ。#191/#192: 近海の天候演出

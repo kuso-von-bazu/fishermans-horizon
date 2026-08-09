@@ -1379,6 +1379,11 @@ func _build_food_dialog() -> void:
 # ---------------- クリーンアップ ----------------
 func _clear_sea_actors() -> void:
 	_clear_escorts()   # #196
+	# #105再2: 飛行中の弾も片付ける。残しておくと寄港後も残留し、
+	# 次の出港時に island 付近で被弾することがあった。
+	for c in get_children():
+		if c is Area2D and c.get_script() == ProjectileScript:
+			c.queue_free()
 	for a in fish_schools + enemies + relics_world + obstacles:
 		if is_instance_valid(a):
 			a.queue_free()
