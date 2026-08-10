@@ -304,6 +304,11 @@ func _enter_dock(island_id: int, do_reset := true) -> void:
 
 func _on_set_sail() -> void:
 	port_ui.close()
+	# #93再: 出港時もオートセーブ。航海中に終了しても港での買い物が失われないようにする。
+	# 燃料費・賃金・修理費を引く「前」に保存するので、再開時は出港直前の状態に戻る
+	# (再開後に出港すればそこで改めて徴収されるため、二重取りにならない)。
+	if not _boss_rush and not _victory_shown:
+		GameState.save_game()
 	phase = "sea"
 	# #168: 燃料費(初回出港を除き、船の定価の0.5%・粗末な漁船は5)を徴収
 	if GameState.has_departed:
