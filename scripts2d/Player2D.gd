@@ -22,6 +22,7 @@ var _sc: float = 1.0
 var _half_w: float = 30.0    # #132/#144: 船の見た目の半幅(px)
 var _half_h: float = 42.0    # #164: 船の見た目の半高(px)。航跡を船尾に隙間なく出すため
 var _body_pts: PackedVector2Array
+var _label: Label   # #212再: 「旗艦」表示(船と一緒に回らないよう毎フレーム逆回転)
 
 func _ready() -> void:
 	add_to_group("player")
@@ -507,6 +508,18 @@ func _build_visual() -> void:
 		add_child(spray)
 		_sprays.append(spray)
 
+	# #212再: 僚艦と同じく「旗艦」ラベルを表示
+	var lbl := Label.new()
+	lbl.text = "旗艦"
+	lbl.add_theme_font_size_override("font_size", 14)
+	lbl.add_theme_color_override("font_color", Color(1.0, 0.92, 0.72))
+	lbl.add_theme_constant_override("outline_size", 5)
+	lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
+	lbl.custom_minimum_size = Vector2(120, 0)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.z_index = 4
+	add_child(lbl)
+	_label = lbl
 	# #178: 損傷時の黒煙(装甲1/4未満で小さな黒煙・大破で大きな黒煙)。船の複数個所から噴く。
 	_dmg_smokes = []
 	var dmg_pts := [
@@ -593,6 +606,10 @@ func _physics_process(delta: float) -> void:
 	if not control_enabled:
 		velocity = velocity.move_toward(Vector2.ZERO, accel * delta)
 		move_and_slide()
+		queue_redraw()
+		if _label:
+			_label.rotation = -rotation
+			_label.position = Vector2(-60, -_half_h - 34).rotated(-rotation)
 		return
 	var throttle := 0.0
 	var steer := 0.0
@@ -615,6 +632,11 @@ func _physics_process(delta: float) -> void:
 	# 高速な敵に押し出されて最高速度を超える件は別途対応予定。
 	move_and_slide()
 	_check_obstacle_bump()   # #193: 岩礁・流氷に接触で小ダメージ(障害物は壊れない)
+	queue_redraw()           # #212再: 装甲ゲージの更新
+	if _label:
+		# ラベルは船と一緒に回ると裏返るので、常に画面上向き・船の真上に置く
+		_label.rotation = -rotation
+		_label.position = Vector2(-60, -_half_h - 34).rotated(-rotation)
 	if _flame:
 		_flame.emitting = GameState.burn_t > 0.0   # #136: 炎上中だけ炎
 	# #178: 損傷黒煙。装甲1/4未満で小さな黒煙、大破(装甲0)で大きな黒煙を複数個所から。
@@ -670,6 +692,15 @@ func _check_obstacle_bump() -> void:
 		Audio.play("sfx_hit", -6.0, 0.8)
 		_bump_cd = 1.2
 		return
+
+# #212再: 僚艦と同じ円形の装甲ゲージ(上から時計回り。残量で緑→赤)
+func _draw() -> void:
+	var frac := clampf(GameState.run_armor / maxf(GameState.max_armor(), 1.0), 0.0, 1.0)
+	var r := maxf(_half_w, _half_h) + 10.0
+	draw_arc(Vector2.ZERO, r, 0, TAU, 40, Color(0, 0, 0, 0.35), 5.0)
+	if frac > 0.0:
+		var col := Color(1, 0.2, 0.15).lerp(Color(0.35, 1.0, 0.4), frac)
+		draw_arc(Vector2.ZERO, r, -PI / 2, -PI / 2 + TAU * frac, 40, col, 5.0)
 
 func _handle_ram() -> void:
 	if _ram_cd > 0.0:

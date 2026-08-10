@@ -4,6 +4,8 @@ extends CharacterBody2D
 ## 海賊=遠隔+近接(#9)、ヒュドラ=回復する炎、レヴィアタン=津波/薙ぎ払い、番い(#5相当は討伐管理)。
 
 const K := 6.0
+# #223: 近海の主の近接攻撃力の一律倍率
+const LORD_MELEE_MULT := 1.2
 
 var kind: String = "mob"
 var id: String = "narwhal"
@@ -498,7 +500,7 @@ func _physics_process(delta: float) -> void:
 		var melee_r: float = _radius + (12.0 if kind == "lord" else 9.0) * K * float(def.get("reach", 1.0))
 		if kind == "lord" and dist > melee_r:
 			velocity = move_dir * eff_speed * 0.75
-		elif kind == "mob" and (bool(def.get("zigzag", false)) or bool(def.get("shoot_moving", false))) and dist > melee_r:
+		elif (kind == "mob" or kind == "pirate") and (bool(def.get("zigzag", false)) or bool(def.get("shoot_moving", false))) and dist > melee_r:
 			velocity = move_dir * eff_speed * 0.85   # #149再: ティアマット等は移動(ジグザグ)しながら遠隔攻撃
 		else:
 			velocity = velocity.move_toward(Vector2.ZERO, eff_speed)
@@ -568,7 +570,7 @@ func _attack(delta: float, dist: float) -> void:
 		if id == "leviathan" and dist <= melee_r:   # #156再: 薙ぎ払いのヒット距離は通常の近接攻撃と同じに戻す
 			var atk_dir := (player.global_position - global_position).normalized()
 			_nagiharai_splash(atk_dir, melee_r)   # #156: 攻撃方向へしぶきエフェクト
-			_damage_player(eff_dmg * 1.3)
+			_damage_player(eff_dmg * 1.3 * LORD_MELEE_MULT)   # #223
 			GameState.ignite(5.0)   # #65: 薙ぎ払いは必ず炎上
 			GameState.notice.emit("レヴィアタンの薙ぎ払い!")
 			if randf() < 0.4:   # #161: 近接圏でも時折遠隔攻撃を織り交ぜる
@@ -581,7 +583,10 @@ func _attack(delta: float, dist: float) -> void:
 				var tgt_pos: Vector2 = victim.global_position if victim != null else player.global_position
 				_nagiharai_splash((tgt_pos - global_position).normalized(), melee_r)
 				GameState.notice.emit("%s の体当たり!" % def.name)
-			_damage_victim(eff_dmg * mm, victim)
+			_damage_victim(eff_dmg * mm * LORD_MELEE_MULT, victim)   # #223: 主の近接は一律1.2倍
+			# #223: レヴィアタン以外の主も、近接圏で時々遠隔攻撃を織り交ぜる
+			if randf() < 0.4:
+				_ranged_attack(bool(def.get("fire", false)))
 		else:
 			_ranged_attack(bool(def.get("fire", false)))
 	elif kind == "pirate":
@@ -951,7 +956,10 @@ func _die() -> void:
 		"pirate":
 			GameState.add_head(id)
 			GameState.add_fame(int(def.get("fame", 1)))
-			GameState.notice.emit("%s を撃退(首を確保 / 名声+%d)" % [def.name, int(def.get("fame", 1))])
+			if GameState.boss_rush:
+				GameState.notice.emit("%s を撃退!" % def.name)   # #209再2
+			else:
+				GameState.notice.emit("%s を撃退(首を確保 / 名声+%d)" % [def.name, int(def.get("fame", 1))])
 		"lord":
 			# #187再2: 幽霊船など no_cargo の主は漁獲物にならない(魚倉を消費しない)
 			if not bool(def.get("no_cargo", false)) and GameState.free_hold() >= int(def.cap):
@@ -966,5 +974,8 @@ func _die() -> void:
 				var lord_fame := int(def.get("fame", 0))   # #50: 主討伐で名声
 				if lord_fame > 0:
 					GameState.add_fame(lord_fame)
-				GameState.notice.emit("近海の主 %s を討伐! 名声+%d 賞金は酒場で受領" % [def.name, lord_fame])
+				if GameState.boss_rush:
+					GameState.notice.emit("近海の主 %s を討伐!" % def.name)   # #209再2
+				else:
+					GameState.notice.emit("近海の主 %s を討伐! 名声+%d 賞金は酒場で受領" % [def.name, lord_fame])
 	queue_free()
