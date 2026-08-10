@@ -23,6 +23,11 @@ var _half_w: float = 30.0    # #132/#144: 船の見た目の半幅(px)
 var _half_h: float = 42.0    # #164: 船の見た目の半高(px)。航跡を船尾に隙間なく出すため
 var _body_pts: PackedVector2Array
 var _label: Label   # #212再: 「旗艦」表示(船と一緒に回らないよう毎フレーム逆回転)
+# #224: 陣形スキル
+var charge_t: float = 0.0        # 突撃の残り秒。>0の間は3倍速で直進し敵を貫く
+var _charge_hit: Array = []      # 1回の突撃で同じ敵に多重ヒットしないための記録
+var volley_queue: Array = []     # 一斉射撃の残弾 [{slot, left, timer}]
+var volley_target: Node2D = null
 
 func _ready() -> void:
 	add_to_group("player")
@@ -630,7 +635,18 @@ func _physics_process(delta: float) -> void:
 	velocity = velocity.move_toward(forward() * throttle * eff_max, accel * delta)
 	# #184再2: 敵とは物理的に衝突する(すり抜けを撤回)。
 	# 高速な敵に押し出されて最高速度を超える件は別途対応予定。
+	# #224: 突撃中は向いている方向へ3倍速で直進し、敵をすり抜ける
+	if charge_t > 0.0:
+		charge_t -= delta
+		velocity = forward() * max_speed * 3.0
+		collision_mask = 1          # 敵レイヤー(2)を外して貫通
+		if charge_t <= 0.0:
+			collision_mask = 3
+			_charge_hit.clear()
 	move_and_slide()
+	if charge_t > 0.0:
+		_charge_pierce()
+	_tick_volley(delta)      # #224: 一斉射撃
 	_check_obstacle_bump()   # #193: 岩礁・流氷に接触で小ダメージ(障害物は壊れない)
 	queue_redraw()           # #212再: 装甲ゲージの更新
 	if _label:
@@ -692,6 +708,69 @@ func _check_obstacle_bump() -> void:
 		Audio.play("sfx_hit", -6.0, 0.8)
 		_bump_cd = 1.2
 		return
+
+# #224: 突撃で貫いた敵に衝角ダメージ(1回の突撃につき同じ敵へは1度だけ)
+func _charge_pierce() -> void:
+	var rd := float(Database.rams[GameState.ram_id].dmg)
+	if rd <= 0.0:
+		return
+	var reach := 34.0 * _sc
+	for e in get_tree().get_nodes_in_group("enemy"):
+		if not is_instance_valid(e) or not e.has_method("take_hit"):
+			continue
+		if e.get("aerial") == true or _charge_hit.has(e.get_instance_id()):
+			continue
+		var er: float = float(e.get("_radius")) if e.get("_radius") != null else 30.0
+		if global_position.distance_to(e.global_position) > reach + er:
+			continue
+		_charge_hit.append(e.get_instance_id())
+		var dmg := rd * (0.5 + velocity.length() / maxf(max_speed, 1.0))
+		e.take_hit(dmg, false, false)
+		GameState.notice.emit("突撃の衝角! %d ダメージ" % int(dmg))
+		Audio.play("sfx_cannon", -6.0, 1.3)
+
+# #224: 一斉射撃。装備中の各武器から、弾倉の半分(切り上げ)を3倍のレートでロック中の敵へ撃つ
+func start_volley(target: Node2D) -> void:
+	volley_target = target
+	volley_queue.clear()
+	var slots := int(GameState.ship().slots)
+	for i in slots:
+		var wid: String = GameState.weapons[i] if i < GameState.weapons.size() else ""
+		if wid == "" or not Database.weapons.has(wid):
+			continue
+		var w: Dictionary = Database.weapons[wid]
+		volley_queue.append({"slot": i, "left": int(ceil(float(w.mag) / 2.0)), "timer": 0.0})
+
+func _tick_volley(delta: float) -> void:
+	if volley_queue.is_empty():
+		return
+	if not is_instance_valid(volley_target):
+		volley_queue.clear()
+		return
+	for q in volley_queue:
+		q.timer -= delta
+		if q.timer > 0.0 or int(q.left) <= 0:
+			continue
+		var wid: String = GameState.weapons[int(q.slot)]
+		var w: Dictionary = Database.weapons[wid]
+		q.timer = float(w.cooldown) / 3.0      # 通常の3倍のレート
+		q.left = int(q.left) - 1
+		_fire_volley_shot(w)
+	volley_queue = volley_queue.filter(func(q): return int(q.left) > 0)
+
+func _fire_volley_shot(w: Dictionary) -> void:
+	var dir := (volley_target.global_position - global_position).normalized()
+	var w2 := w.duplicate()
+	w2["debuff_kind"] = GameState.harpoon_debuff
+	w2.dmg = float(w.dmg) * GameState.attack_mult()
+	Audio.play(str(w.get("sfx", "sfx_gun")), -12.0, randf_range(0.95, 1.05))
+	var proj := Area2D.new()
+	proj.set_script(preload("res://scripts2d/Projectile2D.gd"))
+	get_parent().add_child(proj)
+	proj.global_position = global_position + dir * 40.0
+	proj.from_player = true
+	# 味方はすり抜ける(Projectile2D側で from_player かつ fleet_ship は素通り)
+	proj.setup(dir, w2, volley_target if str(w.kind) == "lock" else null)
 
 # #212再: 僚艦と同じ円形の装甲ゲージ(上から時計回り。残量で緑→赤)
 func _draw() -> void:

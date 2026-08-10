@@ -56,6 +56,8 @@ var _br_index: int = 0
 var _br_boss: Node = null
 var _br_active: bool = false   # ボスが出現中(解放済み参照は null 比較で真になるため別途フラグで持つ)
 var _br_wait: float = 0.0
+var _skill_cd: float = 0.0        # #224: スキルのクールダウン残り
+var _skill_cd_max: float = 1.0
 
 func island_pos(idx: int) -> Vector2:
 	var p: Vector3 = Database.island(idx).pos
@@ -228,6 +230,7 @@ func _input(event: InputEvent) -> void:
 			KEY_2: _set_formation_slot(1)
 			KEY_3: _set_formation_slot(2)
 			KEY_4: _set_formation_slot(3)
+			KEY_5: _use_skill()   # #224
 
 # #196: クリック位置に最も近い敵へロックを移す
 func _click_lock(pos: Vector2) -> void:
@@ -350,7 +353,7 @@ func _on_set_sail() -> void:
 	GameState.formation_slot = 0        # #196: 陣形1がデフォルト
 	_spawn_escorts_fleet()
 	if hud and hud.has_method("build_formation_bar"):
-		hud.build_formation_bar(_set_formation_slot)   # #196: 画面上の陣形ボタン
+		hud.build_formation_bar(_set_formation_slot, _use_skill)   # #224   # #196: 画面上の陣形ボタン
 	# #67: 出港時に未討伐の主が確実に海域へ出現しているようにする
 	_try_spawn_lord()
 
@@ -421,6 +424,7 @@ func _physics_process(delta: float) -> void:
 		_update_weapons(delta)
 		_update_lock_on()
 		_update_sonar()
+		_tick_skill(delta)   # #224
 		if hud:
 			hud.update_bars()
 		if GameState.run_armor <= 0.0:
@@ -449,6 +453,7 @@ func _physics_process(delta: float) -> void:
 	_update_lock_on()
 	_update_sonar()
 	_update_boss_bgm()
+	_tick_skill(delta)   # #224
 	if hud:
 		hud.update_bars()
 	_check_victory()   # #159: 画面外でレヴィアタンを倒しても確実に毎フレーム勝利判定
@@ -888,7 +893,7 @@ func _on_boss_rush() -> void:
 	GameState.formation_slot = 0
 	_spawn_escorts_fleet()
 	if hud and hud.has_method("build_formation_bar"):
-		hud.build_formation_bar(_set_formation_slot)
+		hud.build_formation_bar(_set_formation_slot, _use_skill)   # #224
 	_apply_weather("blizzard")   # 果ての島近海を模した海
 	_br_spawn_next()
 
@@ -973,6 +978,54 @@ const FORMATION_OFFSETS := {
 	# #196再8: 輪形陣。旗艦を中心に僚艦が等間隔で取り囲む
 	"ring":    [Vector2(0, -115), Vector2(115, 0), Vector2(0, 115), Vector2(-115, 0)],
 }
+
+# #224: 陣形ごとのスキル
+const FORMATION_SKILLS := {
+	"line":    {"name": "突撃",     "kind": "charge", "cd": 15.0},
+	"column":  {"name": "一斉射撃", "kind": "volley", "cd": 20.0},
+	"vee":     {"name": "突撃",     "kind": "charge", "cd": 17.0},
+	"inv_vee": {"name": "一斉射撃", "kind": "volley", "cd": 25.0},
+	"echelon": {"name": "一斉射撃", "kind": "volley", "cd": 19.0},
+	"ring":    {"name": "一斉射撃", "kind": "volley", "cd": 25.0},
+}
+const CHARGE_TIME := 1.2   # 突撃の持続秒
+
+func _current_skill() -> Dictionary:
+	return FORMATION_SKILLS.get(_current_formation(), FORMATION_SKILLS["line"])
+
+# スキル発動(スキルボタン or 5キー)。旗艦と僚艦がそろって発動する
+func _use_skill() -> void:
+	if phase != "sea" or _skill_cd > 0.0:
+		return
+	var sk: Dictionary = _current_skill()
+	if str(sk.kind) == "volley":
+		if lock_target == null or not is_instance_valid(lock_target):
+			GameState.notice.emit("一斉射撃はロックオン中のみ発動できる")
+			return
+		player.start_volley(lock_target)
+		for e in escorts:
+			if is_instance_valid(e):
+				e.start_volley(lock_target)
+	else:
+		player.charge_t = CHARGE_TIME
+		player._charge_hit.clear()
+		for e2 in escorts:
+			if is_instance_valid(e2):
+				e2.charge_t = CHARGE_TIME
+				e2._charge_hit.clear()
+	_skill_cd = float(sk.cd)
+	_skill_cd_max = float(sk.cd)
+	GameState.notice.emit("%s!" % str(sk.name))
+	Audio.play("sfx_lock", -4.0, 0.8)
+
+# クールダウンを進め、HUDへ進捗を渡す
+func _tick_skill(delta: float) -> void:
+	if _skill_cd > 0.0:
+		_skill_cd = maxf(_skill_cd - delta, 0.0)
+	if hud and hud.has_method("set_skill_state"):
+		var ready_now: bool = _skill_cd <= 0.0
+		var prog: float = 1.0 if ready_now else 1.0 - (_skill_cd / maxf(_skill_cd_max, 0.001))
+		hud.set_skill_state(str(_current_skill().name), prog, ready_now)
 
 func _current_formation() -> String:
 	var i := clampi(GameState.formation_slot, 0, 3)

@@ -296,9 +296,14 @@ func set_location(text: String) -> void:
 var _form_box: HBoxContainer
 var _form_btns: Array = []
 var pointer_on_ui: bool = false   # #196再: 陣形ボタン上ではロック/射撃をしない
+var _skill_btn: Button            # #224: 陣形スキルのボタン
+var _skill_cover: ColorRect
+var _skill_holder: Control
+var _on_skill: Callable = Callable()
 
 # 船団が2隻以上のときだけ、画面下中央に陣形1〜4のボタンを出す
-func build_formation_bar(on_pick: Callable) -> void:
+func build_formation_bar(on_pick: Callable, on_skill: Callable = Callable()) -> void:
+	_on_skill = on_skill
 	if _form_box:
 		_form_box.queue_free()
 		_form_box = null
@@ -328,6 +333,53 @@ func build_formation_bar(on_pick: Callable) -> void:
 		_form_box.add_child(b)
 		_form_btns.append(b)
 	set_formation(GameState.formation_slot)
+	# #224: 陣形4の右にスキルボタン。使用可能なら赤枠、クールダウン中は左から右へグレーが解除される
+	if _on_skill.is_valid():
+		var holder := Control.new()
+		holder.custom_minimum_size = Vector2(132, 34)
+		holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_form_box.add_child(holder)
+		_skill_btn = Button.new()
+		_skill_btn.text = "スキル"
+		_skill_btn.add_theme_font_size_override("font_size", 16)
+		_skill_btn.focus_mode = Control.FOCUS_NONE
+		_skill_btn.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_skill_btn.pressed.connect(func(): _on_skill.call())
+		_skill_btn.mouse_entered.connect(func(): pointer_on_ui = true)
+		_skill_btn.mouse_exited.connect(func(): pointer_on_ui = false)
+		holder.add_child(_skill_btn)
+		# クールダウン中の覆い(右側に残り、左から解除される)
+		_skill_cover = ColorRect.new()
+		_skill_cover.color = Color(0.1, 0.1, 0.12, 0.72)
+		_skill_cover.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_skill_cover.set_anchors_preset(Control.PRESET_FULL_RECT)
+		holder.add_child(_skill_cover)
+		_skill_holder = holder
+		set_skill_state("", 1.0, true)
+
+# #224: スキルボタンの表示更新。progress=0..1(1で使用可能)
+func set_skill_state(skill_name: String, progress: float, ready_now: bool) -> void:
+	if _skill_btn == null or not is_instance_valid(_skill_btn):
+		return
+	if skill_name != "":
+		_skill_btn.text = "スキル: %s" % skill_name
+	if _skill_cover:
+		var w: float = _skill_holder.size.x if _skill_holder else 132.0
+		# 左から解除=覆いの左端を右へずらす
+		_skill_cover.offset_left = w * clampf(progress, 0.0, 1.0)
+		_skill_cover.visible = not ready_now
+	# 使用可能なら赤囲み、クールダウン中は枠なし
+	if ready_now:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0.16, 0.18, 0.22, 0.92)
+		sb.set_corner_radius_all(4)
+		sb.set_border_width_all(3)
+		sb.border_color = Color(1.0, 0.2, 0.15)
+		_skill_btn.add_theme_stylebox_override("normal", sb)
+		_skill_btn.add_theme_stylebox_override("hover", sb)
+	else:
+		_skill_btn.remove_theme_stylebox_override("normal")
+		_skill_btn.remove_theme_stylebox_override("hover")
 
 # 選択中の陣形を強調
 func set_formation(slot: int) -> void:

@@ -29,6 +29,11 @@ var _burn_dps: float = 0.0
 var _poison_t: float = 0.0    # #215: 毒のスリップ
 var _poison_dps: float = 0.0
 var _flame: CPUParticles2D
+# #224: 陣形スキル(僚艦も発動する)
+var charge_t: float = 0.0
+var _charge_hit: Array = []
+var volley_queue: Array = []
+var volley_target: Node2D = null
 var _dead: bool = false
 var player: Node2D
 
@@ -221,6 +226,65 @@ func _ship_scale() -> float:
 	var extra: float = 1.15 if ship_id == "cruiser" else 1.0
 	return clampf(0.9 + float(Database.ships[ship_id].armor) / 1500.0, 0.9, 1.8) * extra
 
+# #224: 突撃で貫いた敵に衝角ダメージ(1回の突撃につき同じ敵へは1度だけ)
+func _charge_pierce() -> void:
+	var ram: String = str(GameState.fleet[fleet_index].get("ram", "none"))
+	var rd := float(Database.rams[ram].dmg) if Database.rams.has(ram) else 0.0
+	if rd <= 0.0:
+		return
+	var reach := 34.0 * _sc
+	for e in get_tree().get_nodes_in_group("enemy"):
+		if not is_instance_valid(e) or not e.has_method("take_hit"):
+			continue
+		if e.get("aerial") == true or _charge_hit.has(e.get_instance_id()):
+			continue
+		var er: float = float(e.get("_radius")) if e.get("_radius") != null else 30.0
+		if global_position.distance_to(e.global_position) > reach + er:
+			continue
+		_charge_hit.append(e.get_instance_id())
+		var dmg: float = rd * 3.5   # 3倍速の突撃ぶん(旗艦の 0.5+速度比 と同等)
+		e.take_hit(dmg, false, false)
+		Audio.play("sfx_cannon", -9.0, 1.3)
+
+# #224: 一斉射撃
+func start_volley(target: Node2D) -> void:
+	volley_target = target
+	volley_queue.clear()
+	var wp: Array = GameState.fleet[fleet_index].weapons
+	for i in mini(4, wp.size()):
+		var wid: String = str(wp[i])
+		if wid == "" or not Database.weapons.has(wid):
+			continue
+		var w: Dictionary = Database.weapons[wid]
+		volley_queue.append({"slot": i, "left": int(ceil(float(w.mag) / 2.0)), "timer": 0.0})
+
+func _tick_volley(delta: float) -> void:
+	if volley_queue.is_empty():
+		return
+	if not is_instance_valid(volley_target):
+		volley_queue.clear()
+		return
+	var wp: Array = GameState.fleet[fleet_index].weapons
+	for q in volley_queue:
+		q.timer -= delta
+		if q.timer > 0.0 or int(q.left) <= 0:
+			continue
+		var w: Dictionary = Database.weapons[str(wp[int(q.slot)])]
+		q.timer = float(w.cooldown) / 3.0
+		q.left = int(q.left) - 1
+		var dir := (volley_target.global_position - global_position).normalized()
+		var w2 := w.duplicate()
+		w2.dmg = float(w.dmg) * GameState.attack_mult_of(fleet_index)
+		w2["debuff_kind"] = str(GameState.fleet[fleet_index].get("harpoon", "slip"))
+		Audio.play(str(w.get("sfx", "sfx_gun")), -14.0, randf_range(0.95, 1.05))
+		var proj := Area2D.new()
+		proj.set_script(ProjectileScript)
+		get_parent().add_child(proj)
+		proj.global_position = global_position + dir * 40.0
+		proj.from_player = true
+		proj.setup(dir, w2, volley_target if str(w.kind) == "lock" else null)
+	volley_queue = volley_queue.filter(func(q): return int(q.left) > 0)
+
 # #212: 敵と同じ円形の装甲ゲージを描く(上から時計回り。残量で緑→赤)
 func _draw() -> void:
 	var maxa := float(Database.ships[ship_id].armor)
@@ -337,7 +401,15 @@ func _physics_process(delta: float) -> void:
 		# ラベルは船と一緒に回ると裏返るので、常に画面上向き・船の真上に置く
 		_label.rotation = -rotation
 		_label.position = Vector2(-60, -_half_h - 34).rotated(-rotation)
+	# #224: 突撃中は貫通のため障害物以外との衝突を外す
+	if charge_t > 0.0:
+		charge_t -= delta
+		if charge_t <= 0.0:
+			_charge_hit.clear()
 	move_and_slide()
+	if charge_t > 0.0:
+		_charge_pierce()
+	_tick_volley(delta)
 	_check_obstacle_bump()   # #193再3
 	var moving: bool = player.velocity.length() > player.max_speed * 0.15
 	var reversing: bool = player.velocity.dot(player.forward()) < -1.0
