@@ -112,11 +112,12 @@ func _build_visual() -> void:
 		r = 5.5
 	elif shape == "small":
 		# #190: レギオンの小型弾(小魚が吐く小さな水弾)
+		# #190再2: 少しだけ大きく(縦横ともおよそ1.25倍)
 		for i in 10:
 			var a := TAU * i / 10.0
-			poly.append(Vector2(cos(a) * 2.6, sin(a) * 4.2))
+			poly.append(Vector2(cos(a) * 3.3, sin(a) * 5.3))
 		mcol = Color(0.62, 0.78, 0.86)
-		r = 3.2
+		r = 4.0
 	elif shape == "ellipse":
 		# #65再: 細長い楕円弾(長軸=進行方向=プレイヤー向き)。色はbcolorで指定
 		for i in 16:

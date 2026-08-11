@@ -940,7 +940,7 @@ func _br_spawn_next() -> void:
 	_br_active = true
 	var nm: String = Database.lords[str(spec.id)].name if str(spec.kind) == "lord" else Database.pirates[str(spec.id)].name
 	if _br_pair:
-		nm += "(番い2体)"
+		nm += "(つがい2体)"
 	hud.show_big_message("%d / %d  %s" % [_br_index + 1, BOSS_RUSH_ORDER.size(), nm], 2.0)
 
 # ボス撃破の監視(取り巻きは倒さなくてもボスを倒せば消える)
