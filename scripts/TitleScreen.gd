@@ -18,6 +18,7 @@ var _logo: TextureRect   # #175: タイトルロゴ(錨・船・大砲・羅針�
 var _boss_rush_button: Button   # #209: エンディング到達後に右上へ表示
 var _crown: TextureRect   # #209再2: ボスラッシュ制覇の証(ボタンの左に表示)
 var _night_sky: Control   # #209再2: 制覇画面の三日月と星空
+var _art_br: TextureRect  # #209再3: 制覇画面の前景(水平線から下の海・漁船・島)
 
 func _ready() -> void:
 	layer = 30
@@ -197,6 +198,24 @@ func _build_night_sky() -> void:
 	_root.add_child(_night_sky)
 	_root.move_child(_night_sky, 1)   # 背景色のすぐ上、文字より下
 
+# #209再3: 制覇画面の前景。水平線より下だけを残した背景画を星空の上に重ね、
+# 「同じ構図のまま空だけ夜空」に見せる(遠方のレヴィアタンは空ごと置き換わる)。
+func _build_br_art() -> void:
+	if _art_br != null and is_instance_valid(_art_br):
+		return
+	if not ResourceLoader.exists("res://assets/images/title_brwin.png"):
+		return
+	_art_br = TextureRect.new()
+	_art_br.texture = load("res://assets/images/title_brwin.png")
+	_art_br.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_art_br.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	_art_br.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_art_br.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_art_br.modulate = Color(0.34, 0.46, 0.76, 0.95)   # 夕景を月明かりの夜へ寄せる
+	_art_br.visible = false
+	_root.add_child(_art_br)
+	_root.move_child(_art_br, 2)   # 星空(1)の上、文字より下
+
 func _fit_logo() -> void:
 	# #175再: ロゴ高さを画面縦に追従(約30%、160〜300pxに制限)。横は元画像比を維持。
 	if not _logo:
@@ -230,6 +249,8 @@ func show_title() -> void:
 		_crown.visible = _boss_rush_button.visible and GameState.has_cleared_boss_rush()
 	if _night_sky:
 		_night_sky.visible = false
+	if _art_br:
+		_art_br.visible = false
 	visible = true
 
 func show_victory(night := false) -> void:
@@ -241,12 +262,16 @@ func show_victory(night := false) -> void:
 		_button.text = "タイトルへ"
 		if _bg:
 			_bg.color = Color(0.010, 0.014, 0.040, 1.0)
-		# #209再2: 通常エンディングの構図の流用をやめ、三日月と満点の星空にする
+		# #209再3: 通常エンディングと同じ構図(海・漁船・島)を活かしつつ、
+		# 水平線より上(遠方のレヴィアタンがいた空)は星空と三日月に置き換える
 		if _art:
 			_art.visible = false
 		_build_night_sky()
 		if _night_sky:
 			_night_sky.visible = true
+		_build_br_art()
+		if _art_br:
+			_art_br.visible = true
 		_title.add_theme_color_override("font_color", Color(0.82, 0.90, 1.0))
 	else:
 		_title.text = "Fisherman's Horizon 到達!"
@@ -259,6 +284,8 @@ func show_victory(night := false) -> void:
 			_art.modulate = Color(0.85, 0.7, 0.45, 0.25)
 		if _night_sky:
 			_night_sky.visible = false
+		if _art_br:
+			_art_br.visible = false
 		_title.add_theme_color_override("font_color", Color(0.95, 0.85, 0.55))
 	# #175: 勝利画面ではロゴを隠して文字タイトル(到達!)を見せる
 	if _logo:
@@ -268,4 +295,6 @@ func show_victory(night := false) -> void:
 		_continue_button.visible = false   # 勝利画面では非表示
 	if _boss_rush_button:
 		_boss_rush_button.visible = false
+	if _crown:
+		_crown.visible = false   # #209再3: 制覇画面では王冠を表示しない
 	visible = true

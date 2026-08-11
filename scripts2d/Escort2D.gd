@@ -253,6 +253,21 @@ func _ship_scale() -> float:
 	return clampf(0.9 + float(Database.ships[ship_id].armor) / 1500.0, 0.9, 1.8) * extra
 
 # #224: 突撃で貫いた敵に衝角ダメージ(1回の突撃につき同じ敵へは1度だけ)
+# #224再6: 突撃中の貫通(旗艦と同じ理由で、敵側からの押し返しも例外で無効化する)
+var _charge_excepted: Array = []
+
+func _apply_charge_exceptions() -> void:
+	for e in get_tree().get_nodes_in_group("enemy"):
+		if e is CollisionObject2D and not _charge_excepted.has(e):
+			add_collision_exception_with(e)
+			_charge_excepted.append(e)
+
+func _clear_charge_exceptions() -> void:
+	for e in _charge_excepted:
+		if is_instance_valid(e) and e is CollisionObject2D:
+			remove_collision_exception_with(e)
+	_charge_excepted.clear()
+
 func _charge_pierce() -> void:
 	var ram: String = str(GameState.fleet[fleet_index].get("ram", "none"))
 	var rd := float(Database.rams[ram].dmg) if Database.rams.has(ram) else 0.0
@@ -435,8 +450,10 @@ func _physics_process(delta: float) -> void:
 	if charge_t > 0.0:
 		charge_t -= delta
 		collision_mask = 1          # #224再5: 敵(2)を外して貫通
+		_apply_charge_exceptions()  # #224再6: 敵側からの押し返しも無効化する
 		if charge_t <= 0.0:
 			collision_mask = 3
+			_clear_charge_exceptions()
 			_charge_hit.clear()
 	# #224再: 突撃中だけ舷側の大しぶきを噴かせる
 	for cs in _charge_sprays:

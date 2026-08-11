@@ -671,8 +671,10 @@ func _physics_process(delta: float) -> void:
 		charge_t -= delta
 		velocity = forward() * max_speed * 3.0
 		collision_mask = 5          # #224再5: 突撃中は敵(2)を外して貫通(僚艦4とは維持)
+		_apply_charge_exceptions()  # #224再6: 敵側からの押し返しも無効化しないと貫けない
 		if charge_t <= 0.0:
 			collision_mask = 7
+			_clear_charge_exceptions()
 			_charge_hit.clear()
 			# #224再2: 突撃が終わった瞬間に通常の最高速度まで落とす。
 			# 慣性で旗艦だけ先へ進むと、上限が戻った僚艦が置いていかれるため
@@ -748,6 +750,23 @@ func _check_obstacle_bump() -> void:
 		return
 
 # #224: 突撃で貫いた敵に衝角ダメージ(1回の突撃につき同じ敵へは1度だけ)
+# #224再6: 突撃中の貫通。自分のマスクから敵を外すだけでは、敵側のマスクに
+# こちらのレイヤーが含まれているため敵の move_and_slide が押し返してしまう。
+# 衝突例外は双方向に効くので、突撃中だけ敵1体ずつと例外を張る。
+var _charge_excepted: Array = []
+
+func _apply_charge_exceptions() -> void:
+	for e in get_tree().get_nodes_in_group("enemy"):
+		if e is CollisionObject2D and not _charge_excepted.has(e):
+			add_collision_exception_with(e)
+			_charge_excepted.append(e)
+
+func _clear_charge_exceptions() -> void:
+	for e in _charge_excepted:
+		if is_instance_valid(e) and e is CollisionObject2D:
+			remove_collision_exception_with(e)
+	_charge_excepted.clear()
+
 func _charge_pierce() -> void:
 	# #224再: 衝角なしでも船体の体当たりとして一定のダメージが入る
 	var rd := float(Database.rams[GameState.ram_id].dmg)
