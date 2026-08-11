@@ -675,11 +675,12 @@ func _physics_process(delta: float) -> void:
 		_apply_charge_exceptions()  # #224再6: 敵側からの押し返しも無効化しないと貫けない
 		if charge_t <= 0.0:
 			collision_mask = 3
-			_clear_charge_exceptions()
+			_begin_charge_separation()   # #224再8: 重なったままなら瞬間移動せずゆっくり離す
 			_charge_hit.clear()
 			# #224再2: 突撃が終わった瞬間に通常の最高速度まで落とす。
 			# 慣性で旗艦だけ先へ進むと、上限が戻った僚艦が置いていかれるため
 			velocity = velocity.limit_length(eff_max)
+	_tick_charge_separation(delta)   # #224再8
 	# #224再: 突撃中だけ舷側の大しぶきを噴かせる
 	for cs in _charge_sprays:
 		if is_instance_valid(cs):
@@ -761,6 +762,45 @@ func _apply_charge_exceptions() -> void:
 		if e is CollisionObject2D and not _charge_excepted.has(e):
 			add_collision_exception_with(e)
 			_charge_excepted.append(e)
+
+# #224再8: 突撃が終わった瞬間に敵と重なっていると、物理エンジンの重なり解消が
+# 一気に働いて旗艦が瞬間移動したように見える。そこで、重なっている敵とは
+# 衝突例外を維持したまま毎フレーム少しずつ離し、離れきってから例外を外す。
+const CHARGE_SEP_SPEED := 70.0   # 押し出す速さ(px/秒)。通常速度より遅くしてゆっくり見せる
+var _charge_sep: Array = []
+
+func _begin_charge_separation() -> void:
+	_charge_sep.clear()
+	for e in _charge_excepted:
+		if not is_instance_valid(e):
+			continue
+		if _overlaps_enemy(e):
+			_charge_sep.append(e)          # まだ重なっている=ゆっくり離す
+		elif e is CollisionObject2D:
+			remove_collision_exception_with(e)
+	_charge_excepted.clear()
+
+func _tick_charge_separation(delta: float) -> void:
+	if _charge_sep.is_empty():
+		return
+	var still: Array = []
+	for e in _charge_sep:
+		if not is_instance_valid(e):
+			continue
+		if _overlaps_enemy(e):
+			var d: Vector2 = global_position - e.global_position
+			if d.length() < 0.01:
+				d = -forward()
+			global_position += d.normalized() * CHARGE_SEP_SPEED * delta
+			still.append(e)
+		elif e is CollisionObject2D:
+			remove_collision_exception_with(e)
+	_charge_sep = still
+
+func _overlaps_enemy(e: Node) -> bool:
+	var er: float = float(e.get("_radius")) if e.get("_radius") != null else 30.0
+	var mine: float = maxf(_half_w, _half_h)
+	return global_position.distance_to(e.global_position) < er + mine
 
 func _clear_charge_exceptions() -> void:
 	for e in _charge_excepted:

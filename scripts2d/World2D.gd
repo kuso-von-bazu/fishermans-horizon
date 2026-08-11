@@ -967,8 +967,10 @@ func _br_update(delta: float) -> void:
 		_br_wait = 1.6
 		# #209再2: ボスを1体倒すごとに船団の全艦が最大装甲の5%回復する
 		if _br_index < BOSS_RUSH_ORDER.size():
-			GameState.heal_fleet_percent(0.05)
-			GameState.notice.emit("船団の装甲が回復した(最大値の5%)")
+			# #209再6: ⑦〜⑩のボスは10%、①〜⑥は5%回復(_br_index=倒したボスの通し番号)
+			var heal_pct: float = 0.10 if _br_index >= 7 else 0.05
+			GameState.heal_fleet_percent(heal_pct)
+			GameState.notice.emit("船団の装甲が回復した(最大値の%d%%)" % int(heal_pct * 100.0))
 
 func _br_finish() -> void:
 	if _victory_shown:

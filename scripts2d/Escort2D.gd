@@ -48,11 +48,9 @@ func _ready() -> void:
 	player = get_tree().get_first_node_in_group("player")
 	_build_visual()
 	_reset_ammo()
-	# #227: 敵(2)とは重ならない。島/障害物(1)とも従来どおり衝突。
-	# #227再: 旗艦とはすり抜けに戻す(僚艦は陣形へ剛体的に張り付くので、
-	# 衝突させると旗艦を突き飛ばして高速で吹っ飛ばしてしまう)
+	# #227再2: 旗艦・敵とはすり抜け(元の仕様)。島/障害物(1)とだけ衝突する
 	collision_layer = 4
-	collision_mask = 3
+	collision_mask = 1
 	if player is CollisionObject2D:
 		(player as CollisionObject2D).add_collision_exception_with(self)
 
@@ -452,10 +450,7 @@ func _physics_process(delta: float) -> void:
 	# #224: 突撃中は貫通のため敵との衝突を外す
 	if charge_t > 0.0:
 		charge_t -= delta
-		collision_mask = 1          # #224再5: 敵(2)を外して貫通
-		_apply_charge_exceptions()  # #224再6: 敵側からの押し返しも無効化する
 		if charge_t <= 0.0:
-			collision_mask = 3
 			_clear_charge_exceptions()
 			_charge_hit.clear()
 	# #224再: 突撃中だけ舷側の大しぶきを噴かせる

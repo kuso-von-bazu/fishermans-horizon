@@ -52,7 +52,13 @@ func _stream_of(name: String) -> AudioStream:
 		_cache[name] = s
 	return _cache[name]
 
+# #47再4: 特定の効果音だけ音量を微調整する(呼び出し側の指定にこの値を足す)
+const SFX_VOL_ADJ := {
+	"sfx_harpoon": -6.0,   # 銛の音が大きかったので少し下げる
+}
+
 func play(name: String, vol_db: float = 0.0, pitch: float = 1.0) -> void:
+	vol_db += float(SFX_VOL_ADJ.get(name, 0.0))
 	var s := _stream_of(name)
 	if s == null:
 		return
