@@ -419,6 +419,26 @@ func mark_cleared() -> void:
 		f.store_string("1")
 		f.close()
 
+# #209再2: ボスラッシュを制覇したか(タイトルの王冠表示用)。本編クリアとは別に持つ。
+const BR_CLEARED_PATH := "user://boss_rush_cleared.dat"
+
+func has_cleared_boss_rush() -> bool:
+	return FileAccess.file_exists(BR_CLEARED_PATH)
+
+func mark_boss_rush_cleared() -> void:
+	var f := FileAccess.open(BR_CLEARED_PATH, FileAccess.WRITE)
+	if f:
+		f.store_string("1")
+		f.close()
+
+# #209再2: ボスを1体倒すごとに船団の全艦が最大装甲の5%回復する
+func heal_fleet_percent(pct: float) -> void:
+	for i in fleet.size():
+		var mx := float(max_armor_of(i))
+		var cur := float(fleet[i].get("armor", mx))
+		fleet[i]["armor"] = minf(cur + mx * pct, mx)
+	stats_changed.emit()
+
 func save_game() -> void:
 	var data := {
 		"money": money, "fame": fame,
@@ -565,6 +585,12 @@ func max_hold() -> int:
 
 func max_armor() -> float:
 	return float(ship().armor)
+
+# #209再2: 船団の任意の艦の最大装甲(僚艦も同じく船の定義値)
+func max_armor_of(i: int) -> float:
+	if i < 0 or i >= fleet.size():
+		return 0.0
+	return float(Database.ships[str(fleet[i].ship_id)].armor)
 
 func used_hold() -> int:
 	var total := 0

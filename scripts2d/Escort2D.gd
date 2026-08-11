@@ -48,11 +48,10 @@ func _ready() -> void:
 	player = get_tree().get_first_node_in_group("player")
 	_build_visual()
 	_reset_ammo()
-	# 旗艦・敵とはすり抜ける(押し合いで陣形が崩れないように)。障害物/島とは衝突。
+	# #227: 旗艦(1)・敵(2)・島/障害物(1)のいずれとも重ならないようにする
+	# (以前は陣形が崩れないよう旗艦・敵とすり抜けていたが、重なり解消を優先)
 	collision_layer = 4
-	collision_mask = 1
-	if player is CollisionObject2D:
-		(player as CollisionObject2D).add_collision_exception_with(self)
+	collision_mask = 3
 
 func _build_visual() -> void:
 	for c in get_children():
@@ -432,10 +431,12 @@ func _physics_process(delta: float) -> void:
 		# ラベルは船と一緒に回ると裏返るので、常に画面上向き・船の真上に置く
 		_label.rotation = -rotation
 		_label.position = Vector2(-60, -_half_h - 34).rotated(-rotation)
-	# #224: 突撃中は貫通のため障害物以外との衝突を外す
+	# #224: 突撃中は貫通のため敵との衝突を外す
 	if charge_t > 0.0:
 		charge_t -= delta
+		collision_mask = 1          # #224再5: 敵(2)を外して貫通
 		if charge_t <= 0.0:
+			collision_mask = 3
 			_charge_hit.clear()
 	# #224再: 突撃中だけ舷側の大しぶきを噴かせる
 	for cs in _charge_sprays:
@@ -461,6 +462,9 @@ func _physics_process(delta: float) -> void:
 
 # #196再2: 僚艦も衝角で体当たりできる。旗艦と同じく前方の敵を近接判定で突く。
 func _handle_ram(delta: float) -> void:
+	# #224再5: 突撃中は _charge_pierce が判定するので通常の衝角判定は止める
+	if charge_t > 0.0:
+		return
 	if _ram_cd > 0.0:
 		_ram_cd -= delta
 		return

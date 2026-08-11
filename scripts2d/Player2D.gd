@@ -35,7 +35,8 @@ func _ready() -> void:
 	# #184再2/#149再3: 敵は専用レイヤー2にいるので、プレイヤーはレイヤー1+2と衝突する
 	# (敵同士は衝突しないまま。#184のすり抜けは撤回してリアリティを戻す)
 	collision_layer = 1
-	collision_mask = 3
+	# #227: 島・障害物(1)、敵(2)、僚艦(4)のいずれとも重ならない
+	collision_mask = 7
 	max_speed = GameState.fleet_speed() * K   # #196: 船団は最も遅い船に合わせる
 	_build_visual()
 
@@ -669,9 +670,9 @@ func _physics_process(delta: float) -> void:
 	if charge_t > 0.0:
 		charge_t -= delta
 		velocity = forward() * max_speed * 3.0
-		collision_mask = 1          # 敵レイヤー(2)を外して貫通
+		collision_mask = 5          # #224再5: 突撃中は敵(2)を外して貫通(僚艦4とは維持)
 		if charge_t <= 0.0:
-			collision_mask = 3
+			collision_mask = 7
 			_charge_hit.clear()
 			# #224再2: 突撃が終わった瞬間に通常の最高速度まで落とす。
 			# 慣性で旗艦だけ先へ進むと、上限が戻った僚艦が置いていかれるため
@@ -824,6 +825,10 @@ func _draw() -> void:
 		draw_arc(Vector2.ZERO, r, -PI / 2, -PI / 2 + TAU * frac, 40, col, 5.0)
 
 func _handle_ram() -> void:
+	# #224再5: 突撃中は _charge_pierce が判定するので通常の衝角判定は止める。
+	# 両方走ると1隻で2回ヒットしてしまう(船1隻につき1回だけという指定に反する)
+	if charge_t > 0.0:
+		return
 	if _ram_cd > 0.0:
 		return
 	if GameState.docking_locked:

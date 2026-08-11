@@ -16,6 +16,8 @@ var _bg: ColorRect
 var _art: TextureRect
 var _logo: TextureRect   # #175: タイトルロゴ(錨・船・大砲・羅針盤の紋章)
 var _boss_rush_button: Button   # #209: エンディング到達後に右上へ表示
+var _crown: TextureRect   # #209再2: ボスラッシュ制覇の証(ボタンの左に表示)
+var _night_sky: Control   # #209再2: 制覇画面の三日月と星空
 
 func _ready() -> void:
 	layer = 30
@@ -115,6 +117,21 @@ func _build() -> void:
 	_gild_boss_rush_button()   # #209再: 金色の豪華な縁取り
 	_root.add_child(_boss_rush_button)
 
+	# #209再2: ボスラッシュ制覇後、ボタンの左側に王冠を表示する
+	if ResourceLoader.exists("res://assets/images/crown.png"):
+		_crown = TextureRect.new()
+		_crown.texture = load("res://assets/images/crown.png")
+		_crown.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		_crown.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		_crown.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_crown.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+		_crown.offset_left = -262      # ボタン(-204..-24)の左隣
+		_crown.offset_right = -210
+		_crown.offset_top = 20
+		_crown.offset_bottom = 76
+		_crown.visible = false
+		_root.add_child(_crown)
+
 	# #90: BGM著作権表示(MusMus)
 	var credit := Label.new()
 	credit.text = "BGM: フリーBGM・音楽素材MusMus  https://musmus.main.jp"
@@ -168,6 +185,18 @@ func _gild_boss_rush_button() -> void:
 	inner.add_theme_stylebox_override("panel", isb)
 	_boss_rush_button.add_child(inner)
 
+# #209再2: ボスラッシュ制覇画面の背景。三日月と満点の星空を手続き的に描く。
+# 星は種を固定した乱数で配置するので、毎回同じ夜空になる。
+func _build_night_sky() -> void:
+	if _night_sky != null and is_instance_valid(_night_sky):
+		return
+	_night_sky = Control.new()
+	_night_sky.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_night_sky.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_night_sky.set_script(preload("res://scripts/NightSky.gd"))
+	_root.add_child(_night_sky)
+	_root.move_child(_night_sky, 1)   # 背景色のすぐ上、文字より下
+
 func _fit_logo() -> void:
 	# #175再: ロゴ高さを画面縦に追従(約30%、160〜300pxに制限)。横は元画像比を維持。
 	if not _logo:
@@ -196,6 +225,11 @@ func show_title() -> void:
 	if _boss_rush_button:
 		# #209: エンディング到達後、かつ本編のセーブ(船団)がある時だけ遊べる
 		_boss_rush_button.visible = GameState.has_cleared() and GameState.has_save()
+	if _crown:
+		# #209再2: ボスラッシュを制覇していれば王冠を灯す
+		_crown.visible = _boss_rush_button.visible and GameState.has_cleared_boss_rush()
+	if _night_sky:
+		_night_sky.visible = false
 	visible = true
 
 func show_victory(night := false) -> void:
@@ -206,10 +240,14 @@ func show_victory(night := false) -> void:
 		_body.text = "おめでとう!あなたこそ真の海の王者です!"
 		_button.text = "タイトルへ"
 		if _bg:
-			_bg.color = Color(0.005, 0.008, 0.022, 1.0)
+			_bg.color = Color(0.010, 0.014, 0.040, 1.0)
+		# #209再2: 通常エンディングの構図の流用をやめ、三日月と満点の星空にする
 		if _art:
-			_art.modulate = Color(0.30, 0.42, 0.72, 0.22)   # 夜の青
-		_title.add_theme_color_override("font_color", Color(0.72, 0.84, 1.0))
+			_art.visible = false
+		_build_night_sky()
+		if _night_sky:
+			_night_sky.visible = true
+		_title.add_theme_color_override("font_color", Color(0.82, 0.90, 1.0))
 	else:
 		_title.text = "Fisherman's Horizon 到達!"
 		_body.text = "レヴィアタンは討たれた。\nあなたは伝説の漁場 Fisherman's Horizon へ至り、\n人類の食糧難を一挙に解決する英雄となった。\n\n── 完 ──"
@@ -217,7 +255,10 @@ func show_victory(night := false) -> void:
 		if _bg:
 			_bg.color = Color(0.015, 0.02, 0.045, 1.0)
 		if _art:
+			_art.visible = true
 			_art.modulate = Color(0.85, 0.7, 0.45, 0.25)
+		if _night_sky:
+			_night_sky.visible = false
 		_title.add_theme_color_override("font_color", Color(0.95, 0.85, 0.55))
 	# #175: 勝利画面ではロゴを隠して文字タイトル(到達!)を見せる
 	if _logo:

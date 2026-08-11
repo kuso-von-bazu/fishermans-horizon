@@ -943,6 +943,10 @@ func _br_update(delta: float) -> void:
 		enemies.clear()
 		_br_index += 1
 		_br_wait = 1.6
+		# #209再2: ボスを1体倒すごとに船団の全艦が最大装甲の5%回復する
+		if _br_index < BOSS_RUSH_ORDER.size():
+			GameState.heal_fleet_percent(0.05)
+			GameState.notice.emit("船団の装甲が回復した(最大値の5%)")
 
 func _br_finish() -> void:
 	if _victory_shown:
@@ -952,6 +956,7 @@ func _br_finish() -> void:
 	if hud: hud.visible = false
 	_clear_sea_actors()
 	Audio.play_bgm("bgm_ending")
+	GameState.mark_boss_rush_cleared()   # #209再2: タイトルに王冠を出す
 	title.show_victory(true)   # #209: 夜の背景+専用メッセージ
 
 func _br_fail() -> void:
@@ -1498,6 +1503,7 @@ func _maybe_screenshot() -> void:
 		GameState.money = 12345
 		GameState.save_game()
 		GameState.mark_cleared()
+		GameState.mark_boss_rush_cleared()   # #209再2: 王冠の確認
 		title.show_title()
 		await get_tree().create_timer(0.4).timeout
 	if want_brwin:

@@ -151,7 +151,8 @@ func _ready() -> void:
 	# ティアマットのジグザグ移動がレヴィアタン等を押してしまう問題の対策。
 	# 島・障害物・プレイヤー(レイヤー1)とは従来どおり衝突する。
 	collision_layer = 2
-	collision_mask = 1
+	# #227: 敵同士(2)・僚艦(4)とも重ならないようにする
+	collision_mask = 7
 	# #150: 空中の敵は島の当たり判定を無視(島と重なって追う)
 	if aerial:
 		collision_mask = 0
