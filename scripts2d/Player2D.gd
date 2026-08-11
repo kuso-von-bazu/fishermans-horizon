@@ -673,6 +673,9 @@ func _physics_process(delta: float) -> void:
 		if charge_t <= 0.0:
 			collision_mask = 3
 			_charge_hit.clear()
+			# #224再2: 突撃が終わった瞬間に通常の最高速度まで落とす。
+			# 慣性で旗艦だけ先へ進むと、上限が戻った僚艦が置いていかれるため
+			velocity = velocity.limit_length(eff_max)
 	# #224再: 突撃中だけ舷側の大しぶきを噴かせる
 	for cs in _charge_sprays:
 		if is_instance_valid(cs):

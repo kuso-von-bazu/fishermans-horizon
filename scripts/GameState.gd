@@ -201,7 +201,9 @@ func grow_crew() -> void:
 			var falloff := 1.0
 			if cur > 30:
 				# #153再2: 30超はさらに上がりにくく(従来の逓減を2乗)
-				falloff = pow(clampf(1.0 - float(cur - 30) / float(STAT_MAX - 30), 0.02, 1.0), 2.0)
+				# #153再3: 2乗すると49で0.0025まで落ち、49→50へ実質成長しなくなるため
+				# 伸びやすさの下限を0.02とする(必ず上限50へ到達できる)
+				falloff = maxf(pow(clampf(1.0 - float(cur - 30) / float(STAT_MAX - 30), 0.0, 1.0), 2.0), 0.02)
 			if randf() < (0.5 + float(g[k]) * 0.18) * 0.8 * falloff:   # #153: 成長速度8割+高値で逓減
 				m[k] = mini(cur + maxi(int(g[k]), 0), STAT_MAX)   # #140: 上限50
 
