@@ -29,10 +29,22 @@ func _ready() -> void:
 		if _bgm.stream:
 			_bgm.play())   # ループ
 
+# #226: 共有者提供の効果音(mp3)を優先使用。無ければ従来の合成wav。
+const SFX_FILES := {
+	"sfx_gun": "res://assets/audio/ガトリングガン.mp3",
+}
+
 func _stream_of(name: String) -> AudioStream:
 	if not _cache.has(name):
-		var path := "res://assets/audio/%s.wav" % name
-		_cache[name] = load(path) if ResourceLoader.exists(path) else null
+		var s: AudioStream = null
+		if SFX_FILES.has(name) and ResourceLoader.exists(SFX_FILES[name]):
+			s = load(SFX_FILES[name])
+			if s is AudioStreamMP3:
+				s.loop = false   # 効果音なのでループさせない
+		if s == null:
+			var path := "res://assets/audio/%s.wav" % name
+			s = load(path) if ResourceLoader.exists(path) else null
+		_cache[name] = s
 	return _cache[name]
 
 func play(name: String, vol_db: float = 0.0, pitch: float = 1.0) -> void:
