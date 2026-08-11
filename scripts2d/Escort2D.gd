@@ -153,7 +153,7 @@ func _build_visual() -> void:
 		# 船に張り付く座標系にして、舷側で大きく割れる波として見せる
 		cs.local_coords = true
 		cs.position = Vector2(side2 * _half_w * 0.9, 2 * sc)
-		cs.direction = Vector2(side2, -0.5).normalized()
+		cs.direction = Vector2(side2, 0.62).normalized()   # #224再3: 斜め後ろへ跳ねる
 		cs.spread = 34.0
 		cs.gravity = Vector2.ZERO
 		cs.initial_velocity_min = 55.0

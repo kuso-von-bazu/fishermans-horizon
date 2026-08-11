@@ -994,7 +994,7 @@ const FORMATION_SKILLS := {
 	"echelon": {"name": "一斉射撃", "kind": "volley", "cd": 19.0},
 	"ring":    {"name": "一斉射撃", "kind": "volley", "cd": 25.0},
 }
-const CHARGE_TIME := 0.8   # 突撃の持続秒(#224再: 1.2秒から2/3へ短縮)
+const CHARGE_TIME := 1.2   # 突撃の持続秒(#224再3: 1.2秒へ戻す)
 
 func _current_skill() -> Dictionary:
 	return FORMATION_SKILLS.get(_current_formation(), FORMATION_SKILLS["line"])
@@ -1022,7 +1022,7 @@ func _use_skill() -> void:
 	_skill_cd = float(sk.cd)
 	_skill_cd_max = float(sk.cd)
 	GameState.notice.emit("%s!" % str(sk.name))
-	Audio.play("sfx_lock", -4.0, 0.8)
+	Audio.play("sfx_skill", -5.0, 1.0)   # #224再3: スキル発動の専用効果音
 
 # クールダウンを進め、HUDへ進捗を渡す
 func _tick_skill(delta: float) -> void:
@@ -1469,6 +1469,7 @@ func _maybe_screenshot() -> void:
 	var want_charge := false   # #224再: 突撃のしぶきを撮影
 	var want_isle := 0        # #190: 撮影する海域(島index)
 	var want_brwin := false   # #209: ボスラッシュ制覇画面
+	var want_title := false   # #209再: タイトル画面(Boss Rushボタン付き)
 	for a in args:
 		if a.begins_with("--shot"):
 			want_shot = true
@@ -1483,6 +1484,7 @@ func _maybe_screenshot() -> void:
 			want_bullets = a.find("bullets") != -1
 			want_charge = a.find("charge") != -1   # #224再
 			want_brwin = a.find("brwin") != -1   # #209: ボスラッシュ制覇画面
+			want_title = a.find("title") != -1   # #209再
 			# #190: isle<N> で撮影する海域(島index)を指定(天候・障害物の確認用)
 			var ip := a.find("isle")
 			if ip != -1 and ip + 4 < a.length():
@@ -1492,6 +1494,12 @@ func _maybe_screenshot() -> void:
 	if not want_shot:
 		return
 	await get_tree().create_timer(0.6).timeout
+	if want_title:   # #209再: クリア済み+セーブありでBoss Rushボタンを出したタイトル
+		GameState.money = 12345
+		GameState.save_game()
+		GameState.mark_cleared()
+		title.show_title()
+		await get_tree().create_timer(0.4).timeout
 	if want_brwin:
 		# #209: ボスラッシュ制覇のエンディング画面を撮影
 		title.show_victory(true)

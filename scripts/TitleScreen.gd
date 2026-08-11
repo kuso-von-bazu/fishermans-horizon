@@ -75,8 +75,8 @@ func _build() -> void:
 	vb.add_child(_title)
 
 	_body = Label.new()
-	_body.text = "海面上昇に沈んだ世界。粗末な蒸気漁船から始め、漁と狩りで身を立て、\n近海の主を討ち、海賊を狩り、名声を轟かせて未踏の漁場を目指せ。\n人類種の天敵レヴィアタンを討ち、伝説の漁場へ至るのだ。\n\n[W/S]前進・後進   [A/D]旋回   [マウス]照準   [左クリック]射撃\n[右クリック]魚雷(ロックオン)   [E]漁・寄港
-[敵をクリック]ロックオン   [マウスホイール]ロックオン対象の切替   [1〜4]陣形チェンジ\n燃料が尽きる前に帰港せよ"
+	_body.text = "海面上昇に沈んだ世界。粗末な蒸気漁船から始め、漁と狩りで身を立て、\n近海の主を討ち、海賊を狩り、名声を轟かせて未踏の漁場を目指せ。\n人類種の天敵レヴィアタンを討ち、伝説の漁場へ至るのだ。\n\n[W/S]前進・後進   [A/D]旋回   [マウス]照準   [左クリック]射撃\n[右クリック]魚雷(ロックオン時のみ)   [E]漁・寄港   [R]ファストトラベル
+[敵をクリック]ロックオン   [マウスホイール]ロックオン対象の切替   [1〜4]陣形チェンジ   [5]スキル発動\n燃料が尽きる前に帰港せよ"
 	_body.add_theme_font_size_override("font_size", 20)
 	_body.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
 	_body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -112,6 +112,7 @@ func _build() -> void:
 	_boss_rush_button.offset_top = 24
 	_boss_rush_button.offset_bottom = 72
 	_boss_rush_button.pressed.connect(func(): emit_signal("boss_rush_pressed"))
+	_gild_boss_rush_button()   # #209再: 金色の豪華な縁取り
 	_root.add_child(_boss_rush_button)
 
 	# #90: BGM著作権表示(MusMus)
@@ -121,6 +122,51 @@ func _build() -> void:
 	credit.add_theme_color_override("font_color", Color(0.75, 0.82, 0.9))
 	credit.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(credit)
+
+# #209再: Boss Rush ボタンを金色の豪華な縁取りで飾る。
+# 外周に太い金枠、内側に細い明るい金のラインを重ねて二重の額縁に見せ、
+# 文字も金色にして押下・ホバーで明るさが変わるようにする。
+func _gild_boss_rush_button() -> void:
+	var gold_dark := Color(0.42, 0.30, 0.06)
+	var gold := Color(0.85, 0.68, 0.24)
+	var gold_lit := Color(1.0, 0.88, 0.48)
+
+	var mk := func(bg_top: Color, border: Color) -> StyleBoxFlat:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = bg_top
+		sb.set_corner_radius_all(10)
+		sb.set_border_width_all(4)
+		sb.border_color = border
+		sb.shadow_color = Color(0.85, 0.68, 0.24, 0.45)
+		sb.shadow_size = 8
+		sb.set_expand_margin_all(2)
+		return sb
+
+	_boss_rush_button.add_theme_stylebox_override("normal", mk.call(Color(0.10, 0.08, 0.03, 0.95), gold))
+	_boss_rush_button.add_theme_stylebox_override("hover", mk.call(Color(0.20, 0.15, 0.05, 0.97), gold_lit))
+	_boss_rush_button.add_theme_stylebox_override("pressed", mk.call(Color(0.06, 0.05, 0.02, 0.98), gold_dark))
+	_boss_rush_button.add_theme_stylebox_override("focus", mk.call(Color(0.10, 0.08, 0.03, 0.95), gold))
+	_boss_rush_button.add_theme_color_override("font_color", gold_lit)
+	_boss_rush_button.add_theme_color_override("font_hover_color", Color(1.0, 0.96, 0.72))
+	_boss_rush_button.add_theme_color_override("font_pressed_color", gold)
+	_boss_rush_button.add_theme_constant_override("outline_size", 4)
+	_boss_rush_button.add_theme_color_override("font_outline_color", Color(0.25, 0.16, 0.02, 0.9))
+
+	# 内側の細い金ライン(額縁の二重線)。ボタンより一回り小さく重ねる
+	var inner := Panel.new()
+	inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	inner.set_anchors_preset(Control.PRESET_FULL_RECT)
+	inner.offset_left = 5
+	inner.offset_top = 5
+	inner.offset_right = -5
+	inner.offset_bottom = -5
+	var isb := StyleBoxFlat.new()
+	isb.bg_color = Color(0, 0, 0, 0)
+	isb.set_corner_radius_all(6)
+	isb.set_border_width_all(1)
+	isb.border_color = Color(1.0, 0.92, 0.60, 0.75)
+	inner.add_theme_stylebox_override("panel", isb)
+	_boss_rush_button.add_child(inner)
 
 func _fit_logo() -> void:
 	# #175再: ロゴ高さを画面縦に追従(約30%、160〜300pxに制限)。横は元画像比を維持。
