@@ -32,6 +32,8 @@ func _ready() -> void:
 # #226: 共有者提供の効果音(mp3)を優先使用。無ければ従来の合成wav。
 const SFX_FILES := {
 	"sfx_gun": "res://assets/audio/ガトリングガン.mp3",
+	"sfx_cannon": "res://assets/audio/大砲.mp3",      # #226再2: 大砲・大口径カノン砲
+	"sfx_skill": "res://assets/audio/スキル.mp3",     # #226再2: スキル発動(突撃・一斉射撃)
 }
 
 func _stream_of(name: String) -> AudioStream:
