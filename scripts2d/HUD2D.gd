@@ -502,7 +502,8 @@ func _draw_sonar() -> void:
 		var hang: float = ((_home_pos as Vector2) - pp).rotated(-rot).angle()
 		sonar.draw_arc(center, r - 3.0, hang - 0.28, hang + 0.28, 14, Color(0.2, 0.95, 0.35, 0.9), 5.0)
 	# #60/#61: ガイド方向をソナー外周の赤い弧で示す(距離に関係なく常に表示)
-	if _guide_pos != null:
+	# #209再7: ボスラッシュには目的地の概念がないので赤い弧は出さない
+	if _guide_pos != null and not GameState.boss_rush:
 		var gang: float = ((_guide_pos as Vector2) - pp).rotated(-rot).angle()
 		sonar.draw_arc(center, r - 3.0, gang - 0.35, gang + 0.35, 16, Color(1.0, 0.12, 0.08, 0.95), 6.0)
 	for b in _sonar_blips:
