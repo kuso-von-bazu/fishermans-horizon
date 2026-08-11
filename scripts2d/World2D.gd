@@ -893,6 +893,7 @@ func _on_boss_rush() -> void:
 	hud.set_location("Boss Rush")
 	Audio.play_bgm("bgm_boss")
 	_boss_bgm_on = "bgm_boss"
+	Audio.play("sfx_lord_roar", -2.0)   # #79再: ボスラッシュ開始時も主のBGMなので鳴らす
 	slot_cooldowns = [0.0, 0.0, 0.0, 0.0]
 	_reset_ammo()
 	GameState.formation_slot = 0
@@ -1291,6 +1292,9 @@ func _update_boss_bgm() -> void:
 	if want != "" and _boss_bgm_on != want:
 		_boss_bgm_on = want
 		Audio.play_bgm(want)
+		# #79再: 主・レヴィアタンのBGMへ切り替わる時だけ鳴き声を重ねる(海賊王では鳴らさない)
+		if want == "bgm_boss" or want == "bgm_leviathan":
+			Audio.play("sfx_lord_roar", -2.0)
 	elif want == "" and _boss_bgm_on != "":
 		_boss_bgm_on = ""
 		Audio.play_bgm("bgm_sea")

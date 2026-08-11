@@ -259,7 +259,7 @@ func _on_hit(body: Node) -> void:
 			if res == 2:
 				return   # #111: 回避(弾は後方へそのまま通過)
 			if res == 0:
-				Audio.play("sfx_enemy_hit", -13.0)   # #47再: 与ダメ音を少し小さく
+				Audio.play("sfx_enemy_hit", -18.0)   # #47再2: 与ダメ音をさらに小さく
 				if crit:
 					GameState.notice.emit("クリティカル!")   # #139: 命中時に表示
 				var ekind = body.get("kind")
@@ -288,7 +288,7 @@ func _on_hit(body: Node) -> void:
 		# #115: 海賊の大砲/魚雷が自機に当たると派手な爆発
 		if homing or (not falloff and not debuff and not fire):
 			_spawn_effect("explosion", global_position)
-		Audio.play("sfx_hit", -6.0)
+		Audio.play("sfx_hit", -10.0)   # #47再2: 被ダメ音も少し小さく
 		queue_free()
 	elif not from_player and body.is_in_group("fleet_ship"):
 		# #196: 敵弾は僚艦にも当たる(装甲0でその艦だけ離脱)
@@ -302,7 +302,7 @@ func _on_hit(body: Node) -> void:
 			body.take_damage(_eff_dmg())
 			if burn_chance > 0.0 and randf() < burn_chance and body.has_method("ignite"):
 				body.ignite(4.0)
-		Audio.play("sfx_hit", -10.0)
+		Audio.play("sfx_hit", -13.0)   # #47再2: 僚艦の被ダメ音も少し小さく
 		queue_free()
 	elif from_player and body.is_in_group("fleet_ship"):
 		return   # 味方の弾は僚艦をすり抜ける(フレンドリーファイア無し)

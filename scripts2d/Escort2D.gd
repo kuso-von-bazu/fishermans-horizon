@@ -48,10 +48,13 @@ func _ready() -> void:
 	player = get_tree().get_first_node_in_group("player")
 	_build_visual()
 	_reset_ammo()
-	# #227: 旗艦(1)・敵(2)・島/障害物(1)のいずれとも重ならないようにする
-	# (以前は陣形が崩れないよう旗艦・敵とすり抜けていたが、重なり解消を優先)
+	# #227: 敵(2)とは重ならない。島/障害物(1)とも従来どおり衝突。
+	# #227再: 旗艦とはすり抜けに戻す(僚艦は陣形へ剛体的に張り付くので、
+	# 衝突させると旗艦を突き飛ばして高速で吹っ飛ばしてしまう)
 	collision_layer = 4
 	collision_mask = 3
+	if player is CollisionObject2D:
+		(player as CollisionObject2D).add_collision_exception_with(self)
 
 func _build_visual() -> void:
 	for c in get_children():

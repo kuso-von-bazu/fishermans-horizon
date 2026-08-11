@@ -34,6 +34,7 @@ const SFX_FILES := {
 	"sfx_gun": "res://assets/audio/ガトリングガン.mp3",
 	"sfx_cannon": "res://assets/audio/大砲.mp3",      # #226再2: 大砲・大口径カノン砲
 	"sfx_skill": "res://assets/audio/スキル.mp3",     # #226再2: スキル発動(突撃・一斉射撃)
+	"sfx_lord_roar": "res://assets/audio/近海の主の鳴き声.mp3",   # #79再: 主・レヴィアタン出現時
 }
 
 func _stream_of(name: String) -> AudioStream:

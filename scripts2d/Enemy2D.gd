@@ -552,7 +552,7 @@ func _damage_victim(amount: float, victim: Node2D) -> void:
 		victim.take_damage(amount)
 	if bool(def.get("poison", false)) and victim.has_method("apply_poison"):
 		victim.apply_poison(6.0, 4.0)
-	Audio.play("sfx_hit", -5.0)
+	Audio.play("sfx_hit", -9.0)   # #47再2: 被ダメ音を少し小さく
 
 func _attack(delta: float, dist: float) -> void:
 	_atk_timer -= delta
@@ -927,7 +927,7 @@ func _damage_player(amount: float) -> void:
 		player.add_entangler(self)
 	if bool(def.get("poison", false)):
 		GameState.apply_poison(6.0, 4.0)
-	Audio.play("sfx_hit", -5.0)
+	Audio.play("sfx_hit", -9.0)   # #47再2: 被ダメ音を少し小さく
 
 func _draw() -> void:
 	# 円形HPゲージ(#21): 上から時計回り。残量で緑→赤
