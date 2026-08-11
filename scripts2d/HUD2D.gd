@@ -498,7 +498,8 @@ func _draw_sonar() -> void:
 		var pos := center + v * (r - 13) - Vector2(7, -6)
 		sonar.draw_string(font, pos, c[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.85, 0.97, 1.0))
 	# #76: 直近に寄港した島の方向を緑の弧で示す(常時)
-	if _home_pos != null:
+	# #209再8: ボスラッシュには寄港の概念がないので緑の弧も出さない
+	if _home_pos != null and not GameState.boss_rush:
 		var hang: float = ((_home_pos as Vector2) - pp).rotated(-rot).angle()
 		sonar.draw_arc(center, r - 3.0, hang - 0.28, hang + 0.28, 14, Color(0.2, 0.95, 0.35, 0.9), 5.0)
 	# #60/#61: ガイド方向をソナー外周の赤い弧で示す(距離に関係なく常に表示)
