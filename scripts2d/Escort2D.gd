@@ -155,7 +155,7 @@ func _build_visual() -> void:
 		# 船に張り付く座標系にして、舷側で大きく割れる波として見せる
 		cs.local_coords = true
 		cs.position = Vector2(side2 * _half_w * 0.9, 2 * sc)
-		cs.direction = Vector2(side2, 0.62).normalized()   # #224再3: 斜め後ろへ跳ねる
+		cs.direction = Vector2(side2 * 0.7, 1.0).normalized()   # #224再7: さらに斜め後ろへ
 		cs.spread = 34.0
 		cs.gravity = Vector2.ZERO
 		cs.initial_velocity_min = 55.0
@@ -168,7 +168,7 @@ func _build_visual() -> void:
 		cramp.set_color(0, Color(1.0, 1.0, 1.0, 0.9))
 		cramp.set_color(1, Color(0.70, 0.90, 1.0, 0.0))
 		cs.color_ramp = cramp
-		cs.z_index = 3
+		cs.z_index = 1   # #224再7: 船(z=2)より奥に描く
 		add_child(cs)
 		_charge_sprays.append(cs)
 	# #215: 炎上アニメ(炎上中のみ噴く)

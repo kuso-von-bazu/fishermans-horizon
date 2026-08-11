@@ -55,6 +55,8 @@ var _boss_rush: bool = false
 var _br_index: int = 0
 var _br_boss: Node = null
 var _br_active: bool = false   # ボスが出現中(解放済み参照は null 比較で真になるため別途フラグで持つ)
+var _br_boss2: Node = null     # #209再4: 番いの主(ギガントセイウチ)の2体目
+var _br_pair: bool = false     # 番いかどうか(解放済み参照の null 比較を避けるためフラグで持つ)
 var _br_wait: float = 0.0
 var _skill_cd: float = 0.0        # #224: スキルのクールダウン残り
 var _skill_cd_max: float = 1.0
@@ -913,6 +915,16 @@ func _br_spawn_next() -> void:
 	var pos: Vector2 = player.global_position + Vector2(cos(ang), sin(ang)) * randf_range(700.0, 950.0)
 	var boss := _make_enemy(str(spec.kind), str(spec.id), pos)
 	boss._aggro = true
+	# #209再4: 番いの主(ギガントセイウチ)は本編と同じく2体出し、両方倒すまで撃破にしない
+	_br_boss2 = null
+	_br_pair = str(spec.kind) == "lord" and bool(Database.lords.get(str(spec.id), {}).get("pair", false))
+	if _br_pair:
+		boss.global_position = pos + Vector2(60, 0)
+		var mate := _make_enemy(str(spec.kind), str(spec.id), pos + Vector2(-60, 0))
+		mate._aggro = true
+		boss.pair_partner = mate
+		mate.pair_partner = boss
+		_br_boss2 = mate
 	if spec.has("escorts"):
 		for eid in spec.escorts:          # 海賊王は取り巻き固定
 			var e := _make_enemy("pirate", str(eid), pos + Vector2.RIGHT.rotated(randf() * TAU) * randf_range(120.0, 200.0))
@@ -922,9 +934,13 @@ func _br_spawn_next() -> void:
 		# #209再: 取り巻きは、そのボスが本来出現する島の海域のモブから選ぶ
 		var home: int = int(Database.lords[str(spec.id)].island)
 		boss.escorts = _spawn_escorts(pos, str(spec.id), home)
+		if _br_pair and is_instance_valid(_br_boss2):
+			_br_boss2.escorts = boss.escorts   # 取り巻きは番いで共有
 	_br_boss = boss
 	_br_active = true
 	var nm: String = Database.lords[str(spec.id)].name if str(spec.kind) == "lord" else Database.pirates[str(spec.id)].name
+	if _br_pair:
+		nm += "(番い2体)"
 	hud.show_big_message("%d / %d  %s" % [_br_index + 1, BOSS_RUSH_ORDER.size(), nm], 2.0)
 
 # ボス撃破の監視(取り巻きは倒さなくてもボスを倒せば消える)
@@ -935,9 +951,14 @@ func _br_update(delta: float) -> void:
 			_br_spawn_next()
 		return
 	# 解放済みのNode参照は `!= null` が偽になるため、_br_active で「出現中」を管理する
-	if _br_active and not is_instance_valid(_br_boss):
+	# #209再4: 番いの場合は2体とも倒れるまで撃破としない
+	var boss_gone: bool = not is_instance_valid(_br_boss)
+	var mate_gone: bool = not _br_pair or not is_instance_valid(_br_boss2)
+	if _br_active and boss_gone and mate_gone:
 		_br_active = false
+		_br_pair = false
 		_br_boss = null
+		_br_boss2 = null
 		for e in enemies.duplicate():     # 残った取り巻きを消す
 			if is_instance_valid(e):
 				e.queue_free()

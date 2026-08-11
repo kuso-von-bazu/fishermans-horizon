@@ -35,6 +35,7 @@ const SFX_FILES := {
 	"sfx_cannon": "res://assets/audio/大砲.mp3",      # #226再2: 大砲・大口径カノン砲
 	"sfx_skill": "res://assets/audio/スキル.mp3",     # #226再2: スキル発動(突撃・一斉射撃)
 	"sfx_torpedo": "res://assets/audio/魚雷.mp3",       # #226再3: 魚雷・追尾魚雷改
+	"sfx_harpoon": "res://assets/audio/銛.mp3",         # #47再3: 銛・強化銛砲
 	"sfx_lord_roar": "res://assets/audio/近海の主の鳴き声.mp3",   # #79再: 主・レヴィアタン出現時
 }
 
