@@ -34,6 +34,7 @@ var charge_t: float = 0.0
 var _charge_hit: Array = []
 var volley_queue: Array = []
 var volley_target: Node2D = null
+var _charge_sprays: Array = []   # #224再: 突撃中の大きなしぶき(左右)
 var _dead: bool = false
 var player: Node2D
 
@@ -142,6 +143,32 @@ func _build_visual() -> void:
 		spray.color_ramp = spr_ramp
 		add_child(spray)
 		_sprays.append(spray)
+	# #224再: 突撃中だけ舷側へ大きく跳ね上がるしぶき(旗艦と同じ演出)
+	_charge_sprays = []
+	for side2 in [-1.0, 1.0]:
+		var cs := CPUParticles2D.new()
+		cs.emitting = false
+		cs.amount = 90
+		cs.lifetime = 0.5
+		# 船に張り付く座標系にして、舷側で大きく割れる波として見せる
+		cs.local_coords = true
+		cs.position = Vector2(side2 * _half_w * 0.9, 2 * sc)
+		cs.direction = Vector2(side2, -0.5).normalized()
+		cs.spread = 34.0
+		cs.gravity = Vector2.ZERO
+		cs.initial_velocity_min = 55.0
+		cs.initial_velocity_max = 135.0
+		cs.damping_min = 90.0
+		cs.damping_max = 150.0
+		cs.scale_amount_min = 10.0
+		cs.scale_amount_max = 22.0
+		var cramp := Gradient.new()
+		cramp.set_color(0, Color(1.0, 1.0, 1.0, 0.9))
+		cramp.set_color(1, Color(0.70, 0.90, 1.0, 0.0))
+		cs.color_ramp = cramp
+		cs.z_index = 3
+		add_child(cs)
+		_charge_sprays.append(cs)
 	# #215: 炎上アニメ(炎上中のみ噴く)
 	_flame = CPUParticles2D.new()
 	_flame.amount = 18
@@ -230,8 +257,9 @@ func _ship_scale() -> float:
 func _charge_pierce() -> void:
 	var ram: String = str(GameState.fleet[fleet_index].get("ram", "none"))
 	var rd := float(Database.rams[ram].dmg) if Database.rams.has(ram) else 0.0
+	# #224再: 衝角なしでも船体の体当たりとして一定のダメージが入る
 	if rd <= 0.0:
-		return
+		rd = Database.HULL_RAM_DMG
 	var reach := 34.0 * _sc
 	for e in get_tree().get_nodes_in_group("enemy"):
 		if not is_instance_valid(e) or not e.has_method("take_hit"):
@@ -261,7 +289,8 @@ func start_volley(target: Node2D) -> void:
 func _tick_volley(delta: float) -> void:
 	if volley_queue.is_empty():
 		return
-	if not is_instance_valid(volley_target):
+	# #224再: 非ロックオン時(volley_target が null)は前方へ撃つので中断しない
+	if volley_target != null and not is_instance_valid(volley_target):
 		volley_queue.clear()
 		return
 	var wp: Array = GameState.fleet[fleet_index].weapons
@@ -272,7 +301,8 @@ func _tick_volley(delta: float) -> void:
 		var w: Dictionary = Database.weapons[str(wp[int(q.slot)])]
 		q.timer = float(w.cooldown) / 3.0
 		q.left = int(q.left) - 1
-		var dir := (volley_target.global_position - global_position).normalized()
+		# #224再: ロック中はロック対象へ、非ロック時は自艦の前方へ
+		var dir := Vector2.UP.rotated(rotation) if volley_target == null else (volley_target.global_position - global_position).normalized()
 		var w2 := w.duplicate()
 		w2.dmg = float(w.dmg) * GameState.attack_mult_of(fleet_index)
 		w2["debuff_kind"] = str(GameState.fleet[fleet_index].get("harpoon", "slip"))
@@ -392,7 +422,8 @@ func _physics_process(delta: float) -> void:
 	var to := target - global_position
 	velocity = to / maxf(delta, 0.0001)          # 目標へ張り付く速度
 	# #196再2: 陣形切替などで目標が大きく動いても、僚艦の速度は船団全体の速度までに制限する
-	var cap: float = player.max_speed
+	# #224再: 突撃中は旗艦が3倍速で走るので、僚艦も同じだけ加速して隊列を保つ
+	var cap: float = player.max_speed * (3.0 if charge_t > 0.0 else 1.0)
 	if velocity.length() > cap:
 		velocity = velocity.normalized() * cap
 	rotation = player.rotation                    # 向きも旗艦と同じ
@@ -406,6 +437,10 @@ func _physics_process(delta: float) -> void:
 		charge_t -= delta
 		if charge_t <= 0.0:
 			_charge_hit.clear()
+	# #224再: 突撃中だけ舷側の大しぶきを噴かせる
+	for cs in _charge_sprays:
+		if is_instance_valid(cs):
+			cs.emitting = charge_t > 0.0
 	move_and_slide()
 	if charge_t > 0.0:
 		_charge_pierce()

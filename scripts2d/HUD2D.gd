@@ -336,11 +336,11 @@ func build_formation_bar(on_pick: Callable, on_skill: Callable = Callable()) -> 
 	# #224: 陣形4の右にスキルボタン。使用可能なら赤枠、クールダウン中は左から右へグレーが解除される
 	if _on_skill.is_valid():
 		var holder := Control.new()
-		holder.custom_minimum_size = Vector2(132, 34)
+		holder.custom_minimum_size = Vector2(196, 34)   # #224再: 「スキル(5キー): 一斉射撃」が収まる幅
 		holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_form_box.add_child(holder)
 		_skill_btn = Button.new()
-		_skill_btn.text = "スキル"
+		_skill_btn.text = "スキル(5キー)"
 		_skill_btn.add_theme_font_size_override("font_size", 16)
 		_skill_btn.focus_mode = Control.FOCUS_NONE
 		_skill_btn.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -362,9 +362,10 @@ func set_skill_state(skill_name: String, progress: float, ready_now: bool) -> vo
 	if _skill_btn == null or not is_instance_valid(_skill_btn):
 		return
 	if skill_name != "":
-		_skill_btn.text = "スキル: %s" % skill_name
+		# #224再: キーボードでも撃てることが分かるようキー名を併記
+		_skill_btn.text = "スキル(5キー): %s" % skill_name
 	if _skill_cover:
-		var w: float = _skill_holder.size.x if _skill_holder else 132.0
+		var w: float = _skill_holder.size.x if _skill_holder else 196.0
 		# 左から解除=覆いの左端を右へずらす
 		_skill_cover.offset_left = w * clampf(progress, 0.0, 1.0)
 		_skill_cover.visible = not ready_now

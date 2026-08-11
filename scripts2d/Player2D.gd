@@ -15,6 +15,7 @@ var _bump_cd: float = 0.0   # #193: 障害物の接触ダメージのクール�
 var _wake: CPUParticles2D
 var _smoke: CPUParticles2D   # #131: 蒸気(移動方向と逆向きに流す)
 var _sprays: Array = []      # #144: 舷側のしぶき
+var _charge_sprays: Array = []   # #224再: 突撃中の大きなしぶき(左右)
 var _dmg_smokes: Array = []  # #178: 損傷時の黒煙(複数個所)
 var _dmg_state: int = -1     # #178: 0=無/1=小(装甲1/4未満)/2=大(大破)。差分更新用
 var _flame: CPUParticles2D   # #136: 炎上アニメ
@@ -513,6 +514,33 @@ func _build_visual() -> void:
 		add_child(spray)
 		_sprays.append(spray)
 
+	# #224再: 突撃中だけ舷側へ大きく跳ね上がるしぶき(通常のしぶきよりずっと派手)
+	_charge_sprays = []
+	for side2 in [-1.0, 1.0]:
+		var cs := CPUParticles2D.new()
+		cs.emitting = false
+		cs.amount = 90
+		cs.lifetime = 0.5
+		# 船に張り付く座標系にして、舷側で大きく割れる波として見せる
+		cs.local_coords = true
+		cs.position = Vector2(side2 * _half_w * 0.9, 2 * sc)
+		cs.direction = Vector2(side2, -0.5).normalized()
+		cs.spread = 34.0
+		cs.gravity = Vector2.ZERO
+		cs.initial_velocity_min = 55.0
+		cs.initial_velocity_max = 135.0
+		cs.damping_min = 90.0
+		cs.damping_max = 150.0
+		cs.scale_amount_min = 10.0
+		cs.scale_amount_max = 22.0
+		var cramp := Gradient.new()
+		cramp.set_color(0, Color(1.0, 1.0, 1.0, 0.9))
+		cramp.set_color(1, Color(0.70, 0.90, 1.0, 0.0))
+		cs.color_ramp = cramp
+		cs.z_index = 3
+		add_child(cs)
+		_charge_sprays.append(cs)
+
 	# #212再: 僚艦と同じく「旗艦」ラベルを表示
 	var lbl := Label.new()
 	lbl.text = "旗艦"
@@ -631,7 +659,9 @@ func _physics_process(delta: float) -> void:
 	var eff_max: float = max_speed * (0.55 if not entanglers.is_empty() else 1.0)
 	var spd := velocity.length()
 	var steer_factor: float = clampf(spd / maxf(eff_max, 1.0), 0.2, 1.0)
-	rotation += steer * turn_speed * steer_factor * delta
+	# #224再: 突撃でトップスピードに乗っている間は方向転換できない
+	if charge_t <= 0.0:
+		rotation += steer * turn_speed * steer_factor * delta
 	velocity = velocity.move_toward(forward() * throttle * eff_max, accel * delta)
 	# #184再2: 敵とは物理的に衝突する(すり抜けを撤回)。
 	# 高速な敵に押し出されて最高速度を超える件は別途対応予定。
@@ -643,6 +673,10 @@ func _physics_process(delta: float) -> void:
 		if charge_t <= 0.0:
 			collision_mask = 3
 			_charge_hit.clear()
+	# #224再: 突撃中だけ舷側の大しぶきを噴かせる
+	for cs in _charge_sprays:
+		if is_instance_valid(cs):
+			cs.emitting = charge_t > 0.0
 	move_and_slide()
 	if charge_t > 0.0:
 		_charge_pierce()
@@ -711,9 +745,11 @@ func _check_obstacle_bump() -> void:
 
 # #224: 突撃で貫いた敵に衝角ダメージ(1回の突撃につき同じ敵へは1度だけ)
 func _charge_pierce() -> void:
+	# #224再: 衝角なしでも船体の体当たりとして一定のダメージが入る
 	var rd := float(Database.rams[GameState.ram_id].dmg)
-	if rd <= 0.0:
-		return
+	var by_hull := rd <= 0.0
+	if by_hull:
+		rd = Database.HULL_RAM_DMG
 	var reach := 34.0 * _sc
 	for e in get_tree().get_nodes_in_group("enemy"):
 		if not is_instance_valid(e) or not e.has_method("take_hit"):
@@ -726,7 +762,7 @@ func _charge_pierce() -> void:
 		_charge_hit.append(e.get_instance_id())
 		var dmg := rd * (0.5 + velocity.length() / maxf(max_speed, 1.0))
 		e.take_hit(dmg, false, false)
-		GameState.notice.emit("突撃の衝角! %d ダメージ" % int(dmg))
+		GameState.notice.emit("突撃の%s! %d ダメージ" % ["体当たり" if by_hull else "衝角", int(dmg)])
 		Audio.play("sfx_cannon", -6.0, 1.3)
 
 # #224: 一斉射撃。装備中の各武器から、弾倉の半分(切り上げ)を3倍のレートでロック中の敵へ撃つ
@@ -744,7 +780,9 @@ func start_volley(target: Node2D) -> void:
 func _tick_volley(delta: float) -> void:
 	if volley_queue.is_empty():
 		return
-	if not is_instance_valid(volley_target):
+	# #224再: 非ロックオン時(volley_target が null)は前方へ撃つので中断しない。
+	# ロック対象がいたのに消えた場合だけ打ち切る
+	if volley_target != null and not is_instance_valid(volley_target):
 		volley_queue.clear()
 		return
 	for q in volley_queue:
@@ -759,7 +797,8 @@ func _tick_volley(delta: float) -> void:
 	volley_queue = volley_queue.filter(func(q): return int(q.left) > 0)
 
 func _fire_volley_shot(w: Dictionary) -> void:
-	var dir := (volley_target.global_position - global_position).normalized()
+	# #224再: ロック中はロック対象へ、非ロック時は船の前方へ
+	var dir := forward() if volley_target == null else (volley_target.global_position - global_position).normalized()
 	var w2 := w.duplicate()
 	w2["debuff_kind"] = GameState.harpoon_debuff
 	w2.dmg = float(w.dmg) * GameState.attack_mult()

@@ -270,7 +270,7 @@ func show_tavern() -> void:
 				GameState.target_ship = ti
 				show_tavern()))
 		content.add_child(trow)
-	content.add_child(_p("雇用(※上位ジョブは規定パラメータ以上で1キャラにつき1度だけジョブチェンジも可能):"))
+	content.add_child(_p("雇用(上位ジョブは規定パラメータ以上でジョブチェンジも可能):"))
 	# #107: 各ジョブの説明付きで雇用ボタンを縦に並べる
 	for jid in GameState.jobs:
 		var j2: Dictionary = GameState.jobs[jid]

@@ -986,14 +986,15 @@ const FORMATION_OFFSETS := {
 
 # #224: 陣形ごとのスキル
 const FORMATION_SKILLS := {
-	"line":    {"name": "突撃",     "kind": "charge", "cd": 15.0},
-	"column":  {"name": "一斉射撃", "kind": "volley", "cd": 20.0},
+	# #224再: 単横陣と単縦陣のスキルを入れ替え(単横陣=一斉射撃20秒 / 単縦陣=突撃15秒)
+	"line":    {"name": "一斉射撃", "kind": "volley", "cd": 20.0},
+	"column":  {"name": "突撃",     "kind": "charge", "cd": 15.0},
 	"vee":     {"name": "突撃",     "kind": "charge", "cd": 17.0},
 	"inv_vee": {"name": "一斉射撃", "kind": "volley", "cd": 25.0},
 	"echelon": {"name": "一斉射撃", "kind": "volley", "cd": 19.0},
 	"ring":    {"name": "一斉射撃", "kind": "volley", "cd": 25.0},
 }
-const CHARGE_TIME := 1.2   # 突撃の持続秒
+const CHARGE_TIME := 0.8   # 突撃の持続秒(#224再: 1.2秒から2/3へ短縮)
 
 func _current_skill() -> Dictionary:
 	return FORMATION_SKILLS.get(_current_formation(), FORMATION_SKILLS["line"])
@@ -1004,13 +1005,13 @@ func _use_skill() -> void:
 		return
 	var sk: Dictionary = _current_skill()
 	if str(sk.kind) == "volley":
-		if lock_target == null or not is_instance_valid(lock_target):
-			GameState.notice.emit("一斉射撃はロックオン中のみ発動できる")
-			return
-		player.start_volley(lock_target)
+		# #224再: 非ロックオン時も発動できる。ロック中はロック対象へ、
+		# 非ロック時は各艦がそれぞれの前方へ撃つ(start_volley に null を渡す)
+		var tgt: Node2D = lock_target if (lock_target != null and is_instance_valid(lock_target)) else null
+		player.start_volley(tgt)
 		for e in escorts:
 			if is_instance_valid(e):
-				e.start_volley(lock_target)
+				e.start_volley(tgt)
 	else:
 		player.charge_t = CHARGE_TIME
 		player._charge_hit.clear()
@@ -1465,6 +1466,7 @@ func _maybe_screenshot() -> void:
 	var want_yard := false     # #211再: 造船所の撮影
 	var want_guide := false
 	var want_bullets := false
+	var want_charge := false   # #224再: 突撃のしぶきを撮影
 	var want_isle := 0        # #190: 撮影する海域(島index)
 	var want_brwin := false   # #209: ボスラッシュ制覇画面
 	for a in args:
@@ -1479,6 +1481,7 @@ func _maybe_screenshot() -> void:
 			want_yard = a.find("yard") != -1
 			want_guide = a.find("guide") != -1
 			want_bullets = a.find("bullets") != -1
+			want_charge = a.find("charge") != -1   # #224再
 			want_brwin = a.find("brwin") != -1   # #209: ボスラッシュ制覇画面
 			# #190: isle<N> で撮影する海域(島index)を指定(天候・障害物の確認用)
 			var ip := a.find("isle")
@@ -1501,12 +1504,33 @@ func _maybe_screenshot() -> void:
 			GameState.money = 999999
 			GameState.buy_ship("dread")
 			GameState.dock_reset()
+		if want_charge:   # #224再: 出港前に船団を組む(旗艦=弩級で舷側しぶきを見やすく)
+			GameState.money = 9999999
+			GameState.unlocked_islands.assign(range(Database.islands.size()))
+			GameState.buy_ship("dread")
+			GameState.fleet_exchange(0, 0)
+			GameState.ship_stock.clear()
+			GameState.buy_ship("corvette")
+			GameState.fleet_add(0)
+			GameState.buy_ship("cutter")
+			GameState.fleet_add(0)
+			for fi in [1, 2]:
+				GameState.target_ship = fi
+				GameState.hire_crew("firstmate")
+			GameState.dock_reset()
 		_on_set_sail()
 		if want_guide:   # #60/#61: ガイド弧の表示確認
 			GameState.unlocked_islands = [0, 1]
 			GameState.visited_islands = [0]
 			GameState.guide_target = {"kind": "island", "id": 1}
 			await get_tree().create_timer(0.5).timeout
+		if want_charge:   # #224再: 突撃中の舷側しぶきを撮影
+			GameState.formation_slot = 1      # 単縦陣=突撃
+			_apply_formation()
+			await get_tree().create_timer(4.5).timeout    # 購入通知が消えるまで待つ
+			_skill_cd = 0.0
+			_use_skill()
+			await get_tree().create_timer(0.12).timeout   # 撮影までに他所で0.3秒待つので短めに
 		if want_bullets:   # #78: 各武器の弾を静止配置して見た目を確認
 			player.control_enabled = false
 			var specs := [
