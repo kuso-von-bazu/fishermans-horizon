@@ -1502,6 +1502,7 @@ func _maybe_screenshot() -> void:
 	var want_isle := 0        # #190: 撮影する海域(島index)
 	var want_brwin := false   # #209: ボスラッシュ制覇画面
 	var want_title := false   # #209再: タイトル画面(Boss Rushボタン付き)
+	var want_confirm := false   # #225再: 上書き確認ダイアログ
 	for a in args:
 		if a.begins_with("--shot"):
 			want_shot = true
@@ -1517,6 +1518,7 @@ func _maybe_screenshot() -> void:
 			want_charge = a.find("charge") != -1   # #224再
 			want_brwin = a.find("brwin") != -1   # #209: ボスラッシュ制覇画面
 			want_title = a.find("title") != -1   # #209再
+			want_confirm = a.find("confirm") != -1   # #225再
 			# #190: isle<N> で撮影する海域(島index)を指定(天候・障害物の確認用)
 			var ip := a.find("isle")
 			if ip != -1 and ip + 4 < a.length():
@@ -1533,6 +1535,9 @@ func _maybe_screenshot() -> void:
 		GameState.mark_boss_rush_cleared()   # #209再2: 王冠の確認
 		title.show_title()
 		await get_tree().create_timer(0.4).timeout
+		if want_confirm:   # #225再: 上書き確認ダイアログの撮影
+			title._on_start_pressed()
+			await get_tree().create_timer(0.3).timeout
 	if want_brwin:
 		# #209: ボスラッシュ制覇のエンディング画面を撮影
 		title.show_victory(true)

@@ -19,6 +19,8 @@ var _boss_rush_button: Button   # #209: エンディング到達後に右上へ�
 var _crown: TextureRect   # #209再2: ボスラッシュ制覇の証(ボタンの左に表示)
 var _night_sky: Control   # #209再2: 制覇画面の三日月と星空
 var _art_br: TextureRect  # #209再3: 制覇画面の前景(水平線から下の海・漁船・島)
+var _confirm: Control   # #225再: セーブ上書きの確認
+var _is_title: bool = false   # タイトル表示中か(勝利画面と区別する)
 
 func _ready() -> void:
 	layer = 30
@@ -86,10 +88,10 @@ func _build() -> void:
 	vb.add_child(_body)
 
 	_button = Button.new()
-	_button.text = "船出する"
+	_button.text = "初めから"   # #225再: 「船出する」から改称
 	_button.add_theme_font_size_override("font_size", 26)
 	_button.custom_minimum_size = Vector2(240, 56)
-	_button.pressed.connect(func(): emit_signal("start_pressed"))
+	_button.pressed.connect(_on_start_pressed)
 	var bc := CenterContainer.new()
 	bc.add_child(_button)
 	vb.add_child(bc)
@@ -216,6 +218,82 @@ func _build_br_art() -> void:
 	_root.add_child(_art_br)
 	_root.move_child(_art_br, 2)   # 星空(1)の上、文字より下
 
+# #225再: 「初めから」を押したとき、セーブがあれば上書き確認を出す。
+# 「はい」で新規開始、「いいえ」でオープニング画面へ戻る。
+func _on_start_pressed() -> void:
+	if _is_title and GameState.has_save():
+		_show_overwrite_confirm()
+		return
+	emit_signal("start_pressed")
+
+func _show_overwrite_confirm() -> void:
+	_build_confirm()
+	if _confirm:
+		_confirm.visible = true
+
+func _build_confirm() -> void:
+	if _confirm != null and is_instance_valid(_confirm):
+		return
+	_confirm = Control.new()
+	_confirm.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_confirm.visible = false
+	_root.add_child(_confirm)
+
+	# 背後のボタンを押せないよう画面全体を覆う
+	var veil := ColorRect.new()
+	veil.color = Color(0, 0, 0, 0.62)
+	veil.set_anchors_preset(Control.PRESET_FULL_RECT)
+	veil.mouse_filter = Control.MOUSE_FILTER_STOP
+	_confirm.add_child(veil)
+
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_confirm.add_child(center)
+
+	var panel := PanelContainer.new()
+	var psb := StyleBoxFlat.new()
+	psb.bg_color = Color(0.06, 0.09, 0.14, 0.98)
+	psb.set_corner_radius_all(10)
+	psb.set_border_width_all(2)
+	psb.border_color = Color(0.55, 0.70, 0.85, 0.9)
+	psb.set_content_margin_all(28)
+	panel.add_theme_stylebox_override("panel", psb)
+	center.add_child(panel)
+
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 20)
+	panel.add_child(vb)
+
+	var msg := Label.new()
+	msg.text = "セーブデータが上書きされます。よろしいですか?"
+	msg.add_theme_font_size_override("font_size", 22)
+	msg.add_theme_color_override("font_color", Color(0.92, 0.96, 1.0))
+	msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(msg)
+
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 24)
+	vb.add_child(row)
+
+	var yes := Button.new()
+	yes.text = "はい"
+	yes.add_theme_font_size_override("font_size", 22)
+	yes.custom_minimum_size = Vector2(150, 48)
+	yes.focus_mode = Control.FOCUS_NONE
+	yes.pressed.connect(func():
+		_confirm.visible = false
+		emit_signal("start_pressed"))
+	row.add_child(yes)
+
+	var no := Button.new()
+	no.text = "いいえ"
+	no.add_theme_font_size_override("font_size", 22)
+	no.custom_minimum_size = Vector2(150, 48)
+	no.focus_mode = Control.FOCUS_NONE
+	no.pressed.connect(func(): _confirm.visible = false)   # オープニング画面へ戻る
+	row.add_child(no)
+
 func _fit_logo() -> void:
 	# #175再: ロゴ高さを画面縦に追従(約30%、160〜300pxに制限)。横は元画像比を維持。
 	if not _logo:
@@ -229,7 +307,7 @@ func _fit_logo() -> void:
 
 func show_title() -> void:
 	_title.text = "Fisherman's Horizon"
-	_button.text = "船出する"
+	_button.text = "初めから"
 	if _bg:
 		_bg.color = Color(0.03, 0.07, 0.12, 1.0)
 	if _art:
@@ -251,6 +329,9 @@ func show_title() -> void:
 		_night_sky.visible = false
 	if _art_br:
 		_art_br.visible = false
+	_is_title = true
+	if _confirm:
+		_confirm.visible = false
 	visible = true
 
 func show_victory(night := false) -> void:
@@ -297,4 +378,7 @@ func show_victory(night := false) -> void:
 		_boss_rush_button.visible = false
 	if _crown:
 		_crown.visible = false   # #209再3: 制覇画面では王冠を表示しない
+	_is_title = false
+	if _confirm:
+		_confirm.visible = false
 	visible = true
