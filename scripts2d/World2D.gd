@@ -282,6 +282,9 @@ func _enter_dock(island_id: int, do_reset := true) -> void:
 	if was_at_sea and not GameState.crew.is_empty():
 		GameState.grow_crew()   # 航海を終えたクルーが成長(#39)
 	phase = "dock"
+	# #224: 港へ入った時点で陣形スキルのクールダウンを全回復する
+	_skill_cd = 0.0
+	_skill_cd_max = 1.0
 	_dock_target = -1
 	_returning = false
 	GameState.current_island = island_id

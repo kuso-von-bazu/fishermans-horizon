@@ -190,11 +190,15 @@ var ships := {
 	"cutter":   {"name": "外洋カッター",   "food": 150, "hold": 30,  "armor": 260,  "slots": 3, "range": 1, "speed": 12.0, "price": 9000,   "trade": 3500},
 	# #190: rangeは「販売が解禁される島index」。月下の島(2)の追加でコルベット以降を1つずつ後ろへずらす
 	"corvette": {"name": "コルベット",     "food": 200, "hold": 40,  "armor": 480,  "slots": 4, "range": 2, "speed": 12.5, "price": 32000,  "trade": 12000},   # #190: 月下の島で追加
-	"hunter_h": {"name": "猟特化フリゲート","food": 170, "hold": 32,  "armor": 600,  "slots": 4, "range": 3, "speed": 13.5, "price": 50000,  "trade": 18000},
+	# #228: 猟特化フリゲートを駆逐艦へ改称。快速艦は後退時の減速が緩やか(reverse=0.9)
+	"hunter_h": {"name": "駆逐艦",         "food": 170, "hold": 32,  "armor": 600,  "slots": 4, "range": 3, "speed": 15.0, "price": 50000,  "trade": 18000, "reverse": 0.9},
 	"hauler":   {"name": "大型運搬艦",     "food": 240, "hold": 70,  "armor": 720,  "slots": 4, "range": 3, "speed": 11.0, "price": 50000,  "trade": 18000},
-	"dread":    {"name": "弩級戦艦",       "food": 350, "hold": 60,  "armor": 1300, "slots": 4, "range": 4, "speed": 13.0, "price": 110000, "trade": 40000},
-	# #151: 巡洋戦艦。弩級と対。低装甲・高速・中型・後退が得意(reverse=後退速度倍率)
-	"cruiser":  {"name": "巡洋戦艦",       "food": 300, "hold": 45,  "armor": 1000, "slots": 4, "range": 4, "speed": 14.5, "price": 110000, "trade": 40000, "reverse": 0.9},
+	# #228: 果ての島での追加順は軽→重→快速→巨大。visualは既存のフリゲート/快速艦の船影を共用する
+	"frigate_l":{"name": "軽フリゲート",   "food": 250, "hold": 35,  "armor": 800,  "slots": 4, "range": 4, "speed": 16.0, "price": 70000,  "trade": 25000, "reverse": 0.9, "visual": "hunter_h"},
+	"frigate_h":{"name": "重フリゲート",   "food": 280, "hold": 40,  "armor": 900,  "slots": 4, "range": 4, "speed": 15.0, "price": 90000,  "trade": 32000, "reverse": 0.9, "visual": "cruiser"},
+	# #151/#228: 巡洋戦艦を快速戦艦へ改称。低装甲・高速・中型・後退が得意
+	"cruiser":  {"name": "快速戦艦",       "food": 300, "hold": 45,  "armor": 1000, "slots": 4, "range": 4, "speed": 14.5, "price": 110000, "trade": 40000, "reverse": 0.9},
+	"dread":    {"name": "巨大戦艦",       "food": 350, "hold": 55,  "armor": 1300, "slots": 4, "range": 4, "speed": 13.0, "price": 110000, "trade": 40000},
 }
 
 # ---------------------------------------------------------------------------

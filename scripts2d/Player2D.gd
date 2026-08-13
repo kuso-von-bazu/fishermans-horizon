@@ -357,7 +357,8 @@ func _weapon_texture(wid: String) -> ImageTexture:
 	return ImageTexture.create_from_image(img)
 
 func _build_ship_texture(with_ram: bool, ram_steel: bool) -> ImageTexture:
-	var map: Array = SHIP_MAPS.get(GameState.ship_id, SHIP_MAP)   # #130: 船ごとの絵
+	var visual_id := str(GameState.ship().get("visual", GameState.ship_id))   # #228: 新フリゲートは既存船影を共用
+	var map: Array = SHIP_MAPS.get(visual_id, SHIP_MAP)   # #130: 船ごとの絵
 	var w: int = map[0].length()
 	var h := map.size()
 	# #36再2: 衝角のサイズを船体に比例させる。船幅(実際の最大ビーム)を走査。
@@ -405,7 +406,8 @@ func _build_visual() -> void:
 	var sc := _ship_scale()
 	_sc = sc
 	# #132/#144: 船の見た目の半幅(px)を算出して航跡幅・舷側しぶき位置に使う
-	var map: Array = SHIP_MAPS.get(GameState.ship_id, SHIP_MAP)
+	var visual_id := str(GameState.ship().get("visual", GameState.ship_id))
+	var map: Array = SHIP_MAPS.get(visual_id, SHIP_MAP)
 	var mw: int = map[0].length()
 	# #130再: 透明パディングを除いた実際の船体の縁を走査し、舷側しぶき/航跡を船体の縁に密着させる
 	var half_cols := 0.0

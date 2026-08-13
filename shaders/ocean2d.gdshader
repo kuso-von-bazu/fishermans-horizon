@@ -83,5 +83,16 @@ void fragment() {
 	col = mix(col, col * vec3(0.30, 0.36, 0.60) + vec3(0.015, 0.025, 0.055), night);
 	float moon = max(0.0, 1.0 - length(SCREEN_UV - vec2(0.18, 0.13)) * 1.5);
 	col += vec3(0.62, 0.70, 0.95) * moon * moon * 0.16 * night;
+
+	// #190再3: 月下の海面に映る満月。波で輪郭が揺れる月影と、縦に伸びる細かな反射を重ねる。
+	vec2 moon_uv = SCREEN_UV - vec2(0.18, 0.27);
+	moon_uv.x += sin(SCREEN_UV.y * 92.0 + t * 2.2) * 0.006;
+	float moon_disc = 1.0 - smoothstep(0.040, 0.052, length(vec2(moon_uv.x, moon_uv.y * 0.78)));
+	float path_width = 0.018 + SCREEN_UV.y * 0.085;
+	float moon_path = exp(-pow(abs(SCREEN_UV.x - 0.18) / path_width, 2.0));
+	moon_path *= smoothstep(0.25, 0.34, SCREEN_UV.y) * (1.0 - smoothstep(0.34, 0.94, SCREEN_UV.y));
+	float broken = pow(max(sin(SCREEN_UV.y * 185.0 + h * 2.8 + t * 1.7), 0.0), 7.0);
+	float reflection = moon_disc * 0.80 + moon_path * broken * 0.42;
+	col += vec3(0.72, 0.80, 1.0) * reflection * night;
 	COLOR = vec4(col, 1.0);
 }

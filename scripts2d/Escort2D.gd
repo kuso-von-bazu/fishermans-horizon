@@ -59,7 +59,8 @@ func _build_visual() -> void:
 		c.queue_free()
 	var sc := _ship_scale()
 	_sc = sc
-	var map: Array = PlayerScript.SHIP_MAPS.get(ship_id, PlayerScript.SHIP_MAP)
+	var visual_id := str(Database.ships[ship_id].get("visual", ship_id))   # #228: 新フリゲートは既存船影を共用
+	var map: Array = PlayerScript.SHIP_MAPS.get(visual_id, PlayerScript.SHIP_MAP)
 	var mw: int = map[0].length()
 	var half_cols := 0.0
 	for row in map:
@@ -206,7 +207,8 @@ func _build_visual() -> void:
 # Player2D と同じドット絵マップから船体テクスチャを作る。
 # #196再2: 僚艦にも衝角を装着できるので、旗艦と同じ描き方で衝角を描く。
 func _build_ship_texture() -> ImageTexture:
-	var map: Array = PlayerScript.SHIP_MAPS.get(ship_id, PlayerScript.SHIP_MAP)
+	var visual_id := str(Database.ships[ship_id].get("visual", ship_id))
+	var map: Array = PlayerScript.SHIP_MAPS.get(visual_id, PlayerScript.SHIP_MAP)
 	var w: int = map[0].length()
 	var h := map.size()
 	var ram: String = str(GameState.fleet[fleet_index].get("ram", "none"))
