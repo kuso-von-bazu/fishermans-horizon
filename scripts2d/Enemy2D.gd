@@ -822,6 +822,10 @@ func _shoot(d: Vector2, w: Dictionary, is_fire: bool, tgt: Node2D = null, origin
 	# #65: 弾速倍率(_fire_weaponで明示指定済みならそのまま)
 	if not w.has("speed_mult") and float(def.get("shot_speed_mult", 1.0)) != 1.0 and not w.has("homing"):
 		w["speed_mult"] = float(def.get("shot_speed_mult", 1.0))
+	# #230: 敵ごとの全弾共通倍率。通常弾・追尾弾・バラマキ弾の個別倍率を保ったまま一律調整する。
+	var all_speed_mult := float(def.get("projectile_speed_mult", 1.0))
+	if all_speed_mult != 1.0:
+		w["speed_mult"] = float(w.get("speed_mult", 1.0)) * all_speed_mult
 	var proj := Area2D.new()
 	proj.set_script(preload("res://scripts2d/Projectile2D.gd"))
 	get_parent().add_child(proj)
