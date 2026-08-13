@@ -301,16 +301,17 @@ var _skill_cover: ColorRect
 var _skill_holder: Control
 var _on_skill: Callable = Callable()
 
-# 船団が2隻以上のときだけ、画面下中央に陣形1〜4のボタンを出す
+# スキルボタンは旗艦1隻でも表示する。陣形1〜4のボタンは船団が2隻以上のときだけ出す。
 func build_formation_bar(on_pick: Callable, on_skill: Callable = Callable()) -> void:
 	_on_skill = on_skill
 	if _form_box:
 		_form_box.queue_free()
 		_form_box = null
 	_form_btns.clear()
+	_skill_btn = null
+	_skill_cover = null
+	_skill_holder = null
 	pointer_on_ui = false
-	if GameState.fleet.size() <= 1:
-		return
 	_form_box = HBoxContainer.new()
 	_form_box.add_theme_constant_override("separation", 6)
 	# #196再9: 画面上部中央へ配置
@@ -321,18 +322,19 @@ func build_formation_bar(on_pick: Callable, on_skill: Callable = Callable()) -> 
 	_form_box.offset_bottom = 50
 	_form_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	_root().add_child(_form_box)
-	for i in 4:
-		var b := Button.new()
-		b.text = "陣形%d" % (i + 1)
-		b.add_theme_font_size_override("font_size", 16)
-		b.focus_mode = Control.FOCUS_NONE
-		var idx: int = i
-		b.pressed.connect(func(): on_pick.call(idx))
-		b.mouse_entered.connect(func(): pointer_on_ui = true)
-		b.mouse_exited.connect(func(): pointer_on_ui = false)
-		_form_box.add_child(b)
-		_form_btns.append(b)
-	set_formation(GameState.formation_slot)
+	if GameState.fleet.size() > 1:
+		for i in 4:
+			var b := Button.new()
+			b.text = "陣形%d" % (i + 1)
+			b.add_theme_font_size_override("font_size", 16)
+			b.focus_mode = Control.FOCUS_NONE
+			var idx: int = i
+			b.pressed.connect(func(): on_pick.call(idx))
+			b.mouse_entered.connect(func(): pointer_on_ui = true)
+			b.mouse_exited.connect(func(): pointer_on_ui = false)
+			_form_box.add_child(b)
+			_form_btns.append(b)
+		set_formation(GameState.formation_slot)
 	# #224: 陣形4の右にスキルボタン。使用可能なら赤枠、クールダウン中は左から右へグレーが解除される
 	if _on_skill.is_valid():
 		var holder := Control.new()
