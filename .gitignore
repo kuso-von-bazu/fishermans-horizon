@@ -16,3 +16,4 @@ export_presets.cfg
 *.log
 Thumbs.db
 desktop.ini
+__pycache__/
