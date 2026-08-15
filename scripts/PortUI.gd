@@ -78,10 +78,16 @@ func _build() -> void:
 	var tab_spacer := Control.new()
 	tab_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tabs.add_child(tab_spacer)
-	var settings_btn := _btn("⚙", func(): OverlayMenus.show_settings(_root))
-	settings_btn.tooltip_text = "音量設定"
+	# #235再: 「⚙」は環境によって豆腐になるので生成した歯車画像を使う
+	var settings_btn := OverlayMenus.icon_button("gear", "音量設定")
 	settings_btn.custom_minimum_size = Vector2(52, 38)
+	settings_btn.pressed.connect(func(): OverlayMenus.show_settings(_root))
 	tabs.add_child(settings_btn)
+	# #236再: 港からも早見表を開けるようにする(タイトル・航海中と同じ導線)
+	var help_btn := OverlayMenus.icon_button("help", "操作・武器 早見表")
+	help_btn.custom_minimum_size = Vector2(52, 38)
+	help_btn.pressed.connect(func(): OverlayMenus.show_help(_root))
+	tabs.add_child(help_btn)
 
 	var sep := HSeparator.new()
 	vb.add_child(sep)
@@ -128,6 +134,11 @@ func open(arrival := false) -> void:
 	_fit_panel()
 	if _fleet_tab:
 		_fleet_tab.visible = GameState.fleet_enabled()   # #196
+	# #231再: 酒場のサブタブは記憶せず、寄港のたびに「賞金・換金」へ戻す
+	# (港に入って最初にやる操作は賞金受領のため)
+	_tavern_section = "bounty"
+	_shipyard_weapon_slot = -1
+	_fleet_card_pick = -1
 	visible = true
 	_refresh_header()
 	show_market()

@@ -20,16 +20,42 @@ R　長押しで直近の島へ帰還
 魚雷　ロック対象を追尾。味方をすり抜けるが空中の敵には無効。
 衝角　体当たりで攻撃。空中の敵には無効。"""
 
+# #235再/#236再: 「⚙」「?」はフォントに字形が無い環境で豆腐(文字化け)になるため、
+# 生成した画像(画像生成\UIアイコン生成.py)をボタンのアイコンとして使う。
+# タイトル・港・航海HUDの3か所で同じ見た目にそろえる。
+static func icon_button(kind: String, tip: String, icon_px := 26) -> Button:
+	var b := Button.new()
+	b.tooltip_text = tip
+	b.focus_mode = Control.FOCUS_NONE
+	var path := "res://assets/images/ui_%s.png" % kind
+	if ResourceLoader.exists(path):
+		b.icon = load(path)
+		b.expand_icon = true
+		b.add_theme_constant_override("icon_max_width", icon_px)
+	else:
+		b.text = "?" if kind == "help" else "設定"   # 画像が無い時の保険
+	return b
+
 static func _base(parent: Control, title: String, want_h := 500.0) -> Dictionary:
 	var old := parent.get_node_or_null("SharedOverlay")
 	if old:
-		old.queue_free()
+		# #236再: queue_free だと解放(=ポーズ解除)がこの関数の後になり、
+		# 新しいオーバーレイを出した直後にポーズが解けてしまう。即時解放する。
+		old.free()
 	var overlay := Control.new()
 	overlay.name = "SharedOverlay"
 	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	overlay.z_index = 100
+	# #236再: 表示中はゲームを止める。オーバーレイ自身は止まらないよう
+	# ALWAYS にしておく(閉じるボタンとスライダーは動かす必要がある)。
+	overlay.process_mode = Node.PROCESS_MODE_ALWAYS
+	overlay.tree_exiting.connect(func():
+		if is_instance_valid(parent) and parent.get_tree():
+			parent.get_tree().paused = false)
 	parent.add_child(overlay)
+	if parent.get_tree():
+		parent.get_tree().paused = true
 	parent.move_child(overlay, parent.get_child_count() - 1)
 	var veil := ColorRect.new()
 	veil.color = Color(0, 0, 0, 0.72)

@@ -144,8 +144,78 @@ func _ready() -> void:
 	hud.set_fishing_meter(0.0, false, 0.72)
 	w2.free()
 
+	# --- #236再: 早見表・音量設定の表示中はポーズし、閉じたら必ず解除する ---
+	var Overlay2 = preload("res://scripts/OverlayMenus.gd")
+	var host := Control.new()
+	add_child(host)
+	check(not get_tree().paused, "テスト開始時点でポーズしている")
+	Overlay2.show_help(host)
+	check(get_tree().paused, "早見表を開いてもポーズしない")
+	var ov: Node = host.get_node_or_null("SharedOverlay")
+	check(ov != null, "オーバーレイが生成されない")
+	if ov != null:
+		check(ov.process_mode == Node.PROCESS_MODE_ALWAYS, "ポーズ中にオーバーレイ自身が止まる(閉じるボタンが効かない)")
+	# 設定へ切り替えてもポーズが維持されること(古いオーバーレイの解放順の罠)
+	Overlay2.show_settings(host)
+	check(get_tree().paused, "早見表→音量設定の切替でポーズが解けている")
+	# 閉じたら解除
+	host.get_node("SharedOverlay").free()
+	await get_tree().process_frame
+	check(not get_tree().paused, "オーバーレイを閉じてもポーズが解除されない")
+	host.free()
+
+	# --- #235再/#236再: 歯車・?は画像アイコン(フォント依存の文字化けを回避) ---
+	for kind in ["gear", "help"]:
+		check(ResourceLoader.exists("res://assets/images/ui_%s.png" % kind), "UIアイコン画像がない: %s" % kind)
+		var ib: Button = Overlay2.icon_button(kind, "tip")
+		check(ib.icon != null, "%s ボタンが画像でなく文字のまま" % kind)
+		check(ib.text == "", "%s ボタンに文字が残っている(豆腐の原因)" % kind)
+		ib.free()
+
+	# --- #235再/#236再: タイトル画面の歯車・?が実際にクリックできる ---
+	# 報告された不具合そのもの(全画面の背景画像がクリックを吸っていた)を
+	# 実際のマウス入力で再現確認する。位置だけでなく入力が届くかを見る。
+	var Title = preload("res://scripts/TitleScreen.gd")
+	var title := CanvasLayer.new()
+	title.set_script(Title)
+	add_child(title)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var gear_btn: Button = null
+	for n in title._root.get_children():
+		if n is Button and n.tooltip_text == "音量設定":
+			gear_btn = n
+	check(gear_btn != null, "タイトルに歯車ボタンが無い")
+	# 実際のマウス操作の模擬は Godot 側で成立しない(ヘッドレス/実ウィンドウとも
+	# push_input が CanvasLayer 上の Control のピッキングに乗らない)ため、
+	# 不具合の構造そのものを検証する:
+	# 「アイコンボタンより後ろの兄弟に、マウスを遮る全画面 Control が無いこと」。
+	# 入力の優先順位は z_index ではなくツリーの並び順で決まるので、後ろに
+	# MOUSE_FILTER_STOP の全画面 Control があるとボタンは永久に押せなくなる。
+	if gear_btn != null:
+		var gear_idx := gear_btn.get_index()
+		var blockers: Array = []
+		for n in title._root.get_children():
+			if n.get_index() <= gear_idx or not (n is Control):
+				continue
+			var c := n as Control
+			# 遮るのは STOP だけ。PASS は素通しなので後ろのボタンに届く
+			# (実際 Boss Rush ボタンは PASS の CenterContainer より後ろで動作している)
+			if c.mouse_filter != Control.MOUSE_FILTER_STOP:
+				continue
+			# ボタンの矩形を覆っているか
+			if c.get_rect().encloses(gear_btn.get_rect()):
+				blockers.append("%s(%s)" % [c.name, c.get_class()])
+		check(blockers.is_empty(), "歯車ボタンを覆ってクリックを奪う後続ノードがある: %s" % str(blockers))
+	# 背景がクリックを吸わない設定になっていること(原因側の確認)
+	check(title._bg.mouse_filter == Control.MOUSE_FILTER_IGNORE, "タイトル背景がクリックを吸う")
+	if title._art != null:
+		check(title._art.mouse_filter == Control.MOUSE_FILTER_IGNORE, "タイトル背景画像がクリックを吸う")
+	title.free()
+	get_tree().paused = false
+
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK crit_sfx/melee_damage_direction/dock_silence/fishing_band")
+		print("MAINTENANCE_TEST_OK crit_sfx/melee_direction/dock_silence/fishing_band/pause/icons/title_click")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)

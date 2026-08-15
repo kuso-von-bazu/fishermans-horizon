@@ -27,6 +27,13 @@ func _ready() -> void:
 	layer = 30
 	_build()
 
+func _icon_button(kind: String, tip: String, pos: Vector2) -> Button:
+	var b := OverlayMenus.icon_button(kind, tip)
+	b.position = pos
+	b.size = Vector2(54, 48)
+	b.custom_minimum_size = Vector2(54, 48)
+	return b
+
 func _build() -> void:
 	_root = Control.new()
 	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -34,27 +41,9 @@ func _build() -> void:
 	_bg = ColorRect.new()
 	_bg.color = Color(0.03, 0.07, 0.12, 1.0)
 	_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE   # #235再/#236再: 背景がクリックを吸わないように
 	_root.add_child(_bg)
 
-	# #235/#236: タイトルから音量設定と操作早見表をいつでも開ける。
-	var settings_btn := Button.new()
-	settings_btn.text = "⚙"
-	settings_btn.tooltip_text = "音量設定"
-	settings_btn.add_theme_font_size_override("font_size", 26)
-	settings_btn.position = Vector2(24, 24)
-	settings_btn.size = Vector2(54, 48)
-	settings_btn.z_index = 10
-	settings_btn.pressed.connect(func(): OverlayMenus.show_settings(_root))
-	_root.add_child(settings_btn)
-	var help_btn := Button.new()
-	help_btn.text = "?"
-	help_btn.tooltip_text = "操作・武器 早見表"
-	help_btn.add_theme_font_size_override("font_size", 26)
-	help_btn.position = Vector2(86, 24)
-	help_btn.size = Vector2(54, 48)
-	help_btn.z_index = 10
-	help_btn.pressed.connect(func(): OverlayMenus.show_help(_root))
-	_root.add_child(help_btn)
 	# タイトル画像があれば背景に薄く敷く
 	if ResourceLoader.exists("res://assets/images/title.png"):
 		_art = TextureRect.new()
@@ -63,7 +52,20 @@ func _build() -> void:
 		_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 		_art.set_anchors_preset(Control.PRESET_FULL_RECT)
 		_art.modulate = Color(1, 1, 1, 0.45)
+		# #235再/#236再: Controlの既定は MOUSE_FILTER_STOP。全画面の背景画像が
+		# 歯車・?ボタンより後に追加されていたため、クリックを全部吸っていた
+		# (z_index は描画順にしか効かず、入力の優先順位はツリーの並び順で決まる)
+		_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_root.add_child(_art)
+
+	# #235/#236: タイトルから音量設定と操作早見表をいつでも開ける。
+	# 背景より後に追加して、クリックが確実に届くようにする。
+	var settings_btn := _icon_button("gear", "音量設定", Vector2(24, 24))
+	settings_btn.pressed.connect(func(): OverlayMenus.show_settings(_root))
+	_root.add_child(settings_btn)
+	var help_btn := _icon_button("help", "操作・武器 早見表", Vector2(86, 24))
+	help_btn.pressed.connect(func(): OverlayMenus.show_help(_root))
+	_root.add_child(help_btn)
 
 	# 画面全体を覆う CenterContainer で中身を中央寄せ
 	var center := CenterContainer.new()

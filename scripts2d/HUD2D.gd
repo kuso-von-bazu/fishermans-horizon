@@ -590,8 +590,21 @@ func _draw_damage_feedback() -> void:
 		var radius := maxf(minf(sz.x, sz.y) * 0.5 - 24.0, 80.0)
 		var alpha := clampf(_damage_flash_t / 0.3, 0.0, 1.0)
 		_damage_overlay.draw_arc(center, radius, _damage_dir_angle - 0.32, _damage_dir_angle + 0.32, 24, Color(1.0, 0.05, 0.03, 0.9 * alpha), 13.0)
+	# #233再: 低装甲のビネットは「赤みを濃く・内側の境界をぼかす」。
+	# 一本の太い矩形枠だと内側に硬い線が出るので、細い枠を内側へ向かって
+	# 少しずつ薄くしながら重ね、グラデーションで減衰させる。
 	if GameState.run_armor / maxf(GameState.max_armor(), 1.0) <= 0.25 and GameState.at_sea:
-		_damage_overlay.draw_rect(Rect2(Vector2(10, 10), sz - Vector2(20, 20)), Color(0.7, 0.0, 0.0, 0.18), false, 28.0)
+		var steps := 22
+		var band := 62.0                     # ぼかしの幅(内側へ何px滲ませるか)
+		var step_w := band / float(steps)
+		for i in steps:
+			var t: float = float(i) / float(steps - 1)   # 0=外周 1=内側
+			# 外周は濃く、内側へ向けて二次関数的に消える
+			var a: float = 0.42 * pow(1.0 - t, 2.0)
+			var inset: float = 2.0 + band * t
+			_damage_overlay.draw_rect(
+				Rect2(Vector2(inset, inset), sz - Vector2(inset * 2.0, inset * 2.0)),
+				Color(0.62, 0.0, 0.0, a), false, step_w + 1.0)
 
 # #76: 直近に寄港した島(緑の弧)
 func set_home_guide(pos) -> void:
