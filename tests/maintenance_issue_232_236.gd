@@ -103,8 +103,49 @@ func _ready() -> void:
 	check(world_stub.received == null, "寄港確定後も近接攻撃が通っている")
 	GameState.docking_locked = false
 
+	# --- #232再: 漁の発光帯の位置がランダム(右寄り固定でない) ---
+	var World2 = preload("res://scripts2d/World2D.gd")
+	var w2 := Node2D.new()
+	w2.set_script(World2)
+	var bands: Array = []
+	for i in 60:
+		# _update_fishing の抽選と同じ式(抽選だけを取り出して検証する)
+		bands.append(randf_range(0.06, 0.94 - w2.FISHING_BAND_W))
+	var lo := 0
+	var mid := 0
+	var hi := 0
+	for b in bands:
+		var v: float = b
+		if v < 0.30: lo += 1
+		elif v < 0.55: mid += 1
+		else: hi += 1
+	check(lo > 0 and mid > 0 and hi > 0, "発光帯が左/中央/右のいずれかに偏っている(左%d 中%d 右%d)" % [lo, mid, hi])
+	# 帯がメーターからはみ出さないこと
+	var over := 0
+	for b in bands:
+		var v2: float = b
+		if v2 < 0.0 or v2 + w2.FISHING_BAND_W > 1.0:
+			over += 1
+	check(over == 0, "発光帯がメーターの外へはみ出す抽選がある(%d件)" % over)
+	# World2D 側の当たり判定が _fishing_band を実際に見ていること(式の複製ではなく実コードを叩く)
+	w2._fishing_band = 0.08
+	w2._fishing_value = 0.14
+	check(w2._fishing_in_band(), "左寄りの帯にあるのに World2D が当たりと判定しない")
+	w2._fishing_value = 0.80
+	check(not w2._fishing_in_band(), "帯の外なのに World2D が当たりと判定する")
+	w2._fishing_band = 0.72
+	w2._fishing_value = 0.80
+	check(w2._fishing_in_band(), "右寄りの帯で当たりと判定しない")
+	# HUD側の判定が渡された帯位置に追従すること(左寄りでも当たると判定できる)
+	hud.set_fishing_meter(0.14, true, 0.08)
+	check(hud._fishing_bonus, "左寄りの帯で当たり判定にならない")
+	hud.set_fishing_meter(0.80, true, 0.08)
+	check(not hud._fishing_bonus, "帯の外なのに当たり判定になる")
+	hud.set_fishing_meter(0.0, false, 0.72)
+	w2.free()
+
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK crit_sfx/melee_damage_direction/dock_silence")
+		print("MAINTENANCE_TEST_OK crit_sfx/melee_damage_direction/dock_silence/fishing_band")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)

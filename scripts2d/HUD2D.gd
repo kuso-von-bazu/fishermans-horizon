@@ -23,6 +23,8 @@ var prompt: Label
 var _fishing_meter: Control   # #232: E長押し中の往復ゲージ
 var _fishing_value: float = 0.0
 var _fishing_bonus: bool = false
+const FISHING_BAND_W := 0.16     # #232再: 発光帯の幅(World2D と同じ値)
+var _fishing_band: float = 0.72  # #232再: 発光帯の左端(漁ごとに抽選)
 
 var _sonar_blips: Array = []   # [{pos:Vector2, color:Color}]
 var _guide_pos = null          # #60/#61: ガイド対象のワールド座標(null=なし)
@@ -455,9 +457,11 @@ func set_prompt(text: String) -> void:
 	if prompt:
 		prompt.text = text
 
-func set_fishing_meter(value: float, visible_now: bool) -> void:
+# #232再: band_start=発光帯の左端(0〜1)。漁のたびにWorld2Dが抽選して渡す
+func set_fishing_meter(value: float, visible_now: bool, band_start: float = 0.72) -> void:
 	_fishing_value = clampf(value, 0.0, 1.0)
-	_fishing_bonus = _fishing_value >= 0.72 and _fishing_value <= 0.88
+	_fishing_band = clampf(band_start, 0.0, 1.0 - FISHING_BAND_W)
+	_fishing_bonus = _fishing_value >= _fishing_band and _fishing_value <= _fishing_band + FISHING_BAND_W
 	if _fishing_meter:
 		_fishing_meter.visible = visible_now
 		_fishing_meter.queue_redraw()
@@ -467,7 +471,7 @@ func _draw_fishing_meter() -> void:
 		return
 	var sz := _fishing_meter.size
 	_fishing_meter.draw_rect(Rect2(Vector2.ZERO, sz), Color(0.03, 0.08, 0.12, 0.9), true)
-	_fishing_meter.draw_rect(Rect2(Vector2(sz.x * 0.72, 1), Vector2(sz.x * 0.16, sz.y - 2)), Color(1.0, 0.88, 0.18, 0.75), true)
+	_fishing_meter.draw_rect(Rect2(Vector2(sz.x * _fishing_band, 1), Vector2(sz.x * FISHING_BAND_W, sz.y - 2)), Color(1.0, 0.88, 0.18, 0.75), true)
 	var x := sz.x * _fishing_value
 	_fishing_meter.draw_line(Vector2(x, 0), Vector2(x, sz.y), Color.WHITE if not _fishing_bonus else Color(1.0, 1.0, 0.3), 5.0)
 	_fishing_meter.draw_rect(Rect2(Vector2.ZERO, sz), Color(0.65, 0.9, 1.0, 0.8), false, 2.0)

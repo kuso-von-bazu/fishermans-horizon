@@ -64,6 +64,13 @@ var _skill_cd_max: float = 1.0
 var _fishing_target: Node = null     # #232: 漁ゲージの対象魚群
 var _fishing_phase: float = 0.0
 var _fishing_value: float = 0.0
+# #232再: 発光帯(2倍)の左端。漁のたびに抽選して当たりの位置を固定させない
+const FISHING_BAND_W := 0.16
+var _fishing_band: float = 0.72
+
+# 離した瞬間の針が発光帯の中にあるか
+func _fishing_in_band() -> bool:
+	return _fishing_value >= _fishing_band and _fishing_value <= _fishing_band + FISHING_BAND_W
 
 func island_pos(idx: int) -> Vector2:
 	var p: Vector3 = Database.island(idx).pos
@@ -526,12 +533,15 @@ func _update_fishing(delta: float) -> void:
 		_fishing_target = nearest
 		_fishing_phase = 0.0
 		_fishing_value = 0.0
+		# #232再: 当たりの位置が固定だと作業になるので、漁のたびに帯の位置を抽選する。
+		# 端すぎると狙えないので、帯全体が 0.06〜0.94 に収まる範囲で左寄り〜右寄りを取る。
+		_fishing_band = randf_range(0.06, 0.94 - FISHING_BAND_W)
 	if Input.is_action_pressed("interact") and is_instance_valid(_fishing_target):
 		_fishing_phase += delta * 1.45
 		_fishing_value = (sin(_fishing_phase * TAU - PI * 0.5) + 1.0) * 0.5
-		hud.set_fishing_meter(_fishing_value, true)
+		hud.set_fishing_meter(_fishing_value, true, _fishing_band)
 	elif Input.is_action_just_released("interact") and is_instance_valid(_fishing_target):
-		var bonus := _fishing_value >= 0.72 and _fishing_value <= 0.88
+		var bonus := _fishing_in_band()
 		var caught: Array = _fishing_target.catch_fish(2 if bonus else 1)
 		for got in caught:
 			if not GameState.add_cargo(str(got)):
