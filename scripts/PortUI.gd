@@ -914,7 +914,21 @@ func _btn(t: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.text = t
 	b.add_theme_font_size_override("font_size", 17)
+	# #231: 収入(売却・下取り・返金)は淡緑、支出(価格つき)は淡赤に色分けする。
 	if t.contains("売却") or t.contains("受け取る") or t.contains("返金") or t.contains("(+"):
 		b.add_theme_color_override("font_color", Color(0.65, 1.0, 0.72))
+	elif _is_cost_label(t):
+		b.add_theme_color_override("font_color", Color(1.0, 0.72, 0.68))
 	b.pressed.connect(cb)
 	return b
+
+# #231: 「購入 9000」「大砲(1200)」のように金額を伴うボタンか(=支出)を判定する。
+# 「鋼鉄衝角(+1600)」のような返金表記は呼び出し側で先に緑へ振り分けている。
+func _is_cost_label(t: String) -> bool:
+	if t.begins_with("購入"):
+		return true
+	var open := t.rfind("(")
+	var close := t.rfind(")")
+	if open == -1 or close <= open + 1:
+		return false
+	return t.substr(open + 1, close - open - 1).is_valid_int()

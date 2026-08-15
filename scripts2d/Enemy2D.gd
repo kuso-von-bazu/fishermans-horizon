@@ -555,6 +555,11 @@ func _damage_victim(amount: float, victim: Node2D) -> void:
 	Audio.play("sfx_hit", -9.0)   # #47再2: 被ダメ音を少し小さく
 
 func _attack(delta: float, dist: float) -> void:
+	# #237: 寄港確定後は近接攻撃もしない。
+	# 従来は _ranged_attack にしかガードが無く、近接圏の敵はダメージこそ
+	# GameState.damage_player 側で無効化されるものの、被弾音だけが鳴っていた。
+	if GameState.docking_locked:
+		return
 	_atk_timer -= delta
 	if _atk_timer > 0:
 		return

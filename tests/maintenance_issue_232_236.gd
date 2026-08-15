@@ -77,8 +77,34 @@ func _ready() -> void:
 	hud.show_damage_direction(Vector2.ZERO)       # 位置不明時は角度を維持する
 	check(absf(hud._damage_dir_angle - before) < 0.001, "ゼロベクトルで角度が壊れる")
 
+	# --- #237: 寄港確定後は被弾音・演出を出さない ---
+	# 敵弾が旗艦/僚艦に当たっても、近接圏の敵が攻撃しても、音と演出まで止まること。
+	GameState.docking_locked = true
+	world_stub.received = null
+	var Proj = preload("res://scripts2d/Projectile2D.gd")
+	var eb := Area2D.new()
+	eb.set_script(Proj)
+	world_stub.add_child(eb)
+	eb.setup(Vector2.RIGHT, {"dmg": 20.0})
+	eb.from_player = false
+	var hull := Node2D.new()
+	hull.add_to_group("player")
+	add_child(hull)
+	GameState.run_armor = 100.0
+	eb._on_hit(hull)
+	check(world_stub.received == null, "寄港確定後に敵弾の被弾方向フラッシュが出る")
+	check(absf(GameState.run_armor - 100.0) < 0.001, "寄港確定後に敵弾でダメージが入る")
+	check(not is_instance_valid(eb) or eb.is_queued_for_deletion(), "寄港確定後の敵弾が消えない")
+
+	# 近接攻撃は _attack ごと止まる(以前は _ranged_attack にしかガードが無かった)
+	world_stub.received = null
+	e._atk_timer = 0.0
+	e._attack(1.0, 0.0)
+	check(world_stub.received == null, "寄港確定後も近接攻撃が通っている")
+	GameState.docking_locked = false
+
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK crit_sfx/melee_damage_direction")
+		print("MAINTENANCE_TEST_OK crit_sfx/melee_damage_direction/dock_silence")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)

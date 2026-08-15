@@ -318,6 +318,12 @@ func _on_hit(body: Node) -> void:
 					_spawn_effect("blood_big", body.global_position)
 		queue_free()
 	elif not from_player and body.is_in_group("player"):
+		# #237: 寄港確定後はダメージだけでなく音・演出も出さない
+		# (damage_player は docking_locked で早期returnするが、以前は
+		#  被弾音・爆発・被弾方向フラッシュだけが鳴り続けていた)
+		if GameState.docking_locked:
+			queue_free()
+			return
 		var world := get_parent()
 		if world and world.has_method("show_damage_direction"):
 			world.show_damage_direction(global_position)
@@ -338,6 +344,9 @@ func _on_hit(body: Node) -> void:
 	elif not from_player and body.is_in_group("fleet_ship"):
 		# #196: 敵弾は僚艦にも当たる(装甲0でその艦だけ離脱)
 		# #215: 旗艦と同様に炎上・毒のスリップも入る
+		if GameState.docking_locked:   # #237: 寄港確定後は僚艦の被弾音も鳴らさない
+			queue_free()
+			return
 		if fire and body.has_method("ignite"):
 			body.take_damage(_eff_dmg())
 			body.ignite(4.0)
