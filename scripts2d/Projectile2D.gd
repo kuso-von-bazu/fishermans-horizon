@@ -303,7 +303,7 @@ func _on_hit(body: Node) -> void:
 				Audio.play("sfx_enemy_hit", -18.0)   # #47再2: 与ダメ音をさらに小さく
 				if crit:
 					_spawn_critical_text(body.global_position)   # #233: トーストではなく命中位置へ表示
-					Audio.play("sfx_enemy_hit", -8.0, 1.55)
+					Audio.play("sfx_crit", -4.0)   # #233再: 着弾音を土台にした専用の高音SFX
 				var ekind = body.get("kind")
 				var killed: bool = float(body.get("hp")) <= 0.0   # #116: とどめ判定
 				# #113/#117: 海賊船に確率で炎上(スリップ)。主・モブは生き物なので対象外

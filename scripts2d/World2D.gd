@@ -13,6 +13,7 @@ const EscortScript = preload("res://scripts2d/Escort2D.gd")
 const HUDScript = preload("res://scripts2d/HUD2D.gd")
 const PortUIScript = preload("res://scripts/PortUI.gd")
 const TitleScript = preload("res://scripts/TitleScreen.gd")
+const OverlayMenusScript = preload("res://scripts/OverlayMenus.gd")   # #235/#236: 撮影フック用
 
 const K := 6.0          # 3D数値→2D px 換算
 var player: CharacterBody2D
@@ -1543,6 +1544,8 @@ func _maybe_screenshot() -> void:
 	var want_brwin := false   # #209: ボスラッシュ制覇画面
 	var want_title := false   # #209再: タイトル画面(Boss Rushボタン付き)
 	var want_confirm := false   # #225再: 上書き確認ダイアログ
+	var want_help := false      # #236: 操作早見表
+	var want_settings := false  # #235: 音量設定
 	for a in args:
 		if a.begins_with("--shot"):
 			want_shot = true
@@ -1559,6 +1562,8 @@ func _maybe_screenshot() -> void:
 			want_brwin = a.find("brwin") != -1   # #209: ボスラッシュ制覇画面
 			want_title = a.find("title") != -1   # #209再
 			want_confirm = a.find("confirm") != -1   # #225再
+			want_help = a.find("help") != -1         # #236
+			want_settings = a.find("settings") != -1 # #235
 			# #190: isle<N> で撮影する海域(島index)を指定(天候・障害物の確認用)
 			var ip := a.find("isle")
 			if ip != -1 and ip + 4 < a.length():
@@ -1692,6 +1697,18 @@ func _maybe_screenshot() -> void:
 			GameState.record_kill("pirate", "king")
 			port_ui.show_bestiary()
 		await get_tree().create_timer(0.3).timeout
+	# #235/#236: 音量設定・操作早見表のオーバーレイ(タイトル画面の上に重ねて撮影)
+	if want_help or want_settings:
+		var host: Control = title._root if title.get("_root") != null else null
+		if host == null:
+			host = Control.new()
+			host.set_anchors_preset(Control.PRESET_FULL_RECT)
+			add_child(host)
+		if want_settings:
+			OverlayMenusScript.show_settings(host)
+		else:
+			OverlayMenusScript.show_help(host)
+		await get_tree().create_timer(0.35).timeout
 	await RenderingServer.frame_post_draw
 	var img := get_viewport().get_texture().get_image()
 	var out := "user://shot.png"

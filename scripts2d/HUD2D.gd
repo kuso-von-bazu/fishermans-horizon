@@ -105,7 +105,7 @@ func _build() -> void:
 	lbl_guide = _label("", 17)
 	lbl_guide.anchor_left = 1.0
 	lbl_guide.anchor_right = 1.0
-	lbl_guide.offset_left = -390
+	lbl_guide.offset_left = -350   # #232再: 下の[R]帰還ヒントと中心をそろえる
 	lbl_guide.offset_right = -16
 	lbl_guide.offset_top = 282
 	lbl_guide.offset_bottom = 308

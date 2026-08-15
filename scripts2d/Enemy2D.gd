@@ -931,6 +931,10 @@ func _damage_player(amount: float) -> void:
 		player.add_entangler(self)
 	if bool(def.get("poison", false)):
 		GameState.apply_poison(6.0, 4.0)
+	# #233再: 遠隔弾だけでなく近接攻撃でも被弾方向を知らせる(体当たり・薙ぎ払い・触腕)
+	var world := get_parent()
+	if world and world.has_method("show_damage_direction"):
+		world.show_damage_direction(global_position)
 	Audio.play("sfx_hit", -9.0)   # #47再2: 被ダメ音を少し小さく
 
 func _draw() -> void:

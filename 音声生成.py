@@ -110,6 +110,27 @@ def sfx_enemy_hit():  # 与ダメ 迫力UP(#47): 肉厚なインパクト
     s += noise(n) * env(n, 0.001, 0.025, r=0.05) * 0.45
     return np.tanh(s * 1.8) * 0.7
 
+def sfx_crit():  # #233: クリティカル。sfx_enemy_hitを土台に、より高音で派手に
+    # 土台は sfx_enemy_hit と同じ構成を約1.5倍の高さへ移した「軽くて鋭い」インパクト。
+    # そこへ金属的な余韻(非整数倍音)と短いきらめきを重ねる。
+    # 注意: 連続グリッサンドを長く伸ばすとスライドホイッスル(コミカル)になるので、
+    #       上昇は 25ms 以内に収め、以降は固定ピッチの余韻で聴かせる。
+    n = int(0.34 * SR)
+    t = np.arange(n) / SR
+    s = tone(330, n) * env(n, 0.001, 0.05, r=0.07) * 0.55
+    s += tone(645, n) * env(n, 0.001, 0.03, r=0.05) * 0.35
+    s += noise(n) * env(n, 0.0005, 0.02, r=0.04) * 0.40
+    # 立ち上がり25msだけ 1500→2400Hz へ跳ね上げるアタック(高音の"チン"の芯)
+    g = int(0.025 * SR)
+    gf = 1500 + 900 * np.linspace(0.0, 1.0, g)
+    s[:g] += np.sin(2 * np.pi * np.cumsum(gf) / SR) * np.linspace(1.0, 0.55, g) * 0.5
+    # 金属的な余韻: 非整数倍音を重ねて鐘のような響きに(整数倍だと単なる高い音になる)
+    for f, amp in ((2400.0, 0.30), (3570.0, 0.20), (4830.0, 0.13), (6210.0, 0.08)):
+        s += np.sin(2 * np.pi * f * t) * np.exp(-t * (9.0 + f / 900.0)) * amp
+    # きらめき(高域ノイズの短い残り香)
+    s += (noise(n) - lowpass(noise(n), 0.35)) * np.exp(-t * 16.0) * 0.16
+    return np.tanh(s * 1.9) * 0.85
+
 def sfx_lock():  # ロックオン確定
     n = int(0.18 * SR)
     half = n // 2
@@ -253,6 +274,7 @@ if __name__ == "__main__":
     save("sfx_torpedo.wav", sfx_torpedo())
     save("sfx_hit.wav", sfx_hit())
     save("sfx_enemy_hit.wav", sfx_enemy_hit())
+    save("sfx_crit.wav", sfx_crit())   # #233
     save("sfx_lock.wav", sfx_lock())
     save("sfx_wreck.wav", sfx_wreck())
     save("sfx_sell.wav", sfx_sell())

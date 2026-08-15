@@ -120,7 +120,10 @@ func _ready() -> void:
 	overlay_host.get_node("SharedOverlay").free()
 	Overlay.show_help(overlay_host)
 	var help_text := ""
+	# #236再: 本文は RichTextLabel(Labelの派生ではない)なので両方から集める
 	for node in overlay_host.find_children("*", "Label", true, false):
+		help_text += node.text
+	for node in overlay_host.find_children("*", "RichTextLabel", true, false):
 		help_text += node.text
 	check(help_text.contains("W / S") and help_text.contains("ガトリングガン") and help_text.contains("5　陣形スキル"), "早見表に操作と武器説明を掲載")
 
