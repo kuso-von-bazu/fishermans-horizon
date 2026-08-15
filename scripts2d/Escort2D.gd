@@ -321,7 +321,12 @@ func _tick_volley(delta: float) -> void:
 		# #224再: ロック中はロック対象へ、非ロック時は自艦の前方へ
 		var dir := Vector2.UP.rotated(rotation) if volley_target == null else (volley_target.global_position - global_position).normalized()
 		var w2 := w.duplicate()
-		w2.dmg = float(w.dmg) * GameState.attack_mult_of(fleet_index)
+		var dmg := float(w.dmg) * GameState.attack_mult_of(fleet_index)
+		# #224再: 一斉射撃も、この僚艦に乗っている水兵で判定する。
+		if randf() < GameState.crit_chance_of(fleet_index):
+			dmg *= 2.0
+			w2["crit"] = true
+		w2.dmg = dmg
 		w2["debuff_kind"] = str(GameState.fleet[fleet_index].get("harpoon", "slip"))
 		Audio.play(str(w.get("sfx", "sfx_gun")), -14.0, randf_range(0.95, 1.05))
 		var proj := Area2D.new()
@@ -560,7 +565,12 @@ func _auto_fire(_delta: float) -> void:
 		if not is_lock and _line_blocked(dir, to.length()):
 			continue
 		var w2 := w.duplicate()
-		w2.dmg = float(w.dmg) * GameState.attack_mult_of(fleet_index)
+		var dmg := float(w.dmg) * GameState.attack_mult_of(fleet_index)
+		# #83再: 僚艦の通常射撃にも、その艦の水兵によるクリティカルを適用する。
+		if randf() < GameState.crit_chance_of(fleet_index):
+			dmg *= 2.0
+			w2["crit"] = true
+		w2.dmg = dmg
 		w2["debuff_kind"] = str(GameState.fleet[fleet_index].get("harpoon", "slip"))   # #196再: この艦の銛の効果
 		Audio.play(str(w.get("sfx", "sfx_gun")), -12.0, randf_range(0.95, 1.05))
 		var proj := Area2D.new()

@@ -60,6 +60,9 @@ var _br_pair: bool = false     # 番いかどうか(解放済み参照の null �
 var _br_wait: float = 0.0
 var _skill_cd: float = 0.0        # #224: スキルのクールダウン残り
 var _skill_cd_max: float = 1.0
+var _fishing_target: Node = null     # #232: 漁ゲージの対象魚群
+var _fishing_phase: float = 0.0
+var _fishing_value: float = 0.0
 
 func island_pos(idx: int) -> Vector2:
 	var p: Vector3 = Database.island(idx).pos
@@ -161,6 +164,7 @@ func _weather_params(w: String) -> Dictionary:
 # 目標値を設定(instant=trueで即反映。寄港/出港時のみ)
 func _apply_weather(w: String, instant := true) -> void:
 	_weather_name = w
+	GameState.active_weather = w
 	_weather_target = _weather_params(w)
 	if instant:
 		_weather_cur = _weather_target.duplicate()
@@ -185,6 +189,7 @@ func _update_weather(delta: float) -> void:
 	var want := _nearest_island_weather()
 	if want != _weather_name:
 		_weather_name = want
+		GameState.active_weather = want
 		_weather_target = _weather_params(want)
 	var t: float = clampf(delta / 1.5, 0.0, 1.0)
 	_weather_cur.tint = (_weather_cur.tint as Color).lerp(_weather_target.tint, t)
@@ -442,7 +447,7 @@ func _physics_process(delta: float) -> void:
 		return
 	if _dock_grace > 0.0:
 		_dock_grace -= delta
-	GameState.run_food = maxf(GameState.run_food - delta * 1.5 * GameState.food_drain_mult(), 0.0)
+	GameState.run_food = maxf(GameState.run_food - delta * 1.5 * GameState.food_drain_mult() * (1.2 if GameState.active_weather == "blizzard" and not GameState.boss_rush else 1.0), 0.0)   # #232: 吹雪は燃料消費+20%
 	# #68: Rキーを5秒長押しで直近の島へ帰還。長押し中に装甲0なら大破(後段の装甲チェックで処理)
 	if Input.is_action_pressed("fast_return") and not _returning and not _food_dialog_open:
 		_return_hold += delta
@@ -512,12 +517,30 @@ func _update_fishing(delta: float) -> void:
 			nearest = fs
 	if nearest == null:
 		hud.set_prompt("")
+		hud.set_fishing_meter(0.0, false)
+		_fishing_target = null
 		return
-	hud.set_prompt("[E]長押しで漁  (%s)" % Database.fish_def(nearest.fish_id).name)
-	if Input.is_action_pressed("interact"):
-		var got: String = nearest.try_fish(delta)
-		if got != "":
-			GameState.add_cargo(got)
+	hud.set_prompt("[E]長押し→黄色い帯で離す  (%s)" % Database.fish_def(nearest.fish_id).name)
+	if Input.is_action_just_pressed("interact"):
+		_fishing_target = nearest
+		_fishing_phase = 0.0
+		_fishing_value = 0.0
+	if Input.is_action_pressed("interact") and is_instance_valid(_fishing_target):
+		_fishing_phase += delta * 1.45
+		_fishing_value = (sin(_fishing_phase * TAU - PI * 0.5) + 1.0) * 0.5
+		hud.set_fishing_meter(_fishing_value, true)
+	elif Input.is_action_just_released("interact") and is_instance_valid(_fishing_target):
+		var bonus := _fishing_value >= 0.72 and _fishing_value <= 0.88
+		var caught: Array = _fishing_target.catch_fish(2 if bonus else 1)
+		for got in caught:
+			if not GameState.add_cargo(str(got)):
+				break
+		if bonus and not caught.is_empty():
+			GameState.notice.emit("大漁! 獲得量2倍")
+		hud.set_fishing_meter(0.0, false)
+		_fishing_target = null
+	else:
+		hud.set_fishing_meter(0.0, false)
 
 # ---------------- スポーン ----------------
 func _ring_pos(rmin: float, rmax: float) -> Vector2:
@@ -1114,6 +1137,10 @@ func _on_escort_detached(idx: int) -> void:
 func _set_formation_slot(slot: int) -> void:
 	if phase != "sea":
 		return
+	# #224: 潮鳴り到達前、または旗艦1隻だけなら1〜4キー/ボタンで変更しない。
+	if not GameState.visited_islands.has(1) or GameState.fleet.size() <= 1:
+		GameState.formation_slot = 0
+		return
 	GameState.formation_slot = clampi(slot, 0, 3)
 	_apply_formation()
 	var nm: String = PortUIScript.FORMATION_NAMES.get(_current_formation(), "?")
@@ -1154,7 +1181,12 @@ func _consume_ammo(i: int, w: Dictionary) -> void:
 
 # #196再: 画面のUI(陣形ボタンなど)の上にカーソルがあるか
 func _pointer_on_ui() -> bool:
-	return hud != null and hud.get("pointer_on_ui") == true
+	if hud == null:
+		return false
+	if hud.get("pointer_on_ui") == true:
+		return true
+	var ui_root = hud.get("_ui_root")
+	return ui_root != null and ui_root.get_node_or_null("SharedOverlay") != null
 
 func _update_weapons(delta: float) -> void:
 	for i in slot_cooldowns.size():
@@ -1324,6 +1356,11 @@ func _update_boss_bgm() -> void:
 	elif want == "" and _boss_bgm_on != "":
 		_boss_bgm_on = ""
 		Audio.play_bgm("bgm_sea")
+
+# #233: 敵弾の発生位置から被弾方向をHUDへ渡す。
+func show_damage_direction(source_pos: Vector2) -> void:
+	if hud and is_instance_valid(player):
+		hud.show_damage_direction(source_pos - player.global_position)
 
 # ---------------- ソナー ----------------
 func _update_sonar() -> void:

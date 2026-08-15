@@ -13,18 +13,26 @@ var lbl_hold_val: Label
 var lbl_armor_val: Label
 var lbl_status: Label   # #64: 炎上/毒の表示
 var lbl_return: Label   # #68: 帰還長押しの進捗
+var lbl_guide: Label    # #232: ガイド対象名と残距離
 var cargo_box: HBoxContainer
 var weapon_box: HBoxContainer
 var _weapon_labels: Array = []
 var notice_box: VBoxContainer
 var sonar: Control
 var prompt: Label
+var _fishing_meter: Control   # #232: E長押し中の往復ゲージ
+var _fishing_value: float = 0.0
+var _fishing_bonus: bool = false
 
 var _sonar_blips: Array = []   # [{pos:Vector2, color:Color}]
 var _guide_pos = null          # #60/#61: ガイド対象のワールド座標(null=なし)
 var _home_pos = null           # #76: 直近に寄港した島(緑の弧)
 var _player_node: Node2D
 var _ui_root: Control
+var _damage_overlay: Control
+var _damage_dir_angle: float = 0.0
+var _damage_flash_t: float = 0.0
+const OverlayMenus := preload("res://scripts/OverlayMenus.gd")
 
 func _ready() -> void:
 	layer = 10
@@ -65,6 +73,23 @@ func _build() -> void:
 	lbl_loc = _label("航海中", 20)
 	tr.add_child(lbl_loc)
 
+	# #236: 航海中も操作・武器一覧へ戻れる早見表ボタン。
+	var help_btn := Button.new()
+	help_btn.text = "?"
+	help_btn.tooltip_text = "操作・武器 早見表"
+	help_btn.add_theme_font_size_override("font_size", 22)
+	help_btn.anchor_left = 1.0
+	help_btn.anchor_right = 1.0
+	help_btn.offset_left = -326
+	help_btn.offset_right = -278
+	help_btn.offset_top = 16
+	help_btn.offset_bottom = 56
+	help_btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	help_btn.mouse_entered.connect(func(): pointer_on_ui = true)
+	help_btn.mouse_exited.connect(func(): pointer_on_ui = false)
+	help_btn.pressed.connect(func(): OverlayMenus.show_help(root))
+	root.add_child(help_btn)
+
 	# ソナー(右上)
 	sonar = Control.new()
 	sonar.anchor_left = 1.0
@@ -76,18 +101,39 @@ func _build() -> void:
 	sonar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	sonar.draw.connect(_draw_sonar)
 	root.add_child(sonar)
+	# #232: 赤いガイド弧の直下に対象名と概算残距離を表示
+	lbl_guide = _label("", 17)
+	lbl_guide.anchor_left = 1.0
+	lbl_guide.anchor_right = 1.0
+	lbl_guide.offset_left = -390
+	lbl_guide.offset_right = -16
+	lbl_guide.offset_top = 282
+	lbl_guide.offset_bottom = 308
+	lbl_guide.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl_guide.add_theme_color_override("font_color", Color(1.0, 0.72, 0.64))
+	lbl_guide.add_theme_constant_override("outline_size", 4)
+	lbl_guide.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
+	root.add_child(lbl_guide)
+
 	# #68: 帰還キーのヒント(ソナー下)。資金/名声と同じ見やすい白フォントに
 	lbl_return = _label("[R]長押し(3秒)で直近の島へ帰還", 17)
 	lbl_return.anchor_left = 1.0
 	lbl_return.anchor_right = 1.0
 	lbl_return.offset_left = -350
 	lbl_return.offset_right = -16
-	lbl_return.offset_top = 286
-	lbl_return.offset_bottom = 312
+	lbl_return.offset_top = 312
+	lbl_return.offset_bottom = 338
 	lbl_return.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl_return.add_theme_constant_override("outline_size", 4)
 	lbl_return.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
 	root.add_child(lbl_return)
+
+	# #233: 被弾方向フラッシュと低装甲ビネットは全画面の最前面へ描画
+	_damage_overlay = Control.new()
+	_damage_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_damage_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_damage_overlay.draw.connect(_draw_damage_feedback)
+	root.add_child(_damage_overlay)
 
 	# 左下: 漁獲物パネル(#2)
 	var cargo_panel := PanelContainer.new()
@@ -163,6 +209,21 @@ func _build() -> void:
 	prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	prompt.add_theme_color_override("font_color", Color(1, 1, 0.6))
 	root.add_child(prompt)
+
+	# #232: 漁の技術介入ゲージ。黄色帯で離すと獲得量2倍
+	_fishing_meter = Control.new()
+	_fishing_meter.anchor_left = 0.5
+	_fishing_meter.anchor_right = 0.5
+	_fishing_meter.anchor_top = 1.0
+	_fishing_meter.anchor_bottom = 1.0
+	_fishing_meter.offset_left = -170
+	_fishing_meter.offset_right = 170
+	_fishing_meter.offset_top = -142
+	_fishing_meter.offset_bottom = -120
+	_fishing_meter.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fishing_meter.visible = false
+	_fishing_meter.draw.connect(_draw_fishing_meter)
+	root.add_child(_fishing_meter)
 
 	# 通知トースト
 	notice_box = VBoxContainer.new()
@@ -322,7 +383,7 @@ func build_formation_bar(on_pick: Callable, on_skill: Callable = Callable()) -> 
 	_form_box.offset_bottom = 50
 	_form_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	_root().add_child(_form_box)
-	if GameState.fleet.size() > 1:
+	if GameState.visited_islands.has(1) and GameState.fleet.size() > 1:
 		for i in 4:
 			var b := Button.new()
 			b.text = "陣形%d" % (i + 1)
@@ -394,6 +455,23 @@ func set_prompt(text: String) -> void:
 	if prompt:
 		prompt.text = text
 
+func set_fishing_meter(value: float, visible_now: bool) -> void:
+	_fishing_value = clampf(value, 0.0, 1.0)
+	_fishing_bonus = _fishing_value >= 0.72 and _fishing_value <= 0.88
+	if _fishing_meter:
+		_fishing_meter.visible = visible_now
+		_fishing_meter.queue_redraw()
+
+func _draw_fishing_meter() -> void:
+	if _fishing_meter == null:
+		return
+	var sz := _fishing_meter.size
+	_fishing_meter.draw_rect(Rect2(Vector2.ZERO, sz), Color(0.03, 0.08, 0.12, 0.9), true)
+	_fishing_meter.draw_rect(Rect2(Vector2(sz.x * 0.72, 1), Vector2(sz.x * 0.16, sz.y - 2)), Color(1.0, 0.88, 0.18, 0.75), true)
+	var x := sz.x * _fishing_value
+	_fishing_meter.draw_line(Vector2(x, 0), Vector2(x, sz.y), Color.WHITE if not _fishing_bonus else Color(1.0, 1.0, 0.3), 5.0)
+	_fishing_meter.draw_rect(Rect2(Vector2.ZERO, sz), Color(0.65, 0.9, 1.0, 0.8), false, 2.0)
+
 func rebuild_weapons() -> void:
 	if weapon_box == null:
 		return
@@ -458,12 +536,58 @@ func show_big_message(text: String, hold := 1.4) -> void:
 func set_sonar_data(player: Node2D, blips: Array) -> void:
 	_player_node = player
 	_sonar_blips = blips
+	_update_guide_label()
 	if sonar:
 		sonar.queue_redraw()
 
 # #60/#61: ガイド対象(Vector2かnull)
 func set_guide(pos) -> void:
 	_guide_pos = pos
+	_update_guide_label()
+
+func _update_guide_label() -> void:
+	if lbl_guide == null:
+		return
+	if _guide_pos == null or _player_node == null or GameState.boss_rush:
+		lbl_guide.text = ""
+		return
+	var g: Dictionary = GameState.guide_target
+	var nm := "目的地"
+	if str(g.get("kind", "")) == "island":
+		var iid := int(g.get("id", -1))
+		if iid >= 0 and iid < Database.islands.size():
+			nm = str(Database.island(iid).name)
+	elif str(g.get("kind", "")) == "lord":
+		var lid := str(g.get("id", ""))
+		if Database.lords.has(lid):
+			nm = str(Database.lords[lid].name)
+	var dist := int(round((_player_node.global_position.distance_to(_guide_pos as Vector2) / 6.0) / 10.0) * 10.0)
+	lbl_guide.text = "ガイド: %s まで 約%d" % [nm, dist]
+
+func show_damage_direction(relative_source: Vector2) -> void:
+	if relative_source.length_squared() > 0.01:
+		_damage_dir_angle = relative_source.angle()
+	_damage_flash_t = 0.3
+	if _damage_overlay:
+		_damage_overlay.queue_redraw()
+
+func _process(delta: float) -> void:
+	if _damage_flash_t > 0.0:
+		_damage_flash_t = maxf(_damage_flash_t - delta, 0.0)
+	if _damage_overlay:
+		_damage_overlay.queue_redraw()
+
+func _draw_damage_feedback() -> void:
+	if _damage_overlay == null:
+		return
+	var sz := _damage_overlay.size
+	var center := sz * 0.5
+	if _damage_flash_t > 0.0:
+		var radius := maxf(minf(sz.x, sz.y) * 0.5 - 24.0, 80.0)
+		var alpha := clampf(_damage_flash_t / 0.3, 0.0, 1.0)
+		_damage_overlay.draw_arc(center, radius, _damage_dir_angle - 0.32, _damage_dir_angle + 0.32, 24, Color(1.0, 0.05, 0.03, 0.9 * alpha), 13.0)
+	if GameState.run_armor / maxf(GameState.max_armor(), 1.0) <= 0.25 and GameState.at_sea:
+		_damage_overlay.draw_rect(Rect2(Vector2(10, 10), sz - Vector2(20, 20)), Color(0.7, 0.0, 0.0, 0.18), false, 28.0)
 
 # #76: 直近に寄港した島(緑の弧)
 func set_home_guide(pos) -> void:
@@ -489,7 +613,8 @@ func _draw_sonar() -> void:
 	sonar.draw_arc(center, r, 0, TAU, 48, Color(0.3, 0.8, 0.9, 0.6), 2.0)
 	if _player_node == null:
 		return
-	var range_px := 220.0 * 6.0 * GameState.sonar_range_mult()   # #201: 視力でソナー範囲が広がる
+	var weather_mult := 0.75 if GameState.active_weather == "night" and not GameState.boss_rush else 1.0
+	var range_px := 220.0 * 6.0 * GameState.sonar_range_mult() * weather_mult   # #201/#232: 夜はソナー範囲-25%
 	var pp := _player_node.global_position
 	var rot := _player_node.rotation
 	# 東西南北(#18): 自機の向きが上

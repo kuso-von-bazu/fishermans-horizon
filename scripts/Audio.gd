@@ -6,6 +6,9 @@ var _sfx_pool: Array[AudioStreamPlayer] = []
 var _bgm: AudioStreamPlayer
 var _current_bgm: String = ""
 var _cache: Dictionary = {}
+var _bgm_volume: float = 1.0
+var _sfx_volume: float = 1.0
+const SETTINGS_PATH := "user://audio_settings.cfg"
 
 # 共有者提供のBGM(MP3)を優先使用。無ければ合成wavにフォールバック(_bgm_stream内)
 const BGM_FILES := {
@@ -18,12 +21,13 @@ const BGM_FILES := {
 }
 
 func _ready() -> void:
+	_load_settings()
 	for i in 10:
 		var p := AudioStreamPlayer.new()
 		add_child(p)
 		_sfx_pool.append(p)
 	_bgm = AudioStreamPlayer.new()
-	_bgm.volume_db = -10.0
+	_apply_bgm_volume()
 	add_child(_bgm)
 	_bgm.finished.connect(func():
 		if _bgm.stream:
@@ -58,7 +62,7 @@ const SFX_VOL_ADJ := {
 }
 
 func play(name: String, vol_db: float = 0.0, pitch: float = 1.0) -> void:
-	vol_db += float(SFX_VOL_ADJ.get(name, 0.0))
+	vol_db += float(SFX_VOL_ADJ.get(name, 0.0)) + _volume_db(_sfx_volume)
 	var s := _stream_of(name)
 	if s == null:
 		return
@@ -103,3 +107,37 @@ func play_bgm(name: String) -> void:
 func stop_bgm() -> void:
 	_current_bgm = ""
 	_bgm.stop()
+
+func bgm_volume() -> float:
+	return _bgm_volume
+
+func sfx_volume() -> float:
+	return _sfx_volume
+
+func set_bgm_volume(value: float) -> void:
+	_bgm_volume = clampf(value, 0.0, 1.0)
+	_apply_bgm_volume()
+	_save_settings()
+
+func set_sfx_volume(value: float) -> void:
+	_sfx_volume = clampf(value, 0.0, 1.0)
+	_save_settings()
+
+func _volume_db(value: float) -> float:
+	return -80.0 if value <= 0.001 else linear_to_db(value)
+
+func _apply_bgm_volume() -> void:
+	if _bgm:
+		_bgm.volume_db = -10.0 + _volume_db(_bgm_volume)
+
+func _load_settings() -> void:
+	var cfg := ConfigFile.new()
+	if cfg.load(SETTINGS_PATH) == OK:
+		_bgm_volume = clampf(float(cfg.get_value("audio", "bgm", 1.0)), 0.0, 1.0)
+		_sfx_volume = clampf(float(cfg.get_value("audio", "sfx", 1.0)), 0.0, 1.0)
+
+func _save_settings() -> void:
+	var cfg := ConfigFile.new()
+	cfg.set_value("audio", "bgm", _bgm_volume)
+	cfg.set_value("audio", "sfx", _sfx_volume)
+	cfg.save(SETTINGS_PATH)

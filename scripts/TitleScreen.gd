@@ -21,6 +21,7 @@ var _night_sky: Control   # #209再2: 制覇画面の三日月と星空
 var _art_br: TextureRect  # #209再3: 制覇画面の前景(水平線から下の海・漁船・島)
 var _confirm: Control   # #225再: セーブ上書きの確認
 var _is_title: bool = false   # タイトル表示中か(勝利画面と区別する)
+const OverlayMenus := preload("res://scripts/OverlayMenus.gd")
 
 func _ready() -> void:
 	layer = 30
@@ -34,6 +35,26 @@ func _build() -> void:
 	_bg.color = Color(0.03, 0.07, 0.12, 1.0)
 	_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_root.add_child(_bg)
+
+	# #235/#236: タイトルから音量設定と操作早見表をいつでも開ける。
+	var settings_btn := Button.new()
+	settings_btn.text = "⚙"
+	settings_btn.tooltip_text = "音量設定"
+	settings_btn.add_theme_font_size_override("font_size", 26)
+	settings_btn.position = Vector2(24, 24)
+	settings_btn.size = Vector2(54, 48)
+	settings_btn.z_index = 10
+	settings_btn.pressed.connect(func(): OverlayMenus.show_settings(_root))
+	_root.add_child(settings_btn)
+	var help_btn := Button.new()
+	help_btn.text = "?"
+	help_btn.tooltip_text = "操作・武器 早見表"
+	help_btn.add_theme_font_size_override("font_size", 26)
+	help_btn.position = Vector2(86, 24)
+	help_btn.size = Vector2(54, 48)
+	help_btn.z_index = 10
+	help_btn.pressed.connect(func(): OverlayMenus.show_help(_root))
+	_root.add_child(help_btn)
 	# タイトル画像があれば背景に薄く敷く
 	if ResourceLoader.exists("res://assets/images/title.png"):
 		_art = TextureRect.new()

@@ -128,5 +128,22 @@ func try_fish(delta: float) -> String:
 		return fish_id
 	return ""
 
+# #232: ゲージを離した時点で1尾、光る帯なら最大2尾をまとめて獲得する。
+func catch_fish(amount: int) -> Array:
+	var out: Array = []
+	if remaining <= 0:
+		return out
+	_splash_t = 0.28
+	var n := mini(maxi(amount, 1), remaining)
+	for _i in n:
+		remaining -= 1
+		out.append(fish_id)
+		if not _fishes.is_empty():
+			var last = _fishes.pop_back()
+			if is_instance_valid(last.node):
+				last.node.queue_free()
+	label.text = "(枯渇)" if remaining <= 0 else "%s 群れ x%d" % [Database.fish_def(fish_id).get("name", fish_id), remaining]
+	return out
+
 func depleted() -> bool:
 	return remaining <= 0

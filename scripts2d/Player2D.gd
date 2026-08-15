@@ -867,7 +867,12 @@ func _fire_volley_shot(w: Dictionary) -> void:
 	var dir := forward() if volley_target == null else (volley_target.global_position - global_position).normalized()
 	var w2 := w.duplicate()
 	w2["debuff_kind"] = GameState.harpoon_debuff
-	w2.dmg = float(w.dmg) * GameState.attack_mult()
+	var dmg := float(w.dmg) * GameState.attack_mult()
+	# #224再: 一斉射撃も旗艦の通常射撃と同じ水兵クリティカル判定を使う。
+	if randf() < GameState.crit_chance():
+		dmg *= 2.0
+		w2["crit"] = true
+	w2.dmg = dmg
 	Audio.play(str(w.get("sfx", "sfx_gun")), -12.0, randf_range(0.95, 1.05))
 	var proj := Area2D.new()
 	proj.set_script(preload("res://scripts2d/Projectile2D.gd"))

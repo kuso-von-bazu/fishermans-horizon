@@ -256,8 +256,14 @@ func attack_mult() -> float:       # 射撃力: 攻撃威力バフ
 	return 1.0 + 0.02 * _crew_sum("sht")
 
 func crit_chance() -> float:       # 水兵: クリティカル(#82/#83: 低め+人数で逓減)
+	return crit_chance_of(0)
+
+# #83再: 旗艦だけでなく各僚艦も、その艦に乗っている水兵で同じ確率を計算する。
+func crit_chance_of(idx: int) -> float:
 	var n := 0
-	for m in crew:
+	if idx < 0 or idx >= fleet.size():
+		return 0.0
+	for m in fleet[idx].crew:
 		if m.job == "marine":
 			n += 1
 	var c := 0.0
@@ -353,6 +359,7 @@ var claimed_lords: Array[String] = []    # 賞金受領済み
 var kills: Dictionary = {}                # #177: 討伐記録 "kind:id" -> 討伐数(999カンスト)
 var guide_target: Dictionary = {}        # #60/#61: ソナーガイド {"kind":"island"|"lord","id":...}
 var has_departed: bool = false            # #168: 一度でも出港したか(初回出港のみ燃料費無料)
+var active_weather: String = ""           # #232: 現在海域の天候効果。見た目とは別に倍率計算で参照
 
 # #168: 出港時に徴収する燃料費。船の定価の0.5%(小数点以下切り上げ)。粗末な漁船は5固定
 func fuel_cost() -> int:
@@ -394,6 +401,7 @@ func reset_all() -> void:
 	kills = {}
 	guide_target = {}
 	has_departed = false   # #168
+	active_weather = ""
 	fire_burn = 0.0
 	dock_reset()
 

@@ -27,12 +27,15 @@ var from_player: bool = true
 var _t: float = 0.0
 var _travel: float = 0.0
 var _offscreen_t: float = 0.0   # #154: 画面外にいる時間
+var _dangerous_to_player: bool = false   # #233: 現在軌道が旗艦へ向かう敵弾
 
 func setup(p_dir: Vector2, w: Dictionary, p_target: Node2D = null) -> void:
 	# #149再3/#196: レイヤー1(自機/島/障害物)+2(敵)+4(僚艦) をすべて見る
 	collision_mask = 7
 	dmg = float(w.get("dmg", 5))
 	speed = (70.0 + float(w.get("dmg", 5)) * 0.3) * K * float(w.get("speed_mult", 1.0))   # #65: 弾速倍率
+	if GameState.active_weather == "storm" and not GameState.boss_rush:
+		speed *= 0.9   # #232: 嵐は敵味方とも遠隔弾速-10%
 	slip = bool(w.get("slip", false))
 	debuff = bool(w.get("debuff", false))
 	debuff_kind = str(w.get("debuff_kind", ""))
@@ -221,6 +224,7 @@ func _physics_process(delta: float) -> void:
 	else:
 		global_position += dir * speed * delta
 	_travel += speed * delta
+	_update_danger_outline()
 	life -= delta
 	# #154: 自機の弾は画面外に出てしばらくで消滅(離れすぎた敵に当てない)
 	if from_player:
@@ -238,6 +242,42 @@ func _physics_process(delta: float) -> void:
 				_offscreen_t = 0.0
 	if life <= 0:
 		queue_free()
+
+func _update_danger_outline() -> void:
+	var was := _dangerous_to_player
+	_dangerous_to_player = false
+	if not from_player:
+		var players := get_tree().get_nodes_in_group("player")
+		if not players.is_empty() and is_instance_valid(players[0]):
+			var rel: Vector2 = players[0].global_position - global_position
+			var along := rel.dot(dir)
+			_dangerous_to_player = along > 0.0 and along < 900.0 and absf(rel.cross(dir)) < 30.0
+	if was != _dangerous_to_player:
+		queue_redraw()
+
+func _draw() -> void:
+	if _dangerous_to_player:
+		draw_arc(Vector2.ZERO, 12.0, 0.0, TAU, 20, Color(1.0, 0.92, 0.48, 0.95), 3.0)
+
+func _spawn_critical_text(pos: Vector2) -> void:
+	var world := get_parent()
+	if world == null:
+		return
+	var l := Label.new()
+	l.text = "クリティカル!"
+	l.add_theme_font_size_override("font_size", 24)
+	l.add_theme_color_override("font_color", Color(1.0, 0.9, 0.15))
+	l.add_theme_constant_override("outline_size", 6)
+	l.add_theme_color_override("font_outline_color", Color(0.25, 0.1, 0.0, 0.95))
+	l.position = pos - Vector2(76, 42)
+	l.z_index = 80
+	world.add_child(l)
+	var tw := world.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(l, "position:y", l.position.y - 42.0, 0.75)
+	tw.tween_property(l, "modulate:a", 0.0, 0.75)
+	tw.set_parallel(false)
+	tw.tween_callback(l.queue_free)
 
 # #63: より近い距離(22*K)から線形減衰、最低35%まで
 func _eff_dmg() -> float:
@@ -262,7 +302,8 @@ func _on_hit(body: Node) -> void:
 			if res == 0:
 				Audio.play("sfx_enemy_hit", -18.0)   # #47再2: 与ダメ音をさらに小さく
 				if crit:
-					GameState.notice.emit("クリティカル!")   # #139: 命中時に表示
+					_spawn_critical_text(body.global_position)   # #233: トーストではなく命中位置へ表示
+					Audio.play("sfx_enemy_hit", -8.0, 1.55)
 				var ekind = body.get("kind")
 				var killed: bool = float(body.get("hp")) <= 0.0   # #116: とどめ判定
 				# #113/#117: 海賊船に確率で炎上(スリップ)。主・モブは生き物なので対象外
@@ -277,6 +318,9 @@ func _on_hit(body: Node) -> void:
 					_spawn_effect("blood_big", body.global_position)
 		queue_free()
 	elif not from_player and body.is_in_group("player"):
+		var world := get_parent()
+		if world and world.has_method("show_damage_direction"):
+			world.show_damage_direction(global_position)
 		if fire:
 			GameState.damage_player(_eff_dmg())   # #143: 通常ダメージ+炎上(永続チャンクなし)
 			GameState.ignite(4.0)   # #65: ヒュドラの炎弾は被弾で必ず炎上(4.5秒)
