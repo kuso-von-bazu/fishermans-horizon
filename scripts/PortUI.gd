@@ -139,6 +139,7 @@ func open(arrival := false) -> void:
 	_tavern_section = "bounty"
 	_shipyard_weapon_slot = -1
 	_fleet_card_pick = -1
+	_crew_pick = {}   # #231再3
 	visible = true
 	_refresh_header()
 	show_market()
@@ -632,6 +633,7 @@ func show_fleet() -> void:
 	_clear()
 	content.add_child(_h("編成 — 船団(最大%d隻/この島では%d隻まで)" % [GameState.FLEET_MAX, GameState.max_fleet()], 22))
 	content.add_child(_p("1隻目が旗艦。旗艦が大破すると船団ごと強制帰還します。2番艦以降は副船長を1名乗せると出港できます。"))
+	content.add_child(_p("クルーをクリックして選び、移動先の「空き」か、交代したい相手をクリックしてください(同じ船の中なら並び替えになります)。"))
 	var repair := GameState.fleet_repair_cost()
 	if repair > 0:
 		content.add_child(_p("※離脱した船の修理費 %d が次の出港時にかかります" % repair))
@@ -694,50 +696,26 @@ func show_fleet() -> void:
 				_fleet_card_pick = -1
 				show_fleet()))
 		card_box.add_child(row)
-		# 乗員(他の艦へ移せる)
+		# 乗員(#231再3: クリック方式)
+		# 1回目のクリックでそのクルーを選択、2回目のクリックで
+		#   ・別のクルー → 交代(同じ船なら並び替え)
+		#   ・「空き」   → その船へ移動
+		# 満員の船へ移すときも、交代相手をそのままクリックすればよい。
 		for m in e.crew.duplicate():
-			var crow := HBoxContainer.new()
-			crow.add_theme_constant_override("separation", 6)
-			# #196再4: 酒場と同様、上限(STAT_MAX)に達したパラメータは黄色で表示
-			var info := RichTextLabel.new()
-			info.bbcode_enabled = true
-			info.fit_content = true
-			info.scroll_active = false
-			info.custom_minimum_size = Vector2(420, 0)
-			info.add_theme_font_size_override("normal_font_size", 18)
-			info.text = "    %s [%s] %s %s %s %s %s" % [m.name, GameState.jobs[m.job].name,
+			var mem: Dictionary = m
+			var picked: bool = (not _crew_pick.is_empty()) and _crew_pick.member == m
+			var label := "%s [%s] %s %s %s %s %s" % [m.name, GameState.jobs[m.job].name,
 				_stat_bb("体", int(m.hp)), _stat_bb("敏", int(m.agi)), _stat_bb("射", int(m.sht)),
 				_stat_bb("知", int(m.int_)), _stat_bb("視", int(m.vis))]
-			crow.add_child(info)
-			for j in GameState.fleet.size():
-				if j == idx:
-					continue
-				var to := j
-				var mem: Dictionary = m
-				crow.add_child(_btn("→%s" % GameState.fleet_label(to), func():
-					# #196再3: 乗り換え先が満員なら「誰と交代するか」を聞く
-					if GameState.fleet[to].crew.size() >= GameState.CREW_MAX:
-						_crew_swap = {"from": idx, "member": mem, "to": to}
-					else:
-						GameState.move_crew(idx, mem, to)
-					show_fleet()))
-			card_box.add_child(crow)
-			# 交代相手の選択(この乗員を移そうとしていて、行き先が満員のとき)
-			if not _crew_swap.is_empty() and _crew_swap.member == m:
-				var tgt_i: int = int(_crew_swap.to)
-				var srow2 := HBoxContainer.new()
-				srow2.add_theme_constant_override("separation", 6)
-				srow2.add_child(_p("      %s は満員です。交代する相手を選んでください:" % GameState.fleet_label(tgt_i)))
-				for om in GameState.fleet[tgt_i].crew.duplicate():
-					var other: Dictionary = om
-					srow2.add_child(_btn("%s(%s)" % [om.name, GameState.jobs[om.job].name], func():
-						GameState.swap_crew(int(_crew_swap.from), _crew_swap.member, tgt_i, other)
-						_crew_swap = {}
-						show_fleet()))
-				srow2.add_child(_btn("やめる", func():
-					_crew_swap = {}
-					show_fleet()))
-				card_box.add_child(srow2)
+			var cb := _crew_button(label, picked, func():
+				_on_crew_clicked(idx, mem))
+			card_box.add_child(cb)
+		# 空きスロット(移動先として押せる)。これが無いと「空いている船へ移す」操作ができない
+		for _s in range(e.crew.size(), GameState.CREW_MAX):
+			var eb := _crew_button("(空き)", false, func():
+				_on_crew_slot_clicked(idx))
+			eb.add_theme_color_override("font_color", Color(0.6, 0.68, 0.75))
+			card_box.add_child(eb)
 		# 武器スロット(他の艦と交換)
 		var wrow := HBoxContainer.new()
 		wrow.add_theme_constant_override("separation", 6)
@@ -819,7 +797,68 @@ func show_fleet() -> void:
 		content.add_child(_p("※常時効果は船団が2隻以上のときに働きます。スキルは航海中に5キー(または画面のボタン)。"))
 
 var _weapon_pick: Dictionary = {}   # #196: 武器交換の選択中スロット
-var _crew_swap: Dictionary = {}     # #196再3: 満員の船へ乗り換える際の交代待ち
+var _crew_pick: Dictionary = {}     # #231再3: 選択中のクルー {"ship": int, "member": Dictionary}
+
+# #231再3: クルー1人ぶんのボタン。選択中は枠を光らせる
+func _crew_button(bb_text: String, picked: bool, cb: Callable) -> Button:
+	var b := Button.new()
+	b.text = ""
+	b.custom_minimum_size = Vector2(560, 34)
+	b.focus_mode = Control.FOCUS_NONE
+	b.pressed.connect(cb)
+	if picked:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0.20, 0.30, 0.20, 0.95)
+		sb.set_corner_radius_all(4)
+		sb.set_border_width_all(2)
+		sb.border_color = Color(1.0, 0.9, 0.4)
+		b.add_theme_stylebox_override("normal", sb)
+		b.add_theme_stylebox_override("hover", sb)
+	# 能力値の色分け(黄色=上限)を出すため、文字はRichTextLabelを重ねて描く
+	var rt := RichTextLabel.new()
+	rt.bbcode_enabled = true
+	rt.fit_content = true
+	rt.scroll_active = false
+	rt.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rt.add_theme_font_size_override("normal_font_size", 18)
+	rt.text = ("▶ " if picked else "    ") + bb_text
+	rt.set_anchors_preset(Control.PRESET_FULL_RECT)
+	rt.offset_left = 8
+	rt.offset_top = 4
+	b.add_child(rt)
+	return b
+
+# クルーをクリックしたとき
+func _on_crew_clicked(ship_idx: int, member: Dictionary) -> void:
+	if _crew_pick.is_empty():
+		_crew_pick = {"ship": ship_idx, "member": member}
+		GameState.notice.emit("%s を選択(移動先か、交代する相手をクリック)" % str(member.name))
+		show_fleet()
+		return
+	var from_i: int = int(_crew_pick.ship)
+	var a: Dictionary = _crew_pick.member
+	if a == member:
+		_crew_pick = {}          # 同じ人をもう一度押したら選択解除
+		show_fleet()
+		return
+	if from_i == ship_idx:
+		GameState.reorder_crew(ship_idx, a, member)   # 同じ船の中なら並び替え
+	else:
+		GameState.swap_crew(from_i, a, ship_idx, member)
+	_crew_pick = {}
+	show_fleet()
+
+# 「空き」をクリックしたとき=その船へ移動
+func _on_crew_slot_clicked(ship_idx: int) -> void:
+	if _crew_pick.is_empty():
+		return
+	var from_i: int = int(_crew_pick.ship)
+	if from_i != ship_idx:
+		GameState.move_crew(from_i, _crew_pick.member, ship_idx)
+	_crew_pick = {}
+	show_fleet()
+
+var _crew_swap: Dictionary = {}     # #196再3: 満員の船へ乗り換える際の交代待ち(現在は未使用)
 
 func _stat_bb(label: String, v: int) -> String:
 	if v >= GameState.STAT_MAX:

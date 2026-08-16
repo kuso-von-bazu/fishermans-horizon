@@ -164,8 +164,16 @@ func _ready() -> void:
 		check(e.hp > 0.0, "%s の生成に失敗(HP=%.1f)" % [str(spec[1]), e.hp])
 		e.free()
 
+	# --- #202再3: 潮鳴り(tier1)以降の敵HPを一律2%引き上げ。始まりの島は据え置き ---
+	var base_mult := [1.0, 1.5, 1.9, 2.7, 3.3]   # 引き上げ前の値
+	check(is_equal_approx(Database.HP_TIER_MULT[0], 1.0), "始まりの島のHP倍率が変わっている")
+	for t in range(1, 5):
+		var want: float = float(base_mult[t]) * 1.02
+		check(absf(float(Database.HP_TIER_MULT[t]) - want) < 0.0005,
+			"tier%d のHP倍率が2%%引き上げ後の値でない(%.4f / 期待%.4f)" % [t, Database.HP_TIER_MULT[t], want])
+
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK islands/tier/mobs/lords/fame/weather/behaviours")
+		print("MAINTENANCE_TEST_OK islands/tier/mobs/lords/fame/weather/behaviours/hp2pct")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)

@@ -946,6 +946,21 @@ func move_crew(from_idx: int, member: Dictionary, to_idx: int) -> bool:
 	stats_changed.emit()
 	return true
 
+# #231再3: 同じ船の中でクルーの並び順を入れ替える(編成画面のクリック方式で使う)
+func reorder_crew(ship_idx: int, a: Dictionary, b: Dictionary) -> bool:
+	if ship_idx < 0 or ship_idx >= fleet.size():
+		return false
+	var c: Array = fleet[ship_idx].crew
+	var ia := c.find(a)
+	var ib := c.find(b)
+	if ia < 0 or ib < 0 or ia == ib:
+		return false
+	c[ia] = b
+	c[ib] = a
+	notice.emit("%s と %s の並びを入れ替えた" % [a.name, b.name])
+	stats_changed.emit()
+	return true
+
 # #196再3: 満員の船へ乗り換えるとき、相手のクルーと入れ替える
 func swap_crew(from_idx: int, a: Dictionary, to_idx: int, b: Dictionary) -> bool:
 	if from_idx == to_idx or from_idx < 0 or to_idx < 0:
