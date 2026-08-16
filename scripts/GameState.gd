@@ -19,6 +19,10 @@ var fleet: Array = []
 var ship_stock: Array[String] = []        # 購入済みで船団に未編入の船
 # #240: 船から降ろしたクルーの待機場所。ここにいる間は賃金も成長も発生しない
 var crew_stock: Array = []
+# #241: 島ごとの出港回数(ワンポイントヒントの出し分けに使う)と、
+# 「名声22以上になった後の初回」ヒントを出したかどうか
+var departures: Dictionary = {}
+var hint_fame22_used: bool = false
 const FLEET_MAX := 5
 # 陣形1〜4に割り当てた陣形id(航海中に1〜4キーで切替)
 var formations: Array[String] = ["line", "column", "vee", "inv_vee"]
@@ -438,6 +442,8 @@ func reset_all() -> void:
 	fleet = [new_ship_entry("raft", ["gatling"])]   # #196
 	ship_stock = []
 	crew_stock = []
+	departures = {}
+	hint_fame22_used = false
 	formations = ["line", "column", "vee", "inv_vee"]
 	formation_slot = 0
 	cargo = {}
@@ -501,6 +507,7 @@ func save_game() -> void:
 	var data := {
 		"money": money, "fame": fame,
 		"fleet": fleet, "ship_stock": ship_stock, "crew_stock": crew_stock,          # #196/#240
+		"departures": departures, "hint_fame22_used": hint_fame22_used,   # #241
 		"formations": formations, "formation_slot": formation_slot,
 		"ram_id": ram_id, "harpoon_debuff": harpoon_debuff,
 		"cargo": cargo, "heads": heads, "relics": relics,
@@ -561,6 +568,8 @@ func load_game() -> bool:
 		fleet[0]["harpoon"] = str(data.get("harpoon_debuff", "slip"))
 	ship_stock.assign(_to_str_array(data.get("ship_stock", [])))
 	crew_stock = data.get("crew_stock", [])   # #240
+	departures = _to_int_key_dict(data.get("departures", {}))   # #241
+	hint_fame22_used = bool(data.get("hint_fame22_used", false))
 	formations.assign(_to_str_array(data.get("formations", ["line", "column", "vee", "inv_vee"])))
 	formation_slot = int(data.get("formation_slot", 0))
 	unlocked_islands.assign(_to_int_array(data.get("unlocked_islands", [0])))
@@ -627,6 +636,14 @@ func _to_int_dict(d) -> Dictionary:
 	var out := {}
 	for k in d:
 		out[k] = int(d[k])
+	return out
+
+# #241: JSONに保存するとキーが文字列になるので、キーもintへ戻す
+# (島indexで引くため。文字列のままだと出港回数が毎回0に戻ってしまう)
+func _to_int_key_dict(d) -> Dictionary:
+	var out := {}
+	for k in d:
+		out[int(str(k))] = int(d[k])
 	return out
 
 func ship() -> Dictionary:
@@ -1006,6 +1023,19 @@ func crew_stock_swap(stock_idx: int, ship_idx: int, member: Dictionary) -> bool:
 	notice.emit("%s と %s を交代した" % [str(member.name), str(m.name)])
 	stats_changed.emit()
 	return true
+
+# #241: 出港時のワンポイントヒント。呼ぶたびに出港回数を1つ進めて、
+# その回に出すヒントを返す(該当がなければ空文字)。
+func next_departure_hint() -> String:
+	var isle := current_island
+	var n := int(departures.get(isle, 0)) + 1
+	departures[isle] = n
+	var h: Dictionary = Database.pick_departure_hint(isle, n, fame, hint_fame22_used)
+	if h.is_empty():
+		return ""
+	if bool(h.get("fame22", false)):
+		hint_fame22_used = true
+	return str(h.get("text", ""))
 
 # #231再3: 同じ船の中でクルーの並び順を入れ替える(編成画面のクリック方式で使う)
 func reorder_crew(ship_idx: int, a: Dictionary, b: Dictionary) -> bool:

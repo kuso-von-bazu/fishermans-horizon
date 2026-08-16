@@ -13,6 +13,7 @@ var lbl_hold_val: Label
 var lbl_armor_val: Label
 var lbl_status: Label   # #64: 炎上/毒の表示
 var lbl_return: Label   # #68: 帰還長押しの進捗
+var lbl_hint: Label     # #241: 出港時のワンポイントヒント
 var lbl_guide: Label    # #232: ガイド対象名と残距離
 var cargo_box: HBoxContainer
 var weapon_box: HBoxContainer
@@ -197,6 +198,24 @@ func _build() -> void:
 	weapon_box.offset_top = -64
 	weapon_box.offset_bottom = -16
 	root.add_child(weapon_box)
+
+	# #241: 出港時のワンポイントヒント(武器スロットの上に3秒)
+	lbl_hint = _label("", 21)
+	lbl_hint.anchor_left = 0.5
+	lbl_hint.anchor_right = 0.5
+	lbl_hint.anchor_top = 1.0
+	lbl_hint.anchor_bottom = 1.0
+	lbl_hint.offset_left = -520
+	lbl_hint.offset_right = 520
+	lbl_hint.offset_top = -150   # 案内文(-110)よりさらに上。武器スロットとも重ならない
+	lbl_hint.offset_bottom = -114
+	lbl_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl_hint.add_theme_color_override("font_color", Color(0.72, 0.95, 1.0))
+	lbl_hint.add_theme_constant_override("outline_size", 6)
+	lbl_hint.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	lbl_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lbl_hint.visible = false
+	root.add_child(lbl_hint)
 
 	# 中央下: 案内
 	prompt = _label("", 22)
@@ -452,6 +471,18 @@ func set_formation(slot: int) -> void:
 	for i in _form_btns.size():
 		var b: Button = _form_btns[i]
 		b.add_theme_color_override("font_color", Color(1, 0.95, 0.5) if i == slot else Color(0.85, 0.9, 0.95))
+
+# #241: 出港時のワンポイントヒントを一定時間だけ表示する
+func show_departure_hint(text: String, hold := 3.0) -> void:
+	if lbl_hint == null or text.strip_edges() == "":
+		return
+	lbl_hint.text = "ヒント：%s" % text
+	lbl_hint.visible = true
+	lbl_hint.modulate.a = 1.0
+	var tw := create_tween()
+	tw.tween_interval(hold)
+	tw.tween_property(lbl_hint, "modulate:a", 0.0, 0.6)
+	tw.tween_callback(func(): lbl_hint.visible = false)
 
 func set_prompt(text: String) -> void:
 	if prompt:

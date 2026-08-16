@@ -380,6 +380,9 @@ func _on_set_sail() -> void:
 	hud.rebuild_weapons()
 	hud.update_bars()
 	hud.set_location("航海中: %s 近海" % Database.island(GameState.current_island).name)
+	# #241: 出港時のワンポイントヒント(ボスラッシュは対象外)
+	if not _boss_rush and hud and hud.has_method("show_departure_hint"):
+		hud.show_departure_hint(GameState.next_departure_hint())
 	Audio.play_bgm("bgm_sea")
 	_boss_bgm_on = ""
 	_return_hold = 0.0
