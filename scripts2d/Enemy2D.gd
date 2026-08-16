@@ -355,6 +355,46 @@ var _no_dodge_t: float = 0.0
 func suppress_dodge(secs: float) -> void:
 	_no_dodge_t = maxf(_no_dodge_t, secs)
 
+# #239: 夜の帝王の分裂。HPが規定割合を切ったら、指定の敵へ分かれて自分は消える。
+# 分裂で生まれた個体は「元の主の討伐扱い」にするため split_root に元IDを持たせる。
+var split_root: String = ""
+var _split_done: bool = false
+
+func _try_split() -> bool:
+	if _split_done or not def.has("split"):
+		return false
+	var sp: Dictionary = def.split
+	if hp / maxf(max_hp, 1.0) > float(sp.get("at_hp", 0.5)):
+		return false
+	_split_done = true
+	var world := get_parent()
+	if world == null or not world.has_method("spawn_split"):
+		return false
+	world.spawn_split(self, str(sp.get("into", "")), int(sp.get("count", 2)))
+	GameState.notice.emit("%s が分裂した!" % def.name)
+	_dead = true          # 分裂は撃破ではない(賞金・漁獲物を出さない)
+	queue_free()
+	return true
+
+# #239: レイスのテレポート。撃つ→消える→別の場所へ現れる
+func _tick_blink(delta: float) -> void:
+	if not def.has("blink") or not _aggro or not is_instance_valid(player):
+		return
+	_blink_t -= delta
+	if _blink_t > 0.0:
+		return
+	var bl: Dictionary = def.blink
+	var iv: Array = bl.get("every", [2.6, 4.0])
+	_blink_t = randf_range(float(iv[0]), float(iv[1]))
+	var dr: Array = bl.get("dist", [420.0, 900.0])
+	var ang := randf() * TAU
+	global_position = player.global_position + Vector2(cos(ang), sin(ang)) * randf_range(float(dr[0]), float(dr[1]))
+	if sprite:
+		sprite.modulate = Color(1, 1, 1, 0.15)
+		var tw := create_tween()
+		tw.tween_property(sprite, "modulate", Color.WHITE, 0.35)
+var _blink_t: float = 2.0
+
 func take_hit(amount: float, slip: bool, debuff: bool, no_dodge: bool = false, debuff_kind: String = "") -> int:
 	if _no_dodge_t > 0.0:
 		no_dodge = true   # #224再2: 包囲射撃の対象は回避できない
@@ -373,6 +413,8 @@ func take_hit(amount: float, slip: bool, debuff: bool, no_dodge: bool = false, d
 		pair_partner._aggro = true
 	var mult := 1.25 if _debuff_t > 0.0 else 1.0
 	hp -= amount * mult
+	if hp > 0.0 and _try_split():
+		return 0   # #239: 分裂した(この個体は消える)
 	if slip and kind == "pirate":
 		_slip += amount * 0.6
 	# #37再: 銛デバフは主+戦闘モブに有効(海賊は無効)。#114: 複数ヒットで減衰しつつ増加、最後のヒットから4.5秒
@@ -400,6 +442,7 @@ func take_hit(amount: float, slip: bool, debuff: bool, no_dodge: bool = false, d
 func _physics_process(delta: float) -> void:
 	if _no_dodge_t > 0.0:
 		_no_dodge_t = maxf(_no_dodge_t - delta, 0.0)   # #224再2: 包囲射撃の回避無効
+	_tick_blink(delta)   # #239: レイスのテレポート
 	if _slip > 0.0:
 		var tick: float = minf(_slip, 8.0 * delta)
 		hp -= tick
@@ -470,12 +513,20 @@ func _physics_process(delta: float) -> void:
 		eff_speed *= 1.0 - 0.55 * clampf(_debuff_power, 0.0, 1.0)   # #37再々: 鈍化を強化   # #91/#114 鈍化(重ねがけで増加/減衰)
 	var move_dir: Vector2
 	var face_dir := Vector2.ZERO   # #187再: 見た目の向きを別管理(引き撃ち中は常にプレイヤーの逆を向く)
+	if bool(def.get("stationary", false)):
+		# #239: キラーシェルはその場から動かない(向きだけプレイヤーへ)
+		velocity = Vector2.ZERO
+		move_and_slide()
+		_update_facing(to.normalized())
+		if dist <= attack_range:
+			_attack(delta, dist)
+		return
 	if _aggro:
 		move_dir = to.normalized()
 		# #118: ケツァル等は取り巻きを全滅させると引き撃ち(射程内では距離を取りつつ撃つ)
 		# #187: kite_hp指定時はHPが一定割合以下になってから引き撃ちを試みる(幽霊船=2/3以下)
 		var kite_ok: bool = hp / maxf(max_hp, 1.0) <= float(def.get("kite_hp", 1.0))
-		if bool(def.get("kite", false)) and kite_ok and _escorts_cleared() and dist < attack_range * 0.85:
+		if bool(def.get("kite", false)) and kite_ok and (bool(def.get("kite_always", false)) or _escorts_cleared()) and dist < attack_range * 0.85:
 			move_dir = -to.normalized()
 			# 島の迂回で進行方向が揺れても、見た目はプレイヤーの真逆で固定する
 			face_dir = -to.normalized()
@@ -582,6 +633,25 @@ func _attack(delta: float, dist: float) -> void:
 	# #74: 遠隔持ちは attack_range(遠距離)で撃ち、近接圏(melee_r)に入られたら近接
 	var melee_r: float = _radius + (12.0 if kind == "lord" else 9.0) * K * float(def.get("reach", 1.0))
 	if kind == "lord":
+		# #239: no_melee=近接を一切しない主(ウンディーネ/セイレーン/レイス)
+		if bool(def.get("no_melee", false)):
+			_ranged_attack(bool(def.get("fire", false)))
+			return
+		# #239: multi_melee=多段ヒットする長リーチ近接(オクトパス)
+		if def.has("multi_melee") and (dist <= melee_r or _melee_victim(melee_r) != null):
+			var mm: Array = def.multi_melee
+			var hits := int(mm[randi() % mm.size()])
+			var victim := _melee_victim(melee_r)
+			for k in hits:
+				if k == 0:
+					_damage_victim(eff_dmg, victim)
+				else:
+					var vv := victim
+					get_tree().create_timer(0.16 * float(k)).timeout.connect(func():
+						if is_instance_valid(self) and not _dead:
+							_damage_victim(eff_dmg * 0.8, vv if is_instance_valid(vv) else null))
+			GameState.notice.emit("%s の%d段攻撃!" % [def.name, hits])
+			return
 		# #65: 全主が遠隔攻撃。近距離では従来の近接/固有技
 		if id == "leviathan" and dist <= melee_r:   # #156再: 薙ぎ払いのヒット距離は通常の近接攻撃と同じに戻す
 			var atk_dir := (player.global_position - global_position).normalized()
@@ -659,6 +729,20 @@ func _ranged_attack(is_fire: bool) -> void:
 
 # #199: 遠隔攻撃の狙い先。船団の僚艦がいるときは3割の確率でそちらを狙う
 func _aim_target() -> Node2D:
+	# #239: target_nearest=旗艦ではなく最も近い船を優先して狙う(オクトパス)
+	if bool(def.get("target_nearest", false)):
+		var best: Node2D = player
+		var bd := 1e18
+		if is_instance_valid(player):
+			bd = global_position.distance_to(player.global_position)
+		for m2 in get_tree().get_nodes_in_group("fleet_ship"):
+			if not is_instance_valid(m2):
+				continue
+			var d2: float = global_position.distance_to(m2.global_position)
+			if d2 < bd:
+				bd = d2
+				best = m2
+		return best
 	var mates := get_tree().get_nodes_in_group("fleet_ship")
 	if not mates.is_empty() and randf() < 0.3:
 		var m = mates[randi() % mates.size()]
@@ -720,15 +804,31 @@ func _fire_weapon(wpn: String, eff_dmg: float, base_dir: Vector2, is_fire: bool,
 						w["shape"] = "star"
 					elif bool(def.get("small_shot", false)):
 						w["shape"] = "small"
+					elif bool(def.get("needle_shot", false)):
+						w["shape"] = "needle"   # #239: ラミア
+					elif bool(def.get("note_shot", false)):
+						w["shape"] = "note"     # #239: セイレーン
 					_shoot(base_dir.rotated(off), w, is_fire, null, org)
 			# #190: scatter=無作為な方向へばら撒く弾(オニヒトデ/アスピドケロン/レギオン)
 			var scatter := int(def.get("scatter", 0))
+			# #239: scatter_var=ばら撒きの密度が毎回変わる(高密度/中密度/低密度)
+			if scatter > 0 and bool(def.get("scatter_var", false)):
+				scatter = int(round(float(scatter) * [0.45, 0.75, 1.25][randi() % 3]))
 			# #190再: scatter_speeds指定時は低速/中速/高速を順に混ぜて撒く(レギオン)
 			var sp_pool: Array = def.get("scatter_speeds", [])
+			# #239: scatter_aim=全方位ではなく「プレイヤーの方向へ」扇状に撒く
+			var scatter_aim := bool(def.get("scatter_aim", false))
+			var scatter_cone: float = float(def.get("scatter_cone", 0.85))
 			for i in scatter:
-				var sd := Vector2.RIGHT.rotated(TAU * (float(i) + randf()) / float(maxi(scatter, 1)))
+				var sd: Vector2
+				if scatter_aim:
+					sd = base_dir.rotated(randf_range(-scatter_cone, scatter_cone))
+				else:
+					sd = Vector2.RIGHT.rotated(TAU * (float(i) + randf()) / float(maxi(scatter, 1)))
 				var smul: float = float(sp_pool[i % sp_pool.size()]) if not sp_pool.is_empty() else randf_range(0.82, 1.18)
 				var ws := {"dmg": eff_dmg * dm, "speed_mult": ss * smul}
+				if aim_color != null:
+					ws["bcolor"] = aim_color   # #239: 弾の色をdefで指定できるように
 				if bool(def.get("star_shot", false)):
 					ws["shape"] = "star"
 				elif bool(def.get("small_shot", false)):
@@ -1000,6 +1100,28 @@ func _die() -> void:
 			# #187再2: 幽霊船など no_cargo の主は漁獲物にならない(魚倉を消費しない)
 			if not bool(def.get("no_cargo", false)) and GameState.free_hold() >= int(def.cap):
 				GameState.add_cargo(id, int(def.cap))
+			# #239: 分裂した個体(夜の帝王の中/小コウモリ)は、まだ生き残りがいる間は
+			# 討伐にならない。全滅した時点で「元の主」を討伐したものとして扱う。
+			if split_root != "":
+				var rest := 0
+				for o in get_tree().get_nodes_in_group("enemy"):
+					if o == self or not is_instance_valid(o) or o.is_queued_for_deletion():
+						continue
+					if str(o.get("split_root")) == split_root:
+						rest += 1
+				if rest > 0:
+					GameState.notice.emit("%s を倒した(残り%d体)" % [def.name, rest])
+					queue_free()
+					return
+				var rd: Dictionary = Database.lords.get(split_root, {})
+				if not GameState.defeated_lords.has(split_root) and not GameState.claimed_lords.has(split_root):
+					GameState.defeated_lords.append(split_root)
+				var rf := int(rd.get("fame", 0))
+				if rf > 0:
+					GameState.add_fame(rf)
+				GameState.notice.emit("近海の主 %s を討伐! 名声+%d 賞金は酒場で受領" % [str(rd.get("name", "?")), rf])
+				queue_free()
+				return
 			var is_pair: bool = bool(def.get("pair", false))
 			var partner_alive: bool = is_pair and is_instance_valid(pair_partner) and not pair_partner.is_queued_for_deletion()
 			if is_pair and partner_alive:

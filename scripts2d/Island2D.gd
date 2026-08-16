@@ -64,6 +64,10 @@ const PALETTES := [
 	{"shallow": Color(0.52,0.76,0.80,0.45), "sand": Color(0.88,0.78,0.53), "grass": Color(0.80,0.68,0.43), "grass2": Color(0.45,0.55,0.30), "mtn": Color(0.66,0.55,0.38), "peak": Color(0.86,0.76,0.55), "tree": Color(0.30,0.52,0.28), "trunk": Color(0.42,0.32,0.20), "trees": 2, "wob": 0.14, "oasis": true},
 	{"shallow": Color(0.50,0.58,0.66,0.45), "sand": Color(0.58,0.50,0.42), "grass": Color(0.46,0.44,0.31), "grass2": Color(0.31,0.27,0.21), "mtn": Color(0.40,0.26,0.22), "peak": Color(0.80,0.36,0.18), "tree": Color(0.32,0.40,0.22), "trunk": Color(0.32,0.24,0.16), "trees": 3, "wob": 0.24},
 	{"shallow": Color(0.60,0.74,0.84,0.45), "sand": Color(0.83,0.85,0.88), "grass": Color(0.62,0.66,0.68), "grass2": Color(0.47,0.52,0.56), "mtn": Color(0.55,0.57,0.62), "peak": Color(0.93,0.95,0.99), "tree": Color(0.24,0.40,0.32), "trunk": Color(0.34,0.26,0.18), "trees": 3, "wob": 0.18, "conifer": true},
+	# #239: index5=星霜(緑地と少々の森) / index6=常闇(森と少々の緑地) / index7=海嘯(緑地と少々の砂地)
+	{"shallow": Color(0.50,0.74,0.86,0.45), "sand": Color(0.86,0.82,0.64), "grass": Color(0.46,0.66,0.40), "grass2": Color(0.34,0.54,0.33), "mtn": Color(0.50,0.50,0.48), "peak": Color(0.74,0.74,0.72), "tree": Color(0.26,0.52,0.28), "trunk": Color(0.44,0.32,0.20), "trees": 4, "wob": 0.17},
+	{"shallow": Color(0.38,0.58,0.70,0.45), "sand": Color(0.62,0.62,0.55), "grass": Color(0.28,0.42,0.30), "grass2": Color(0.18,0.30,0.23), "mtn": Color(0.36,0.38,0.38), "peak": Color(0.56,0.58,0.58), "tree": Color(0.14,0.34,0.22), "trunk": Color(0.28,0.22,0.16), "trees": 11, "wob": 0.22},
+	{"shallow": Color(0.48,0.78,0.82,0.45), "sand": Color(0.90,0.86,0.68), "grass": Color(0.42,0.62,0.38), "grass2": Color(0.30,0.50,0.31), "mtn": Color(0.54,0.52,0.46), "peak": Color(0.78,0.76,0.70), "tree": Color(0.24,0.50,0.28), "trunk": Color(0.42,0.32,0.20), "trees": 3, "wob": 0.19},
 ]
 
 func _draw() -> void:

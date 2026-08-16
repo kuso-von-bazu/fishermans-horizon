@@ -40,6 +40,15 @@ var combat_mobs := {
 	"tiamat":        {"name": "ティアマット",   "hp": 1350, "dmg": 33, "cap": 10, "price": 1440, "ranged": true, "aerial": true, "speed": 14.5, "atk_cd": 0.7, "range_mult": 1.3, "dodge": 0.20, "dodge_pass": true, "burn_chance": 0.6, "fire_look": true, "zigzag": true, "zigzag_amp": 7.5, "way_choices": [1,1,1,2,3], "face_left": true, "color": Color(0.15,0.12,0.2)},
 	"dagon":         {"name": "ダゴン",         "hp": 1250, "dmg": 34, "cap": 9,  "price": 1280, "ranged": true, "aerial": false, "speed": 12.5, "reach": 2.5, "range_mult": 0.55, "atk_cd": 1.5, "shoot_moving": true, "shot_poison": true, "aim_shape": "ellipse", "aim_color": Color(0.62,0.28,0.82), "entangle": true, "poison": true, "size_mult": 0.85, "color": Color(0.3,0.5,0.35)},
 	# #72再: ザッハーク。銀色の神々しい竜。空中(魚雷ロック不可)+俊敏+高火力、密度の高い3way弾(aim_tight)、攻撃回避率15%(回避時は弾が後方へ抜ける)。#72再々: ギザギザ移動廃止+より積極的に遠隔(atk_cd短縮/range_mult延長)
+	# #239: 星霜の島(tier2)。mermaid=引き撃ち+米粒弾ばら撒き, lamia=針状の1〜4way
+	"mermaid":       {"name": "マーメイド",     "hp": 560, "dmg": 18, "cap": 4, "price": 600, "ranged": true,  "aerial": false, "speed": 12.0, "atk_cd": 1.1, "kite": true, "size_mult": 0.7, "scatter_aim": true, "scatter": 9, "scatter_speeds": [0.55, 0.95], "small_shot": true, "way": 0, "shot_dmg_mult": 0.30, "shot_speed_mult": 0.8, "face_left": true, "color": Color(0.35,0.7,0.75)},
+	"lamia":         {"name": "ラミア",         "hp": 620, "dmg": 21, "cap": 4, "price": 620, "ranged": true,  "aerial": false, "speed": 11.5, "atk_cd": 1.25, "size_mult": 0.72, "way_choices": [1,2,3,4], "aim_tight": true, "needle_shot": true, "shot_dmg_mult": 0.55, "face_left": true, "color": Color(0.55,0.35,0.65)},
+	# #239: 常闇の島(tier2)。zombie_fish=群れで高速体当たり, moon_jelly=長リーチ近接+毒+鈍化
+	"zombie_fish":   {"name": "ゾンビウオ",     "hp": 300, "dmg": 17, "cap": 2, "price": 300, "ranged": false, "aerial": false, "speed": 16.5, "size_mult": 0.65, "group": 3, "aggro": 1500.0, "face_left": true, "color": Color(0.5,0.55,0.5)},
+	"moon_jelly":    {"name": "ムーンジェリー", "hp": 820, "dmg": 24, "cap": 5, "price": 660, "ranged": false, "aerial": false, "speed": 8.0,  "reach": 2.6, "entangle": true, "poison": true, "color": Color(0.7,0.75,0.95)},
+	# #239: 海嘯の島(tier3)。killer_shell=不動+打ち返し弾+挟んで鈍化, carabos=移動遠隔+長リーチ近接
+	"killer_shell":  {"name": "キラーシェル",   "hp": 1600, "dmg": 30, "cap": 7, "price": 1000, "ranged": true, "aerial": false, "speed": 0.0, "atk_cd": 1.35, "stationary": true, "range_mult": 1.6, "way": 2, "aim_tight": true, "shot_dmg_mult": 0.5, "reach": 1.6, "entangle": true, "color": Color(0.6,0.5,0.35)},
+	"carabos":       {"name": "カーラボス",     "hp": 1150, "dmg": 27, "cap": 6, "price": 900, "ranged": true,  "aerial": false, "speed": 11.0, "atk_cd": 1.2, "reach": 2.2, "shoot_moving": true, "way_choices": [1,2], "face_left": true, "color": Color(0.75,0.35,0.3)},
 	"zahhak":        {"name": "ザッハーク",     "hp": 1480, "dmg": 30, "cap": 10, "price": 1560, "ranged": true, "aerial": true, "speed": 15.5, "atk_cd": 0.95, "range_mult": 1.3, "dodge": 0.15, "dodge_pass": true, "way": 3, "aim_tight": true, "shot_speed_mult": 0.8, "fire_look": true, "flame_color": Color(0.95,0.97,1.0), "burst": {"count": 14, "spread": 1.10, "speeds": [0.95, 1.45], "dmg_mult": 0.22, "color": Color(0.95,0.97,1.0), "every": [4.5, 7.5]}, "face_left": true, "color": Color(0.82,0.85,0.92)},
 }
 
@@ -51,6 +60,10 @@ var mob_weights := [
 	{"kraken": 0.22, "wyvern": 0.18, "starfish": 0.32, "zaratan": 0.28},                                  # #190: 月下の島。オニヒトデ/ザラタンが主役
 	{"kraken": 0.18, "wyvern": 0.16, "merman": 0.18, "charybdis": 0.16, "amphiptere": 0.16, "starfish": 0.08, "zaratan": 0.08},   # #75/#71: 嵐越え以降はワイアーム非出現+アンフィプテレ
 	{"merman": 0.15, "charybdis": 0.15, "tiamat": 0.2, "dagon": 0.2, "amphiptere": 0.12, "zahhak": 0.18}, # #75再/#71: 果てはクラーケン/ワイバーンも非出現。#72再: ザッハーク追加
+	# #239: 追加した島(index 5=星霜 / 6=常闇 / 7=海嘯)。**islands と同じ並び順で持つこと**
+	{"mermaid": 0.34, "lamia": 0.30, "kraken": 0.20, "wyvern": 0.16},                                     # 星霜(tier2)
+	{"zombie_fish": 0.36, "moon_jelly": 0.30, "kraken": 0.18, "wyvern": 0.16},                            # 常闇(tier2)
+	{"killer_shell": 0.24, "carabos": 0.26, "merman": 0.16, "charybdis": 0.14, "amphiptere": 0.12, "kraken": 0.08},  # 海嘯(tier3)
 ]
 
 func pick_mob(tier: int) -> String:
@@ -86,6 +99,17 @@ var lords := {
 	"aspidochelone": {"name": "アスピドケロン",       "hp": 3650, "dmg": 38, "cap": 12, "price": 5000, "bounty": 13000,  "fame": 22, "island": 2, "ranged": true,  "aerial": false, "pair": false, "speed": 13.5, "atk_cd": 0.6, "spin": 5.0, "scatter": 14, "way": 0, "shot_dmg_mult": 0.5, "shot_speed_mult": 0.8, "charge_cycle": true, "melee_mult": 1.4, "dir": 180, "color": Color(0.35,0.5,0.4), "lore": "島と間違えて上陸した船乗りが、目を覚ましたアスピドケロンに丸呑みされたという伝説がある。"},
 	# #190: legion=小魚の群れが大魚の陣形。被弾で陣形が縮み(shrink_hp)、複数箇所(multi_origin)から小型弾を大量発射
 	"legion":    {"name": "レギオン",                 "hp": 5500, "dmg": 30, "cap": 13, "price": 7000, "bounty": 20000,  "fame": 24, "island": 2, "ranged": true,  "aerial": false, "pair": false, "speed": 10.5, "atk_cd": 0.9, "multi_origin": 5, "way": 3, "aim_tight": true, "scatter": 10, "scatter_speeds": [0.55, 0.95, 1.5], "small_shot": true, "shot_dmg_mult": 0.32, "shot_speed_mult": 0.85, "shrink_hp": 0.45, "size_mult": 1.3, "face_left": true, "dir": 315, "color": Color(0.5,0.65,0.75), "lore": "縄張り争いに勝利するため、群知能を身に着けた小魚の群れ。"},
+	# #239: 星霜の島(island 5)。ウンディーネ=好戦的でない引き撃ち+密度が変わる米粒弾、セイレーン=蛇行する音符弾
+	"undine":    {"name": "ウンディーネ",             "hp": 3400, "dmg": 34, "cap": 12, "price": 4800, "bounty": 12000, "fame": 22, "island": 5, "ranged": true, "aerial": false, "pair": false, "speed": 11.5, "atk_cd": 0.85, "kite": true, "no_melee": true, "scatter_aim": true, "scatter": 12, "scatter_var": true, "scatter_speeds": [0.5, 0.9, 1.4], "small_shot": true, "way": 0, "shot_dmg_mult": 0.42, "shot_speed_mult": 0.8, "aim_color": Color(0.62,0.86,0.98), "dir": 0, "lore": "近海の守り神とされてきたが、現人類との不幸な行き違いから賞金首となった。あまり好戦的ではない。"},
+	"siren":     {"name": "セイレーン",               "hp": 3200, "dmg": 33, "cap": 11, "price": 4600, "bounty": 11500, "fame": 22, "island": 5, "ranged": true, "aerial": false, "pair": false, "speed": 12.5, "atk_cd": 1.0, "no_melee": true, "size_mult": 0.8, "way_choices": [3,4], "note_shot": true, "zigzag": true, "zigzag_amp": 9.0, "shot_dmg_mult": 0.6, "shot_speed_mult": 0.85, "aim_color": Color(0.95,0.8,0.95), "dir": 315, "lore": "美しい歌で船乗りを惑わす。"},
+	# #239: 常闇の島(island 6)。夜の帝王=被ダメで分裂(中→小)、レイス=撃つ→消える→別の場所へ
+	"night_emperor": {"name": "夜の帝王",             "hp": 3900, "dmg": 36, "cap": 13, "price": 5200, "bounty": 13500, "fame": 24, "island": 6, "ranged": true, "aerial": false, "pair": false, "speed": 10.0, "atk_cd": 0.9, "scatter_aim": true, "scatter": 11, "scatter_speeds": [0.55, 1.45], "small_shot": true, "way": 0, "shot_dmg_mult": 0.45, "aim_color": Color(0.72,0.6,0.95), "split": {"into": "night_bat_medium", "count": 2, "at_hp": 0.5}, "dir": 180, "lore": "コウモリの群れが集まるにつれ、この姿となっていったという目撃情報がある。"},
+	"night_bat_medium": {"name": "夜の帝王(中)",      "hp": 1100, "dmg": 24, "cap": 4,  "price": 1200, "bounty": 0, "fame": 0, "island": 6, "ranged": true, "aerial": true, "pair": false, "speed": 14.0, "atk_cd": 1.1, "scatter_aim": true, "scatter": 7, "small_shot": true, "way": 0, "shot_dmg_mult": 0.4, "size_mult": 0.6, "aim_color": Color(0.72,0.6,0.95), "split": {"into": "night_bat_small", "count": 2, "at_hp": 0.5}, "is_split": true, "no_cargo": true, "lore": "夜の帝王が分裂した中型のコウモリ。"},
+	"night_bat_small":  {"name": "夜の帝王(小)",      "hp": 420,  "dmg": 16, "cap": 2,  "price": 500,  "bounty": 0, "fame": 0, "island": 6, "ranged": false, "aerial": true, "pair": false, "speed": 18.0, "size_mult": 0.4, "is_split": true, "no_cargo": true, "lore": "夜の帝王が分裂した小型のコウモリ。すべて倒さないと討伐にならない。"},
+	"wraith":    {"name": "レイス",                   "hp": 3600, "dmg": 35, "cap": 0,  "price": 0,    "bounty": 13000, "fame": 24, "island": 6, "ranged": true, "aerial": false, "pair": false, "speed": 9.0, "atk_cd": 1.3, "no_melee": true, "size_mult": 0.78, "way_choices": [1,2,3,4], "aim_tight": true, "shot_dmg_mult": 0.62, "blink": {"every": [2.6, 4.0], "dist": [420.0, 900.0]}, "no_cargo": true, "aim_color": Color(0.55,0.9,0.85), "dir": 225, "lore": "顔はうかがい知れないが、ボロ布から覗く目だけは怪しく光っている。"},
+	# #239: 海嘯の島(island 7)。オクトパス=最寄り船狙いの多段近接、グリフォン=空中のヒットアンドアウェイ
+	"kraken_lord": {"name": "オクトパス",             "hp": 6200, "dmg": 40, "cap": 14, "price": 9000, "bounty": 26000, "fame": 30, "island": 7, "ranged": true, "aerial": false, "pair": false, "speed": 10.5, "atk_cd": 1.15, "reach": 3.4, "multi_melee": [2, 3], "target_nearest": true, "entangle": true, "shoot_moving": true, "way_choices": [1,2,3], "shot_dmg_mult": 0.55, "dir": 90, "color": Color(0.55,0.55,0.58), "lore": "灰色の体と黒色の目を持つ不気味な姿をしたタコ。"},
+	"griffon":   {"name": "グリフォン",               "hp": 5800, "dmg": 42, "cap": 13, "price": 8600, "bounty": 25000, "fame": 30, "island": 7, "ranged": true, "aerial": true,  "pair": false, "speed": 14.5, "atk_cd": 1.0, "kite": true, "way": 5, "aim_tight": true, "homing_count": 1, "shot_dmg_mult": 0.6, "burst": {"count": 20, "mode": "radial", "speeds": [1.0], "dmg_mult": 0.28, "color": Color(0.95,0.9,0.6), "every": [5.0, 8.0]}, "aim_color": Color(0.95,0.9,0.6), "dir": 270, "lore": "馬の胴体にワシの頭と翼を持つ魔獣。"},
 	# #110/#111: ヒュドラ/ケツァル/レヴィアタンを強化。#65: 弾幕(way/homing_count/radial_count)と確定炎上(burn_fire)
 	"hydra":     {"name": "ヒュドラ",                 "hp": 6800, "dmg": 46, "cap": 12, "price": 11000, "bounty": 30000,  "fame": 25, "island": 3, "ranged": true,  "aerial": false, "pair": false, "speed": 8.5, "way": 7, "fire": true, "burn_fire": true, "homing_count": 2, "burst": {"count": 20, "spread": 1.15, "speeds": [0.55, 0.95, 1.45], "dmg_mult": 0.22, "color": Color(0.88,0.25,0.18), "every": [5.5, 9.0]}, "dir": 90, "lore": "旧人類が神を作り出す過程で生まれた失敗作。"},
 	# #111再: HP4500。#65再: 5wayを狭い扇(aim_tight)+黄色い楕円弾、追跡弾は扇状に広がってから急加速(spread_homing)
@@ -142,6 +166,13 @@ var bestiary := [
 	{"kind": "mob", "id": "dagon",          "desc": "旧人類の異端派が何らかの方法で創造した神だと考えられている。"},
 	{"kind": "mob", "id": "zahhak",         "desc": "見た目は銀色の神々しいドラゴンだが、実態は人類を見境なく襲う獣。"},
 	{"kind": "mob", "id": "tiamat",         "desc": "他の竜族は旧人類が創造しその後暴走したものだが、ティアマットは由来が不明。"},
+	# #239: 星霜/常闇/海嘯の島の新モブ(説明文はレビュアー指定)
+	{"kind": "mob", "id": "mermaid",        "desc": "下半身のみを食し、上半身を食べることは禁忌とされている。特に不老不死の効能があるわけではない。"},
+	{"kind": "mob", "id": "lamia",          "desc": "下半身のみを食し、上半身を食べることは禁忌とされている。"},
+	{"kind": "mob", "id": "zombie_fish",    "desc": "腐敗し、骨が見えているにもかかわらずいまだ動き回る魚。"},
+	{"kind": "mob", "id": "moon_jelly",     "desc": "毒針を取り除けば独特な触感が特徴の食材となる。"},
+	{"kind": "mob", "id": "killer_shell",   "desc": "危険な貝だが、巨大な真珠を狙う船乗りが後を絶たない。"},
+	{"kind": "mob", "id": "carabos",        "desc": "巨大で長い触角をもつエビ。"},
 	{"kind": "pirate", "id": "raider",      "desc": "近海を荒らす小物の海賊。"},
 	{"kind": "pirate", "id": "corsair",     "desc": "近海を荒らす海賊。"},
 	{"kind": "pirate", "id": "dread",       "desc": "近海を荒らす名の通った海賊。"},
@@ -205,15 +236,25 @@ var ships := {
 # 島 fame_req=入港に必要な名声, price_mult=遠隔ほど高額買取, lords/spawn
 # #206: 漁獲物の売値を一律引き上げ(潮鳴り1.3倍 月下1.5倍 嵐越え2倍 果て3倍)
 # ---------------------------------------------------------------------------
+# #239: 島を3つ追加(星霜/常闇=月下と同格, 海嘯=嵐越えと同格)。
+# **既存の島indexは動かさず末尾に追加する**(indexを挿入するとセーブ・各所の
+# index比較・配列長がまとめて壊れるため。#190でその苦労をしている)。
+# 代わりに各島へ `tier`(進行段階)を持たせ、強さ・価格帯・解禁判定は
+# indexではなく tier で見る。tier: 0始まり 1潮鳴り 2月下級 3嵐越え級 4果て
 var islands := [
-	{"id": 0, "name": "始まりの島",   "fame_req": 0,   "price_mult": 1.0, "pos": Vector3(0, 0, 0),       "spawn": ["sardine","mackerel"], "lords": ["sawshark","dumbo"]},
+	{"id": 0, "name": "始まりの島",   "tier": 0, "fame_req": 0,   "price_mult": 1.0, "pos": Vector3(0, 0, 0),       "spawn": ["sardine","mackerel"], "lords": ["sawshark","dumbo"]},
 	# #174/#200: 次の島到達に必要な名声を全体的に引き上げ(その島の主だけでは足りず、海賊狩りが要る水準)
-	{"id": 1, "name": "潮鳴りの島",   "fame_req": 22,   "price_mult": 2.08, "pos": Vector3(900, 0, -300),  "spawn": ["bonito","squid","mackerel"], "lords": ["whale","walrus"]},   # #57再: 元の距離に戻す
+	{"id": 1, "name": "潮鳴りの島",   "tier": 1, "fame_req": 22,   "price_mult": 2.08, "pos": Vector3(900, 0, -300),  "spawn": ["bonito","squid","mackerel"], "lords": ["whale","walrus"]},   # #57再: 元の距離に戻す
 	# #190: 3つ目の島。砂漠とわずかな緑地。近海は常に夜(weather="night")
-	{"id": 2, "name": "月下の島",     "fame_req": 70,  "price_mult": 3.0, "pos": Vector3(1700, 0, 200),  "spawn": ["squid","octopus","bonito"], "lords": ["aspidochelone","legion"], "weather": "night"},
+	{"id": 2, "name": "月下の島",     "tier": 2, "fame_req": 70,  "price_mult": 3.0, "pos": Vector3(1700, 0, 200),  "spawn": ["squid","octopus","bonito"], "lords": ["aspidochelone","legion"], "weather": "night"},
 	# #190: 月下の島の追加に伴い、嵐越え・果ては従来よりさらに遠方へ。#191/#192: 近海の天候演出
-	{"id": 3, "name": "嵐越えの島",   "fame_req": 135,  "price_mult": 4.8, "pos": Vector3(2600, 0, 900),  "spawn": ["octopus","squid","bonito"], "lords": ["hydra","quetzal"], "weather": "storm"},
-	{"id": 4, "name": "果ての島",     "fame_req": 300,  "price_mult": 10.8, "pos": Vector3(3600, 0, 300), "spawn": ["octopus","bonito"], "lords": ["ghost","leviathan"], "weather": "blizzard"},   # #187: 幽霊船はレヴィアタンの上(先に戦う想定)
+	{"id": 3, "name": "嵐越えの島",   "tier": 3, "fame_req": 175,  "price_mult": 4.8, "pos": Vector3(2600, 0, 900),  "spawn": ["octopus","squid","bonito"], "lords": ["hydra","quetzal"], "weather": "storm"},
+	{"id": 4, "name": "果ての島",     "tier": 4, "fame_req": 272,  "price_mult": 10.8, "pos": Vector3(3600, 0, 300), "spawn": ["octopus","bonito"], "lords": ["ghost","leviathan"], "weather": "blizzard"},   # #187: 幽霊船はレヴィアタンの上(先に戦う想定)
+	# #239: 月下の島と同格(tier 2)。星霜=月下の北、常闇=月下の南
+	{"id": 5, "name": "星霜の島",     "tier": 2, "fame_req": 70,  "price_mult": 3.0, "pos": Vector3(1700, 0, -700), "spawn": ["squid","octopus","bonito"], "lords": ["undine","siren"], "weather": "starry"},
+	{"id": 6, "name": "常闇の島",     "tier": 2, "fame_req": 70,  "price_mult": 3.0, "pos": Vector3(1700, 0, 1100), "spawn": ["squid","octopus","bonito"], "lords": ["night_emperor","wraith"], "weather": "dark"},
+	# #239: 嵐越えの島と同格(tier 3)。海嘯=嵐越えの南
+	{"id": 7, "name": "海嘯の島",     "tier": 3, "fame_req": 175, "price_mult": 4.8, "pos": Vector3(2600, 0, 1900), "spawn": ["octopus","squid","bonito"], "lords": ["kraken_lord","griffon"], "weather": "surge"},
 ]
 
 # #202: 出現海域ごとの敵HP倍率(始まり=等倍 / 潮鳴り1.5 / 月下1.9 / 嵐越え2.7 / 果て3.3)。
@@ -227,7 +268,7 @@ const HP_TIER_MULT := [1.0, 1.5, 1.9, 2.7, 3.3]
 # #202再2: 桁数で丸め方を変える。
 #   3桁以下 … そのまま / 4桁 … 十の位を切り上げ(=100の倍数へ切り上げ) / 5桁以上 … 999以下を切り捨て
 func scaled_hp(base: float, island_idx: int) -> int:
-	var m: float = HP_TIER_MULT[clampi(island_idx, 0, HP_TIER_MULT.size() - 1)]
+	var m: float = HP_TIER_MULT[clampi(tier_of(island_idx), 0, HP_TIER_MULT.size() - 1)]   # #239: tierで引く
 	var v := int(round(base * m))
 	if v < 1000:
 		return v
@@ -237,6 +278,11 @@ func scaled_hp(base: float, island_idx: int) -> int:
 
 func island(idx: int) -> Dictionary:
 	return islands[clampi(idx, 0, islands.size() - 1)]
+
+# #239: 島の進行段階。強さ・価格帯・販売解禁・雇用条件は index ではなく tier で見る
+# (島を末尾に追加してもこれらが壊れないようにするため)
+func tier_of(idx: int) -> int:
+	return int(island(idx).get("tier", clampi(idx, 0, 4)))
 
 func fish_def(id: String) -> Dictionary:
 	return fish.get(id, {})

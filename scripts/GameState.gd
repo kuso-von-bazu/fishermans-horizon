@@ -157,7 +157,7 @@ func hire_crew(job_id: String) -> bool:
 	add_money(-cost)
 	# #85再: 嵐越え(island>=3)以降の酒場はボーナス4倍+最低保証UPでより強力なクルー(水夫は据え置き)。#190: 月下の島の追加で嵐越えがindex3へ
 	var bm := hire_bonus_mult(job_id)
-	var high := current_island >= 3 and job_id != "sailor"
+	var high := Database.tier_of(current_island) >= 3 and job_id != "sailor"   # #239
 	var base := 1 if job_id == "sailor" else (5 if high else 3)   # 最低保証の底上げ
 	var m := {
 		"name": _unique_crew_name(),
@@ -184,11 +184,11 @@ func hire_crew(job_id: String) -> bool:
 
 # #85再: 嵐越えの島(island>=3)以降は契約金3倍・上乗せ4倍。ただし水夫は据え置き。#190: 月下の島(index2)は潮鳴りまでと同条件
 func hire_cost(job_id: String) -> int:
-	var mult := 3 if (current_island >= 3 and job_id != "sailor") else 1
+	var mult := 3 if (Database.tier_of(current_island) >= 3 and job_id != "sailor") else 1   # #239
 	return int(jobs[job_id].hire) * mult
 
 func hire_bonus_mult(job_id: String = "") -> int:
-	return 4 if (current_island >= 3 and job_id != "sailor") else 1
+	return 4 if (Database.tier_of(current_island) >= 3 and job_id != "sailor") else 1   # #239
 
 # 使われていない名前を選ぶ(#52)。尽きたら「二代目〜」。
 func _unique_crew_name() -> String:
@@ -827,7 +827,7 @@ func buy_ship(new_id: String) -> bool:
 # ---------------- 船団(#196) ----------------
 # 島が進むごとに組める隻数が増える(潮鳴り=2隻 … 果て=5隻)
 func max_fleet() -> int:
-	return clampi(current_island + 1, 1, FLEET_MAX)
+	return clampi(Database.tier_of(current_island) + 1, 1, FLEET_MAX)   # #239: tier基準
 
 # #196再: 始まりの島でも編成メニューを使える(ここで買ってストックした船を扱えるように)
 func fleet_enabled() -> bool:

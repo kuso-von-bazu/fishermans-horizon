@@ -25,8 +25,8 @@ var title: CanvasLayer
 var ocean_mat: ShaderMaterial
 var weather_mat: ShaderMaterial   # #190/#191/#192: 近海ごとの天候オーバーレイ
 var weather_rect: ColorRect
-var _weather_cur: Dictionary = {"tint": Color(0,0,0,0), "rain": 0.0, "snow": 0.0, "night": 0.0, "rough": 0.0}
-var _weather_target: Dictionary = {"tint": Color(0,0,0,0), "rain": 0.0, "snow": 0.0, "night": 0.0, "rough": 0.0}
+var _weather_cur: Dictionary = {"tint": Color(0,0,0,0), "rain": 0.0, "snow": 0.0, "night": 0.0, "rough": 0.0, "moon": 1.0, "stars": 0.0}
+var _weather_target: Dictionary = {"tint": Color(0,0,0,0), "rain": 0.0, "snow": 0.0, "night": 0.0, "rough": 0.0, "moon": 1.0, "stars": 0.0}
 var _weather_name: String = ""
 
 var phase: String = "title"
@@ -115,10 +115,10 @@ func _build_ocean() -> void:
 	var ipos := PackedVector2Array()
 	for i in Database.islands.size():
 		ipos.append(island_pos(i))
-	while ipos.size() < 5:
+	while ipos.size() < 8:   # #239: 島8つぶん
 		ipos.append(Vector2(1e9, 1e9))
 	ocean_mat.set_shader_parameter("islands", ipos)
-	ocean_mat.set_shader_parameter("island_count", mini(Database.islands.size(), 5))
+	ocean_mat.set_shader_parameter("island_count", mini(Database.islands.size(), 8))   # #239: 島8つ
 
 # #190/#191/#192: 天候オーバーレイ(夜/大雨/吹雪)。海の上・HUDの下に全画面で重ねる
 func _build_weather() -> void:
@@ -155,6 +155,8 @@ func _weather_params(w: String) -> Dictionary:
 	var snow := 0.0
 	var night := 0.0
 	var rough := 0.0
+	var moon := 1.0    # #239: 海面に映る月(月下のみ)
+	var stars := 0.0   # #239: 海面に映る星(星霜のみ)
 	match w:
 		"night":     # #190: 月下の島の近海は常に夜
 			tint = Color(0.05, 0.08, 0.22, 0.40)
@@ -167,7 +169,19 @@ func _weather_params(w: String) -> Dictionary:
 			tint = Color(0.72, 0.80, 0.90, 0.18)
 			snow = 1.0
 			rough = 0.85
-	return {"tint": tint, "rain": rain, "snow": snow, "night": night, "rough": rough}
+		"starry":    # #239: 星霜の島。月下から月の反射を除き、星の反射を敷き詰める
+			tint = Color(0.05, 0.08, 0.22, 0.40)
+			night = 1.0
+			moon = 0.0
+			stars = 1.0
+		"dark":      # #239: 常闇の島。月下から月の反射を除いただけの暗い海
+			tint = Color(0.04, 0.06, 0.16, 0.46)
+			night = 1.0
+			moon = 0.0
+		"surge":     # #239: 海嘯の島。嵐越えから雨を除いた荒波
+			tint = Color(0.10, 0.12, 0.18, 0.24)
+			rough = 1.0
+	return {"tint": tint, "rain": rain, "snow": snow, "night": night, "rough": rough, "moon": moon, "stars": stars}
 
 # 目標値を設定(instant=trueで即反映。寄港/出港時のみ)
 func _apply_weather(w: String, instant := true) -> void:
@@ -189,6 +203,8 @@ func _push_weather() -> void:
 	if ocean_mat:
 		ocean_mat.set_shader_parameter("night", _weather_cur.night)
 		ocean_mat.set_shader_parameter("rough", _weather_cur.rough)
+		ocean_mat.set_shader_parameter("moon", _weather_cur.moon)     # #239
+		ocean_mat.set_shader_parameter("stars", _weather_cur.stars)   # #239
 
 # 航行中は最寄りの海域の天候へ徐々に寄せる(海域をまたぐと自然に切り替わる)
 func _update_weather(delta: float) -> void:
@@ -201,7 +217,7 @@ func _update_weather(delta: float) -> void:
 		_weather_target = _weather_params(want)
 	var t: float = clampf(delta / 1.5, 0.0, 1.0)
 	_weather_cur.tint = (_weather_cur.tint as Color).lerp(_weather_target.tint, t)
-	for k in ["rain", "snow", "night", "rough"]:
+	for k in ["rain", "snow", "night", "rough", "moon", "stars"]:   # #239
 		_weather_cur[k] = lerpf(float(_weather_cur[k]), float(_weather_target[k]), t)
 	_push_weather()
 
@@ -817,13 +833,30 @@ func _make_enemy(kind: String, id: String, pos: Vector2) -> CharacterBody2D:
 	enemies.append(e)
 	return e
 
+# #239: 夜の帝王の分裂。元の主の周囲へ子individualを生み、討伐判定を引き継がせる。
+# 生まれた個体は上限・デスポーンの対象外(取り巻き扱い)にして、
+# すべて倒すまで討伐にならないようにする。
+func spawn_split(src: Node2D, into_id: String, count: int) -> void:
+	if into_id == "" or not Database.lords.has(into_id):
+		return
+	var root: String = str(src.get("split_root"))
+	if root == "":
+		root = str(src.get("id"))
+	for i in count:
+		var ang := TAU * float(i) / float(maxi(count, 1)) + randf() * 0.6
+		var pos: Vector2 = src.global_position + Vector2(cos(ang), sin(ang)) * 90.0
+		var e := _make_enemy("lord", into_id, pos)
+		e.split_root = root
+		e.is_escort = true          # 上限計数・距離デスポーンの対象外にする
+		e._aggro = true
+
 # #193: 島ごとの障害物。始まりの島〜嵐越えの島は岩礁、果ての島は流氷(低速で移動)
 func _obstacle_kind() -> String:
-	return "ice" if GameState.current_island >= 4 else "reef"
+	return "ice" if Database.tier_of(GameState.current_island) >= 4 else "reef"   # #239
 
 # 始まりの島の近海は岩礁を少なめに
 func _obstacle_max() -> int:
-	return [3, 8, 8, 9, 7][clampi(GameState.current_island, 0, 4)]
+	return [3, 8, 8, 9, 7, 8, 8, 9][clampi(GameState.current_island, 0, 7)]   # #239: 島8つぶん
 
 func _spawn_obstacle() -> void:
 	var pos := _ring_pos(85, 200)
@@ -881,7 +914,7 @@ func _spawn_relic() -> void:
 	r.set_script(RelicScript)
 	# #207: 島ごとの価値を引き上げ(潮鳴り1.2 月下1.4 嵐越え1.7 果て2.0倍)。ランダムのぶれは維持
 	var relic_mult: float = [1.0, 1.2, 1.4, 1.7, 2.0][clampi(GameState.current_island, 0, 4)]
-	r.setup(int(round(float(randi_range(200, 500) * (GameState.current_island + 1)) * relic_mult)))
+	r.setup(int(round(float(randi_range(200, 500) * (Database.tier_of(GameState.current_island) + 1)) * relic_mult)))   # #239
 	add_child(r)
 	r.global_position = pos
 	relics_world.append(r)

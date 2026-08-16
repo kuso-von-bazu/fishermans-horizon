@@ -9,11 +9,16 @@ uniform vec3 crest_color : source_color = vec3(0.80, 0.92, 0.97);
 uniform float wave_scale = 0.028;
 uniform float wave_speed = 0.9;
 // #135: 島の位置(ワールド座標)。島周りは淡い青にする
-uniform vec2 islands[5];
+uniform vec2 islands[8];   // #239: 島8つ
 uniform int island_count = 0;
 uniform float island_light_radius = 900.0;
 // #190/#191/#192: 近海の天候。night=夜(月下の島), rough=高波/荒波(嵐越え・果て)
 uniform float night = 0.0;
+// #239: 夜の演出を分解して島ごとに出し分ける。
+//   moon  = 海面に映る月(月下=1 / 星霜・常闇=0)
+//   stars = 海面に映る星々(星霜=1)
+uniform float moon = 1.0;
+uniform float stars = 0.0;
 uniform float rough = 0.0;
 
 // 2D擬似ノイズ
@@ -81,8 +86,8 @@ void fragment() {
 
 	// #190: 月下の島の近海は常に夜。全体を暗い藍へ沈め、左上からの月光を落とす
 	col = mix(col, col * vec3(0.30, 0.36, 0.60) + vec3(0.015, 0.025, 0.055), night);
-	float moon = max(0.0, 1.0 - length(SCREEN_UV - vec2(0.18, 0.13)) * 1.5);
-	col += vec3(0.62, 0.70, 0.95) * moon * moon * 0.16 * night;
+	float moon_glow = max(0.0, 1.0 - length(SCREEN_UV - vec2(0.18, 0.13)) * 1.5);
+	col += vec3(0.62, 0.70, 0.95) * moon_glow * moon_glow * 0.16 * night * moon;
 
 	// #190再3: 月下の海面に映る満月。波で輪郭が揺れる月影と、縦に伸びる細かな反射を重ねる。
 	vec2 moon_uv = SCREEN_UV - vec2(0.18, 0.27);
@@ -93,6 +98,21 @@ void fragment() {
 	moon_path *= smoothstep(0.25, 0.34, SCREEN_UV.y) * (1.0 - smoothstep(0.34, 0.94, SCREEN_UV.y));
 	float broken = pow(max(sin(SCREEN_UV.y * 185.0 + h * 2.8 + t * 1.7), 0.0), 7.0);
 	float reflection = moon_disc * 0.80 + moon_path * broken * 0.42;
-	col += vec3(0.72, 0.80, 1.0) * reflection * night;
+	col += vec3(0.72, 0.80, 1.0) * reflection * night * moon;   // #239: moon=0 の海域では月の反射を出さない
+
+	// #239: 星霜の島の近海。海面いっぱいに星の反射がきらめく(月の道は出さない)
+	if (stars > 0.001) {
+		// 粒が四角く目立たないよう、細かい格子でセル内の中心からの距離で丸く落とす
+		vec2 suv = SCREEN_UV * vec2(430.0, 260.0);
+		vec2 sc = floor(suv);
+		vec2 sf = fract(suv) - 0.5;
+		float rnd = fract(sin(sc.x * 12.9898 + sc.y * 78.233) * 43758.5453);
+		float dot_mask = 1.0 - smoothstep(0.10, 0.36, length(sf));
+		float twinkle = pow(max(sin(t * 1.6 + rnd * 24.0), 0.0), 18.0);
+		float star = step(0.975, rnd) * twinkle * dot_mask;
+		// 波で上下に揺らして「映り込み」らしく見せる
+		float sway = 0.55 + 0.45 * sin(SCREEN_UV.y * 60.0 + h * 3.0 + t * 1.1);
+		col += vec3(0.82, 0.90, 1.0) * star * sway * 1.25 * night * stars;
+	}
 	COLOR = vec4(col, 1.0);
 }

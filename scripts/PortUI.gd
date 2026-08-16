@@ -450,7 +450,7 @@ func show_shipyard() -> void:
 	_clear()
 	content.add_child(_h("造船所 — 船・武器の購入", 22))
 	content.add_child(_p("購入した船はストックされます。編成メニューで船団に組み込んでください。"))
-	var tier := GameState.current_island
+	var tier := Database.tier_of(GameState.current_island)   # #239: 販売解禁は tier で判定
 	content.add_child(_h("船", 18))
 	for sid in Database.ships:
 		var s: Dictionary = Database.ships[sid]

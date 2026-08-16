@@ -125,6 +125,25 @@ func _build_visual() -> void:
 			poly.append(Vector2(cos(a) * 3.3, sin(a) * 5.3))
 		mcol = Color(0.62, 0.78, 0.86)
 		r = 4.0
+	elif shape == "needle":
+		# #239: ラミアの針状弾。細長く鋭い菱形で、進行方向へ向く
+		poly.append(Vector2(0, -11.0))
+		poly.append(Vector2(2.2, 0))
+		poly.append(Vector2(0, 6.0))
+		poly.append(Vector2(-2.2, 0))
+		mcol = Color(0.82, 0.72, 0.95)
+		r = 4.0
+	elif shape == "note":
+		# #239: セイレーンの音符弾。丸い符頭と縦の符幹(蛇行しながら飛ぶ)
+		for i in 12:
+			var a := TAU * i / 12.0
+			poly.append(Vector2(cos(a) * 5.2 - 1.6, sin(a) * 4.2 + 3.4))
+		poly.append(Vector2(3.0, 3.4))
+		poly.append(Vector2(3.0, -8.6))
+		poly.append(Vector2(1.4, -8.6))
+		poly.append(Vector2(1.4, 3.4))
+		mcol = Color(0.96, 0.82, 0.98)
+		r = 5.0
 	elif shape == "ellipse":
 		# #65再: 細長い楕円弾(長軸=進行方向=プレイヤー向き)。色はbcolorで指定
 		for i in 16:
