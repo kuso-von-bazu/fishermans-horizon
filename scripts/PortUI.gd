@@ -325,6 +325,16 @@ func show_tavern() -> void:
 				info.add_theme_font_size_override("normal_font_size", 18)
 				info.text = "%s [%s] %s %s %s %s %s" % [m.name, j.name, _stat_bb("体", int(m.hp)), _stat_bb("敏", int(m.agi)), _stat_bb("射", int(m.sht)), _stat_bb("知", int(m.int_)), _stat_bb("視", int(m.vis))]
 				row.add_child(info)
+				# #231再5: クラスチェンジ可能なときだけ「クラスチェンジ」と見出しを出す
+				var can_any := false
+				for jid0 in GameState.jobs:
+					if GameState.can_jobchange(m, jid0):
+						can_any = true
+						break
+				if can_any:
+					var cc := _p("クラスチェンジ")
+					cc.add_theme_color_override("font_color", Color(0.85, 0.95, 0.7))
+					row.add_child(cc)
 				for jid in GameState.jobs:
 					if GameState.can_jobchange(m, jid):
 						var job_id: String = jid

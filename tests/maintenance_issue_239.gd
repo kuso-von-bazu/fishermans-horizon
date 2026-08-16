@@ -172,8 +172,43 @@ func _ready() -> void:
 		check(absf(float(Database.HP_TIER_MULT[t]) - want) < 0.0005,
 			"tier%d のHP倍率が2%%引き上げ後の値でない(%.4f / 期待%.4f)" % [t, Database.HP_TIER_MULT[t], want])
 
+	# --- #239再2: 航路の並び(海嘯 → 嵐越え の順) ---
+	var order2: Array = []
+	for isle3 in Database.islands_in_order():
+		order2.append(str(isle3.name))
+	check(order2 == ["始まりの島", "潮鳴りの島", "月下の島", "星霜の島", "常闇の島", "海嘯の島", "嵐越えの島", "果ての島"],
+		"航路の並びが指定と違う: %s" % str(order2))
+
+	# --- #242: 武器の説明文 ---
+	check(not str(Database.weapons["gatling"].desc).contains("#63"), "ガトリングの説明に #63 が残っている")
+	check(str(Database.weapons["harpoon"].desc) == "中威力。生物にデバフ付与", "銛の説明が指定と違う: %s" % Database.weapons["harpoon"].desc)
+
+	# --- #209再9: ボスラッシュの構成 ---
+	var World2 = preload("res://scripts2d/World2D.gd")
+	var want_order := ["sawshark", "dumbo", "whale", "walrus", "aspidochelone", "undine",
+		"night_emperor", "legion", "siren", "wraith", "king", "kraken_lord",
+		"hydra", "griffon", "quetzal", "ghost", "leviathan"]
+	var got_order: Array = []
+	for spec in World2.BOSS_RUSH_ORDER:
+		got_order.append(str(spec.id))
+	check(got_order == want_order, "ボスラッシュの出現順が指定と違う: %s" % str(got_order))
+	check(World2.BOSS_RUSH_ORDER.size() == 17, "ボスラッシュのボス数が17でない(%d)" % World2.BOSS_RUSH_ORDER.size())
+	# 海賊王の取り巻きは 大×1・中×1 で固定
+	for spec2 in World2.BOSS_RUSH_ORDER:
+		if str(spec2.id) == "king":
+			check((spec2.get("escorts", []) as Array) == ["dread", "corsair"],
+				"海賊王の取り巻きが 大×1・中×1 でない")
+	# ⑩まで5%、⑪から10%
+	check(World2.BR_HEAL_BIG_FROM == 10, "回復量が10%%に切り替わる位置が⑪でない(index %d)" % World2.BR_HEAL_BIG_FROM)
+	# 登場する主・海賊がすべて定義済みであること(タイプミスで出現しなくなる)
+	for spec3 in World2.BOSS_RUSH_ORDER:
+		if str(spec3.kind) == "lord":
+			check(Database.lords.has(str(spec3.id)), "ボスラッシュの主 %s が未定義" % str(spec3.id))
+		else:
+			check(Database.pirates.has(str(spec3.id)), "ボスラッシュの海賊 %s が未定義" % str(spec3.id))
+
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK islands/tier/mobs/lords/fame/weather/behaviours/hp2pct")
+		print("MAINTENANCE_TEST_OK islands/tier/mobs/lords/fame/weather/behaviours/hp2pct/order/weapons/bossrush")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)

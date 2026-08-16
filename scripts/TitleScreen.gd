@@ -352,10 +352,6 @@ func show_title() -> void:
 	if _crown:
 		# #209再2: ボスラッシュを制覇していれば王冠を灯す
 		_crown.visible = _boss_rush_button.visible and GameState.has_cleared_boss_rush()
-	if _night_sky:
-		_night_sky.visible = false
-	if _art_br:
-		_art_br.visible = false
 	_is_title = true
 	if _confirm:
 		_confirm.visible = false

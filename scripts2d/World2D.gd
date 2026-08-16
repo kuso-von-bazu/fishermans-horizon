@@ -65,7 +65,7 @@ var _fishing_target: Node = null     # #232: 漁ゲージの対象魚群
 var _fishing_phase: float = 0.0
 var _fishing_value: float = 0.0
 # #232再: 発光帯(2倍)の左端。漁のたびに抽選して当たりの位置を固定させない
-const FISHING_BAND_W := 0.16
+const FISHING_BAND_W := 0.176   # #232再4: 帯の幅を1.1倍
 var _fishing_band: float = 0.72
 
 # 離した瞬間の針が発光帯の中にあるか
@@ -571,7 +571,7 @@ func _update_fishing(delta: float) -> void:
 			if not GameState.add_cargo(str(got)):
 				break
 		if bonus and not caught.is_empty():
-			GameState.notice.emit("大漁! 獲得量2倍")
+			hud.show_catch_bonus("大漁! 獲得量2倍")   # #232再4: 漁ゲージのあった位置に出す
 		hud.set_fishing_meter(0.0, false)
 		_fishing_target = null
 	else:
@@ -924,19 +924,29 @@ func _spawn_relic() -> void:
 
 # ---------------- ボスラッシュ(#209) ----------------
 # 出現順: 主を順に、7番目に海賊王(取り巻きは海賊(大)1+海賊(中)1で固定)
+# #209再9: 新しい主(#239)を加え、出現順もレビュアー指定へ入れ替え。
+# ①〜⑩を倒すと最大装甲の5%、⑪〜⑯を倒すと10%回復する(BR_HEAL_BIG_FROM)。
 const BOSS_RUSH_ORDER := [
-	{"kind": "lord", "id": "sawshark"},
-	{"kind": "lord", "id": "dumbo"},
-	{"kind": "lord", "id": "whale"},
-	{"kind": "lord", "id": "walrus"},
-	{"kind": "lord", "id": "aspidochelone"},
-	{"kind": "lord", "id": "legion"},
-	{"kind": "pirate", "id": "king", "escorts": ["dread", "corsair"]},
-	{"kind": "lord", "id": "hydra"},
-	{"kind": "lord", "id": "quetzal"},
-	{"kind": "lord", "id": "ghost"},
-	{"kind": "lord", "id": "leviathan"},
+	{"kind": "lord", "id": "sawshark"},        # ①
+	{"kind": "lord", "id": "dumbo"},           # ②
+	{"kind": "lord", "id": "whale"},           # ③
+	{"kind": "lord", "id": "walrus"},          # ④(番い2体)
+	{"kind": "lord", "id": "aspidochelone"},   # ⑤
+	{"kind": "lord", "id": "undine"},          # ⑥
+	{"kind": "lord", "id": "night_emperor"},   # ⑦(分裂)
+	{"kind": "lord", "id": "legion"},          # ⑧
+	{"kind": "lord", "id": "siren"},           # ⑨
+	{"kind": "lord", "id": "wraith"},          # ⑩
+	{"kind": "pirate", "id": "king", "escorts": ["dread", "corsair"]},   # ⑪
+	{"kind": "lord", "id": "kraken_lord"},     # ⑫
+	{"kind": "lord", "id": "hydra"},           # ⑬
+	{"kind": "lord", "id": "griffon"},         # ⑭
+	{"kind": "lord", "id": "quetzal"},         # ⑮
+	{"kind": "lord", "id": "ghost"},           # ⑯
+	{"kind": "lord", "id": "leviathan"},       # ⑰
 ]
+# ⑪(index 10)以降は回復量が10%になる
+const BR_HEAL_BIG_FROM := 10
 # 島から遠く離れた海域(島の存在しないステージ)
 const BR_ARENA := Vector2(0.0, 120000.0)
 
@@ -1048,7 +1058,7 @@ func _br_update(delta: float) -> void:
 		# #209再2: ボスを1体倒すごとに船団の全艦が最大装甲の5%回復する
 		if _br_index < BOSS_RUSH_ORDER.size():
 			# #209再6: ⑦〜⑩のボスは10%、①〜⑥は5%回復(_br_index=倒したボスの通し番号)
-			var heal_pct: float = 0.10 if _br_index >= 7 else 0.05
+			var heal_pct: float = 0.10 if _br_index >= BR_HEAL_BIG_FROM else 0.05   # #209再9
 			GameState.heal_fleet_percent(heal_pct)
 			GameState.notice.emit("船団の装甲が回復した(最大値の%d%%)" % int(heal_pct * 100.0))
 

@@ -14,6 +14,7 @@ var lbl_armor_val: Label
 var lbl_status: Label   # #64: 炎上/毒の表示
 var lbl_return: Label   # #68: 帰還長押しの進捗
 var lbl_hint: Label     # #241: 出港時のワンポイントヒント
+var lbl_catch: Label    # #232再4: 「大漁!」(漁ゲージと同じ位置)
 var lbl_guide: Label    # #232: ガイド対象名と残距離
 var cargo_box: HBoxContainer
 var weapon_box: HBoxContainer
@@ -24,7 +25,7 @@ var prompt: Label
 var _fishing_meter: Control   # #232: E長押し中の往復ゲージ
 var _fishing_value: float = 0.0
 var _fishing_bonus: bool = false
-const FISHING_BAND_W := 0.16     # #232再: 発光帯の幅(World2D と同じ値)
+const FISHING_BAND_W := 0.176    # #232再4: 発光帯の幅(World2D と同じ値。1.1倍)
 var _fishing_band: float = 0.72  # #232再: 発光帯の左端(漁ごとに抽選)
 
 var _sonar_blips: Array = []   # [{pos:Vector2, color:Color}]
@@ -245,6 +246,23 @@ func _build() -> void:
 	_fishing_meter.visible = false
 	_fishing_meter.draw.connect(_draw_fishing_meter)
 	root.add_child(_fishing_meter)
+	# #232再4: 「大漁!」は漁ゲージが出ていたその場所に表示する
+	lbl_catch = _label("", 22)
+	lbl_catch.anchor_left = 0.5
+	lbl_catch.anchor_right = 0.5
+	lbl_catch.anchor_top = 1.0
+	lbl_catch.anchor_bottom = 1.0
+	lbl_catch.offset_left = -170
+	lbl_catch.offset_right = 170
+	lbl_catch.offset_top = -146
+	lbl_catch.offset_bottom = -114
+	lbl_catch.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl_catch.add_theme_color_override("font_color", Color(1.0, 0.92, 0.35))
+	lbl_catch.add_theme_constant_override("outline_size", 6)
+	lbl_catch.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	lbl_catch.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lbl_catch.visible = false
+	root.add_child(lbl_catch)
 
 	# 通知トースト
 	notice_box = VBoxContainer.new()
@@ -483,6 +501,18 @@ func show_departure_hint(text: String, hold := 3.0) -> void:
 	tw.tween_interval(hold)
 	tw.tween_property(lbl_hint, "modulate:a", 0.0, 0.6)
 	tw.tween_callback(func(): lbl_hint.visible = false)
+
+# #232再4: 漁ゲージがあった位置に「大漁!」を出す
+func show_catch_bonus(text: String, hold := 1.2) -> void:
+	if lbl_catch == null:
+		return
+	lbl_catch.text = text
+	lbl_catch.visible = true
+	lbl_catch.modulate.a = 1.0
+	var tw := create_tween()
+	tw.tween_interval(hold)
+	tw.tween_property(lbl_catch, "modulate:a", 0.0, 0.5)
+	tw.tween_callback(func(): lbl_catch.visible = false)
 
 func set_prompt(text: String) -> void:
 	if prompt:
