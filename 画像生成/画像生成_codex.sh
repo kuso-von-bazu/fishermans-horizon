@@ -56,23 +56,28 @@ tail -n +2 "$CSV" | while IFS=, read -r fname content; do
   # 呼び出し直前の時刻を基準ファイルとして持っておく。これが無いと、
   # 生成に失敗したときに前回の画像を黙ってコピーしてしまい、
   # 複数のファイルが同一画像になる事故が起きる(実際に7枚が重複した)。
+  # 重要(#234再2): 既存ファイルは消さない。生成に失敗したときに元の画像まで
+  # 失われるため(実際に4枚を消してしまった)。代わりに、
+  #   ・呼び出し直前の時刻(stamp)より新しいか
+  #   ・元ファイルより新しいか
+  # で「今回生成されたもの」だけを採用し、失敗時は元のまま据え置く。
   stamp="$(mktemp)"
-  rm -f "$target"   # 既存を残すと「成功」と誤判定するため先に消す
   "$CODEX" exec --dangerously-bypass-approvals-and-sandbox --cd "$OUTDIR" "$prompt" </dev/null >/dev/null 2>&1
-  if [ -f "$target" ]; then
-    echo "       -> OK"; ok=$((ok+1))
+  if [ -f "$target" ] && [ "$target" -nt "$stamp" ]; then
+    echo "       -> OK"; ok=$((ok+1)); fresh=1
   else
     # フォールバック: codex が指定パスへ保存しなかった場合、
     # 「この呼び出しより後に作られた」生成画像だけを拾う(古い画像は使わない)
     latest="$(find ~/.codex/generated_images -name 'ig_*.png' -newer "$stamp" 2>/dev/null | head -1)"
     if [ -n "$latest" ]; then
-      cp "$latest" "$target" && echo "       -> OK(fallback)"; ok=$((ok+1))
+      cp "$latest" "$target" && echo "       -> OK(fallback)"; ok=$((ok+1)); fresh=1
     else
-      echo "       -> FAILED(新しい生成画像なし: 前回の画像は使わない)"
+      echo "       -> FAILED(今回の生成画像なし: 既存ファイルは据え置き)"; fresh=0
     fi
   fi
   rm -f "$stamp"
   # 生成直後に背景透過処理(近白背景を抜いてトリミング)
-  if [ -f "$target" ]; then python "$HERE/透過処理.py" "$fname" </dev/null >/dev/null 2>&1 && echo "       -> 透過処理済"; fi
+  # 今回生成できたものだけ透過処理する(失敗時に既存画像を再処理しない)
+  if [ "$fresh" = "1" ] && [ -f "$target" ]; then python "$HERE/透過処理.py" "$fname" </dev/null >/dev/null 2>&1 && echo "       -> 透過処理済"; fi
 done
 echo "完了"
