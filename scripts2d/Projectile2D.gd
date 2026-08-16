@@ -34,6 +34,10 @@ func setup(p_dir: Vector2, w: Dictionary, p_target: Node2D = null) -> void:
 	collision_mask = 7
 	dmg = float(w.get("dmg", 5))
 	speed = (70.0 + float(w.get("dmg", 5)) * 0.3) * K * float(w.get("speed_mult", 1.0))   # #65: 弾速倍率
+	if from_player:
+		speed *= GameState.formation_passive("shot_speed")   # #224再2: 斜線陣
+	else:
+		add_to_group("enemy_shot")   # #224再2: 防御弾幕(輪形陣)の迎撃対象
 	if GameState.active_weather == "storm" and not GameState.boss_rush:
 		speed *= 0.9   # #232: 嵐は敵味方とも遠隔弾速-10%
 	slip = bool(w.get("slip", false))

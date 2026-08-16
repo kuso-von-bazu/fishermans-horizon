@@ -349,7 +349,15 @@ func _placeholder(c: Color) -> Texture2D:
 	return ImageTexture.create_from_image(img)
 
 # 戻り値: 0=命中, 1=回避(弾は消える), 2=回避(弾は後方へ通過)
+# #224再2: 包囲射撃(鶴翼陣)の間だけ、この敵の回避を無効にする
+var _no_dodge_t: float = 0.0
+
+func suppress_dodge(secs: float) -> void:
+	_no_dodge_t = maxf(_no_dodge_t, secs)
+
 func take_hit(amount: float, slip: bool, debuff: bool, no_dodge: bool = false, debuff_kind: String = "") -> int:
+	if _no_dodge_t > 0.0:
+		no_dodge = true   # #224再2: 包囲射撃の対象は回避できない
 	# #71/#111/#72: カリュブディス/ケツァル/ティアマット等は一定確率で攻撃をかわす。魚雷(no_dodge)は必中
 	if not no_dodge and float(def.get("dodge", 0.0)) > 0.0 and randf() < float(def.get("dodge", 0.0)):
 		if sprite:
@@ -390,6 +398,8 @@ func take_hit(amount: float, slip: bool, debuff: bool, no_dodge: bool = false, d
 	return 0
 
 func _physics_process(delta: float) -> void:
+	if _no_dodge_t > 0.0:
+		_no_dodge_t = maxf(_no_dodge_t - delta, 0.0)   # #224再2: 包囲射撃の回避無効
 	if _slip > 0.0:
 		var tick: float = minf(_slip, 8.0 * delta)
 		hp -= tick
@@ -656,9 +666,21 @@ func _aim_target() -> Node2D:
 			return m
 	return player
 
+# #238: 海賊(海賊王含む)と幽霊船の遠隔攻撃に、プレイヤーと同じ武器の効果音を鳴らす。
+# 生物の主・モブは武器を使わないので対象外(鳴らすと海が騒がしくなりすぎる)。
+# 自機の攻撃音(-8dB)より控えめにして、自分の射撃と混ざらないようにする。
+const ENEMY_WPN_SFX := {
+	"gatling": "sfx_gun",
+	"cannon": "sfx_cannon",
+	"torpedo": "sfx_torpedo",
+}
+
 func _fire_weapon(wpn: String, eff_dmg: float, base_dir: Vector2, is_fire: bool, aim: Node2D = null) -> void:
 	if aim == null:
 		aim = player
+	if kind == "pirate" or id == "ghost":
+		var nm := str(ENEMY_WPN_SFX.get(wpn, "sfx_cannon"))   # wpn未指定の海賊は砲撃扱い
+		Audio.play(nm, -14.0, randf_range(0.93, 1.05))
 	match wpn:
 		"gatling":
 			for i in 3:

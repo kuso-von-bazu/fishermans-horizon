@@ -58,15 +58,6 @@ func _build() -> void:
 		_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_root.add_child(_art)
 
-	# #235/#236: タイトルから音量設定と操作早見表をいつでも開ける。
-	# 背景より後に追加して、クリックが確実に届くようにする。
-	var settings_btn := _icon_button("gear", "音量設定", Vector2(24, 24))
-	settings_btn.pressed.connect(func(): OverlayMenus.show_settings(_root))
-	_root.add_child(settings_btn)
-	var help_btn := _icon_button("help", "操作・武器 早見表", Vector2(86, 24))
-	help_btn.pressed.connect(func(): OverlayMenus.show_help(_root))
-	_root.add_child(help_btn)
-
 	# 画面全体を覆う CenterContainer で中身を中央寄せ
 	var center := CenterContainer.new()
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -157,6 +148,19 @@ func _build() -> void:
 		_crown.offset_bottom = 76
 		_crown.visible = false
 		_root.add_child(_crown)
+
+	# #235再2/#236再2: 音量設定と操作早見表のボタン。
+	# **必ず全画面の CenterContainer より後(=最後)に追加すること。**
+	# Godot の MOUSE_FILTER_PASS は「前の兄弟」ではなく「親」へ伝播するため、
+	# 全画面の CenterContainer(PASS)がクリックを受け取ると、そのまま親の
+	# _root(STOP)が消費してしまい、より前にある兄弟のボタンは一度も
+	# 判定されない。Boss Rush ボタンが押せて歯車が押せなかったのはこの差。
+	var settings_btn := _icon_button("gear", "音量設定", Vector2(24, 24))
+	settings_btn.pressed.connect(func(): OverlayMenus.show_settings(_root))
+	_root.add_child(settings_btn)
+	var help_btn := _icon_button("help", "操作・武器 早見表", Vector2(86, 24))
+	help_btn.pressed.connect(func(): OverlayMenus.show_help(_root))
+	_root.add_child(help_btn)
 
 	# #90: BGM著作権表示(MusMus)
 	var credit := Label.new()

@@ -23,6 +23,53 @@ var formations: Array[String] = ["line", "column", "vee", "inv_vee"]
 var formation_slot: int = 0               # 選択中の陣形(0〜3)
 var target_ship: int = 0                  # #196: 酒場での雇用・造船所での武器購入の対象艦
 
+# #224再2: 陣形ごとの常時効果(パッシブ)。倍率なので 1.0 が「効果なし」。
+# 陣形は船団の仕組みなので、旗艦1隻のときは適用しない(切替もできないため)。
+const FORMATION_PASSIVE := {
+	"line":    {"reload": 0.90},            # 単横陣: 全艦のリロード時間 -10%
+	"column":  {"speed": 1.05},             # 単縦陣: 前進最高速 +5%
+	"vee":     {"ram": 1.15},               # 鋒矢陣: 衝角・体当たりダメージ +15%
+	"inv_vee": {"shot_dmg": 1.10},          # 鶴翼陣: 遠隔攻撃ダメージ +10%
+	"echelon": {"shot_speed": 1.10},        # 斜線陣: 弾速 +10%
+	"ring":    {"flag_dmg_taken": 0.90},    # 輪形陣: 旗艦の被ダメージ -10%
+}
+const FORMATION_PASSIVE_TEXT := {
+	"line": "全艦のリロード時間 -10%",
+	"column": "前進最高速 +5%",
+	"vee": "衝角・体当たりダメージ +15%",
+	"inv_vee": "遠隔攻撃ダメージ +10%",
+	"echelon": "弾速 +10%",
+	"ring": "旗艦の被ダメージ -10%",
+}
+
+# #224: 陣形ごとのスキル
+# #224再2: 鋒矢/鶴翼/斜線/輪形に固有スキルを実装(単横・単縦は据え置き)
+const FORMATION_SKILLS := {
+	# #224再: 単横陣と単縦陣のスキルを入れ替え(単横陣=一斉射撃20秒 / 単縦陣=突撃15秒)
+	"line":    {"name": "一斉射撃", "kind": "volley", "cd": 20.0,
+		"desc": "全艦が弾倉の半分を3倍の速さで撃ち込む"},
+	"column":  {"name": "突撃",     "kind": "charge", "cd": 15.0,
+		"desc": "全艦が最高速の3倍で直進し、敵を貫いて体当たりする"},
+	"vee":     {"name": "楔の突撃", "kind": "wedge",  "cd": 17.0,
+		"desc": "突撃中、旗艦の衝角ダメージ1.5倍。命中した敵を後方へ押し込む"},
+	"inv_vee": {"name": "包囲射撃", "kind": "encircle", "cd": 25.0,
+		"desc": "ロック中の敵へ各艦が0.5秒間隔で時間差斉射。その間、対象の回避を無効化"},
+	"echelon": {"name": "速射態勢", "kind": "rapid",  "cd": 22.0,
+		"desc": "5秒間、全艦の弾倉が減らない(リロードが発生しない)"},
+	"ring":    {"name": "防御弾幕", "kind": "barrier", "cd": 25.0,
+		"desc": "3秒間、輪の内側に入った敵弾を迎撃して消す"},
+}
+
+func formation_id() -> String:
+	return str(formations[clampi(formation_slot, 0, formations.size() - 1)])
+
+# 現在の陣形のパッシブ倍率。船団が2隻以上のときだけ効く。
+func formation_passive(key: String) -> float:
+	if fleet.size() <= 1:
+		return 1.0
+	var t: Dictionary = FORMATION_PASSIVE.get(formation_id(), {})
+	return float(t.get(key, 1.0))
+
 func _f0() -> Dictionary:
 	if fleet.is_empty():
 		fleet.append(new_ship_entry("raft", ["gatling"]))
@@ -291,7 +338,7 @@ func lock_range_mult() -> float:   # #201: ロック距離は視力に依存し�
 func damage_player(amount: float) -> void:
 	if docking_locked:
 		return   # #105: 寄港確定後は被弾しない
-	run_armor = maxf(run_armor - amount * (1.0 - damage_cut()), 0.0)
+	run_armor = maxf(run_armor - amount * (1.0 - damage_cut()) * formation_passive("flag_dmg_taken"), 0.0)   # #224再2: 輪形陣
 	if at_sea and amount >= 3.0 and burn_t <= 0.0 and randf() < 0.12:
 		burn_t = 4.5
 		burn_dps = 2.5 + amount * 0.12

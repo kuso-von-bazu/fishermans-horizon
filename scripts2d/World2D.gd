@@ -371,7 +371,12 @@ func _on_set_sail() -> void:
 	_dock_target = -1
 	_food_choice_shown = false
 	_food_dialog_open = false
+	if _food_dialog:
+		_food_dialog.visible = false
+	get_tree().paused = false   # #24再: ポーズが残ったまま出港しないよう保険
 	slot_cooldowns = [0.0, 0.0, 0.0, 0.0]
+	_rapid_t = 0.0
+	_barrier_t = 0.0
 	_reset_ammo()
 	GameState.formation_slot = 0        # #196: 陣形1がデフォルト
 	_spawn_escorts_fleet()
@@ -537,7 +542,7 @@ func _update_fishing(delta: float) -> void:
 		# 端すぎると狙えないので、帯全体が 0.06〜0.94 に収まる範囲で左寄り〜右寄りを取る。
 		_fishing_band = randf_range(0.06, 0.94 - FISHING_BAND_W)
 	if Input.is_action_pressed("interact") and is_instance_valid(_fishing_target):
-		_fishing_phase += delta * 1.45
+		_fishing_phase += delta * 1.305   # #232再2: 往復速度を0.9倍(1.45→1.305)
 		_fishing_value = (sin(_fishing_phase * TAU - PI * 0.5) + 1.0) * 0.5
 		hud.set_fishing_meter(_fishing_value, true, _fishing_band)
 	elif Input.is_action_just_released("interact") and is_instance_valid(_fishing_target):
@@ -934,6 +939,8 @@ func _on_boss_rush() -> void:
 	_boss_bgm_on = "bgm_boss"
 	Audio.play("sfx_lord_roar", -2.0)   # #79再: ボスラッシュ開始時も主のBGMなので鳴らす
 	slot_cooldowns = [0.0, 0.0, 0.0, 0.0]
+	_rapid_t = 0.0
+	_barrier_t = 0.0
 	_reset_ammo()
 	GameState.formation_slot = 0
 	_spawn_escorts_fleet()
@@ -1050,48 +1057,90 @@ const FORMATION_OFFSETS := {
 	"ring":    [Vector2(0, -115), Vector2(115, 0), Vector2(0, 115), Vector2(-115, 0)],
 }
 
-# #224: 陣形ごとのスキル
-const FORMATION_SKILLS := {
-	# #224再: 単横陣と単縦陣のスキルを入れ替え(単横陣=一斉射撃20秒 / 単縦陣=突撃15秒)
-	"line":    {"name": "一斉射撃", "kind": "volley", "cd": 20.0},
-	"column":  {"name": "突撃",     "kind": "charge", "cd": 15.0},
-	"vee":     {"name": "突撃",     "kind": "charge", "cd": 17.0},
-	"inv_vee": {"name": "一斉射撃", "kind": "volley", "cd": 25.0},
-	"echelon": {"name": "一斉射撃", "kind": "volley", "cd": 19.0},
-	"ring":    {"name": "一斉射撃", "kind": "volley", "cd": 25.0},
-}
+# #224: 陣形ごとのスキル定義は GameState.FORMATION_SKILLS に集約(港UIからも参照するため)
 const CHARGE_TIME := 1.2   # 突撃の持続秒(#224再3: 1.2秒へ戻す)
+const RAPID_TIME := 5.0    # #224再2: 速射態勢の持続秒
+const BARRIER_TIME := 3.0  # #224再2: 防御弾幕の持続秒
+const BARRIER_R := 130.0   # #224再2: 迎撃半径(輪形陣の輪の内側)
+const ENCIRCLE_STAGGER := 0.5   # #224再2: 包囲射撃の時間差
+
+var _rapid_t: float = 0.0     # #224再2: 速射態勢の残り(弾倉を減らさない)
+var _barrier_t: float = 0.0   # #224再2: 防御弾幕の残り
 
 func _current_skill() -> Dictionary:
-	return FORMATION_SKILLS.get(_current_formation(), FORMATION_SKILLS["line"])
+	return GameState.FORMATION_SKILLS.get(_current_formation(), GameState.FORMATION_SKILLS["line"])
 
 # スキル発動(スキルボタン or 5キー)。旗艦と僚艦がそろって発動する
 func _use_skill() -> void:
 	if phase != "sea" or _skill_cd > 0.0:
 		return
 	var sk: Dictionary = _current_skill()
-	if str(sk.kind) == "volley":
-		# #224再: 非ロックオン時も発動できる。ロック中はロック対象へ、
-		# 非ロック時は各艦がそれぞれの前方へ撃つ(start_volley に null を渡す)
-		var tgt: Node2D = lock_target if (lock_target != null and is_instance_valid(lock_target)) else null
-		player.start_volley(tgt)
-		for e in escorts:
-			if is_instance_valid(e):
-				e.start_volley(tgt)
-	else:
-		player.charge_t = CHARGE_TIME
-		player._charge_hit.clear()
-		for e2 in escorts:
-			if is_instance_valid(e2):
-				e2.charge_t = CHARGE_TIME
-				e2._charge_hit.clear()
+	match str(sk.kind):
+		"volley":
+			# #224再: 非ロックオン時も発動できる。ロック中はロック対象へ、
+			# 非ロック時は各艦がそれぞれの前方へ撃つ(start_volley に null を渡す)
+			var tgt: Node2D = lock_target if (lock_target != null and is_instance_valid(lock_target)) else null
+			player.start_volley(tgt)
+			for e in escorts:
+				if is_instance_valid(e):
+					e.start_volley(tgt)
+		"encircle":
+			_start_encircle()   # #224再2: 鶴翼陣。時間差斉射+回避無効
+		"rapid":
+			_rapid_t = RAPID_TIME   # #224再2: 斜線陣
+		"barrier":
+			_barrier_t = BARRIER_TIME   # #224再2: 輪形陣
+		_:
+			# charge / wedge。wedge は旗艦の衝角ダメージ1.5倍+押し込み
+			player.wedge_mult = 1.5 if str(sk.kind) == "wedge" else 1.0
+			player.charge_t = CHARGE_TIME
+			player._charge_hit.clear()
+			for e2 in escorts:
+				if is_instance_valid(e2):
+					e2.charge_t = CHARGE_TIME
+					e2._charge_hit.clear()
 	_skill_cd = float(sk.cd)
 	_skill_cd_max = float(sk.cd)
 	GameState.notice.emit("%s!" % str(sk.name))
 	Audio.play("sfx_skill", -5.0, 1.0)   # #224再3: スキル発動の専用効果音
 
 # クールダウンを進め、HUDへ進捗を渡す
+# #224再2: 鶴翼陣「包囲射撃」。ロック対象へ各艦が0.5秒間隔で斉射し、
+# その間だけ対象の回避(dodge)を無効にする。ロックしていなければ通常の一斉射撃。
+func _start_encircle() -> void:
+	var tgt: Node2D = lock_target if (lock_target != null and is_instance_valid(lock_target)) else null
+	if tgt != null and tgt.has_method("suppress_dodge"):
+		# 全艦が撃ち終わるまで(艦数×間隔+余裕)回避を無効化する
+		tgt.suppress_dodge(ENCIRCLE_STAGGER * float(escorts.size() + 1) + 1.5)
+	player.start_volley(tgt)
+	var i := 1
+	for e in escorts:
+		if not is_instance_valid(e):
+			continue
+		var ship: Node = e
+		var wait := ENCIRCLE_STAGGER * float(i)
+		i += 1
+		get_tree().create_timer(wait).timeout.connect(func():
+			if is_instance_valid(ship) and phase == "sea":
+				ship.start_volley(tgt if (tgt != null and is_instance_valid(tgt)) else null))
+
+# #224再2: 防御弾幕。輪の内側に入った敵弾を消す
+func _tick_barrier(delta: float) -> void:
+	if _barrier_t <= 0.0:
+		return
+	_barrier_t = maxf(_barrier_t - delta, 0.0)
+	if not is_instance_valid(player):
+		return
+	for p in get_tree().get_nodes_in_group("enemy_shot"):
+		if not is_instance_valid(p):
+			continue
+		if player.global_position.distance_to(p.global_position) <= BARRIER_R:
+			p.queue_free()
+
 func _tick_skill(delta: float) -> void:
+	if _rapid_t > 0.0:
+		_rapid_t = maxf(_rapid_t - delta, 0.0)
+	_tick_barrier(delta)
 	if _skill_cd > 0.0:
 		_skill_cd = maxf(_skill_cd - delta, 0.0)
 	if hud and hud.has_method("set_skill_state"):
@@ -1182,9 +1231,12 @@ func _reset_ammo() -> void:
 
 # 発射後の弾倉消費(#27)。弾切れでリロード時間をクールダウンに載せ、弾を補充。
 func _consume_ammo(i: int, w: Dictionary) -> void:
+	if _rapid_t > 0.0:
+		slot_cooldowns[i] = float(w.cooldown)   # #224再2: 速射態勢=弾倉を減らさずリロードもしない
+		return
 	slot_ammo[i] = int(slot_ammo[i]) - 1
 	if slot_ammo[i] <= 0:
-		slot_cooldowns[i] = float(w.reload)
+		slot_cooldowns[i] = float(w.reload) * GameState.formation_passive("reload")   # #224再2: 単横陣
 		slot_ammo[i] = int(w.mag)
 		GameState.notice.emit("%s リロード中…" % w.name)
 	else:
@@ -1242,7 +1294,7 @@ func _update_weapons(delta: float) -> void:
 func _crewed(w: Dictionary) -> Dictionary:
 	var w2 := w.duplicate()
 	w2["debuff_kind"] = GameState.harpoon_debuff   # #196再: 旗艦の銛の効果
-	var dmg: float = float(w.dmg) * GameState.attack_mult()
+	var dmg: float = float(w.dmg) * GameState.attack_mult() * GameState.formation_passive("shot_dmg")   # #224再2: 鶴翼陣
 	if randf() < GameState.crit_chance():
 		dmg *= 2.0   # 水兵のクリティカル
 		w2["crit"] = true   # #139: メッセージは命中時に出す
@@ -1463,10 +1515,13 @@ func _show_food_choice() -> void:
 	_food_msg.text = "燃料が半分を切りました。\n直近の島(%s)へ帰港するか、%s を目指しますか?\n(目指して燃料が尽きた場合は直近の島へ強制帰還します)" % [
 		Database.island(GameState.current_island).name, _onward_island_name()]
 	_food_dialog.visible = true
+	get_tree().paused = true   # #24再: 選択中はゲームを止める(敵の攻撃で状況が変わらないように)
 
 func _build_food_dialog() -> void:
 	_food_dialog = CanvasLayer.new()
 	_food_dialog.layer = 25
+	# #24再: ポーズ中もダイアログ自身は動かす(ボタンを押せるようにする)
+	_food_dialog.process_mode = Node.PROCESS_MODE_ALWAYS
 	add_child(_food_dialog)
 	var root := Control.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -1504,6 +1559,7 @@ func _build_food_dialog() -> void:
 	b1.pressed.connect(func():
 		_food_dialog.visible = false
 		_food_dialog_open = false
+		get_tree().paused = false   # #24再
 		GameState.notice.emit("%s へ帰港" % Database.island(GameState.current_island).name)
 		_enter_dock(GameState.current_island, true))
 	hb.add_child(b1)
@@ -1513,6 +1569,7 @@ func _build_food_dialog() -> void:
 	b2.pressed.connect(func():
 		_food_dialog.visible = false
 		_food_dialog_open = false
+		get_tree().paused = false   # #24再
 		if player:
 			player.control_enabled = true
 		GameState.notice.emit("%s を目指す" % _onward_island_name()))
@@ -1556,6 +1613,7 @@ func _maybe_screenshot() -> void:
 	var want_confirm := false   # #225再: 上書き確認ダイアログ
 	var want_help := false      # #236: 操作早見表
 	var want_settings := false  # #235: 音量設定
+	var want_fleet := false     # #224再2: 編成タブ
 	for a in args:
 		if a.begins_with("--shot"):
 			want_shot = true
@@ -1574,6 +1632,7 @@ func _maybe_screenshot() -> void:
 			want_confirm = a.find("confirm") != -1   # #225再
 			want_help = a.find("help") != -1         # #236
 			want_settings = a.find("settings") != -1 # #235
+			want_fleet = a.find("fleet") != -1       # #224再2
 			# #190: isle<N> で撮影する海域(島index)を指定(天候・障害物の確認用)
 			var ip := a.find("isle")
 			if ip != -1 and ip + 4 < a.length():
@@ -1706,6 +1765,13 @@ func _maybe_screenshot() -> void:
 			port_ui.show_tavern()
 		if want_yard:
 			port_ui.show_shipyard()
+		if want_fleet:   # #224再2: 編成タブ(陣形の効果一覧)を撮影
+			GameState.visited_islands = [0, 1]
+			if GameState.fleet.size() < 2:
+				GameState.money = 9999999
+				GameState.buy_ship("skiff")
+				GameState.fleet_add(0)
+			port_ui.show_fleet()
 		if want_bestiary:   # #177: 討伐記録タブの確認(一部を討伐済みにして表示)
 			GameState.record_kill("mob", "narwhal")
 			GameState.record_kill("mob", "charybdis")

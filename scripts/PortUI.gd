@@ -806,6 +806,17 @@ func show_fleet() -> void:
 					GameState.notice.emit("陣形%d を %s に設定" % [sl2 + 1, FORMATION_NAMES[f]])
 					show_fleet()))
 			content.add_child(frow)
+		# #224再2: 陣形ごとの「常時効果 / スキル名 / 効果 / CD」を一覧で示す
+		content.add_child(_p(""))
+		content.add_child(_h("陣形の効果", 18))
+		for fid2 in FORMATION_NAMES:
+			var f2 := str(fid2)
+			var sk: Dictionary = GameState.FORMATION_SKILLS.get(f2, {})
+			content.add_child(_rt("【%s】常時: %s\n  スキル「%s」(CD %d秒): %s" % [
+				str(FORMATION_NAMES[f2]),
+				str(GameState.FORMATION_PASSIVE_TEXT.get(f2, "-")),
+				str(sk.get("name", "-")), int(sk.get("cd", 0)), str(sk.get("desc", "-"))]))
+		content.add_child(_p("※常時効果は船団が2隻以上のときに働きます。スキルは航海中に5キー(または画面のボタン)。"))
 
 var _weapon_pick: Dictionary = {}   # #196: 武器交換の選択中スロット
 var _crew_swap: Dictionary = {}     # #196再3: 満員の船へ乗り換える際の交代待ち

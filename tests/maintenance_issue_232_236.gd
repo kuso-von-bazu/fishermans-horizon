@@ -204,9 +204,11 @@ func _ready() -> void:
 			if n.get_index() <= gear_idx or not (n is Control):
 				continue
 			var c := n as Control
-			# 遮るのは STOP だけ。PASS は素通しなので後ろのボタンに届く
-			# (実際 Boss Rush ボタンは PASS の CenterContainer より後ろで動作している)
-			if c.mouse_filter != Control.MOUSE_FILTER_STOP:
+			# #235再2: PASS も遮蔽とみなす。PASS は「前の兄弟」ではなく「親」へ
+			# 伝播するため、親(_root)が STOP なら結局そこで消費され、
+			# より前にある兄弟のボタンには永久に届かない。
+			# (この判定を STOP だけにしていたため、実際の不具合を見逃していた)
+			if c.mouse_filter == Control.MOUSE_FILTER_IGNORE:
 				continue
 			# ボタンの矩形を覆っているか
 			if c.get_rect().encloses(gear_btn.get_rect()):
@@ -219,8 +221,105 @@ func _ready() -> void:
 	title.free()
 	get_tree().paused = false
 
+	# --- #238: 海賊・幽霊船の遠隔攻撃に武器音が鳴る ---
+	var Enemy2 = preload("res://scripts2d/Enemy2D.gd")
+	for spec in [["pirate", "raider"], ["pirate", "corsair"], ["pirate", "dread"], ["pirate", "king"], ["lord", "ghost"]]:
+		var en := CharacterBody2D.new()
+		en.set_script(Enemy2)
+		en.setup(str(spec[0]), str(spec[1]))
+		add_child(en)
+		var d: Dictionary = Database.enemy_def(str(spec[0]), str(spec[1])) if str(spec[0]) == "pirate" else Database.lords[str(spec[1])]
+		# 使う武器がすべて効果音表に載っていること(載っていないと無音になる)
+		var wpns: Array = []
+		if d.has("volley"): wpns.append_array(d.volley)
+		if d.has("volley_pool"): wpns.append_array(d.volley_pool)
+		if d.has("wpn") and str(d.wpn) != "all": wpns.append(str(d.wpn))
+		if str(d.get("wpn", "")) == "all": wpns.append_array(["cannon", "gatling", "torpedo"])
+		for wp in wpns:
+			check(en.ENEMY_WPN_SFX.has(str(wp)), "%s の武器 %s に効果音が割り当たっていない" % [str(spec[1]), str(wp)])
+		en.free()
+	# 割り当て先の音源が実在すること
+	for key in ["sfx_gun", "sfx_cannon", "sfx_torpedo"]:
+		check(Audio._stream_of(key) != null, "敵の武器音 %s が読み込めない" % key)
+
+	# --- #224再2: 陣形パッシブ ---
+	GameState.reset_all()
+	GameState.fleet = [GameState.new_ship_entry("raft", ["gatling"])]
+	GameState.formations = ["line", "column", "vee", "inv_vee"]
+	GameState.formation_slot = 0
+	check(is_equal_approx(GameState.formation_passive("reload"), 1.0), "旗艦1隻でパッシブが効いている(陣形は切替不能なのに)")
+	GameState.fleet.append(GameState.new_ship_entry("raft", ["gatling"]))
+	var expect := {"line": ["reload", 0.90], "column": ["speed", 1.05], "vee": ["ram", 1.15],
+		"inv_vee": ["shot_dmg", 1.10], "echelon": ["shot_speed", 1.10], "ring": ["flag_dmg_taken", 0.90]}
+	for fid in expect:
+		GameState.formations[0] = str(fid)
+		GameState.formation_slot = 0
+		var key: String = expect[fid][0]
+		var want: float = expect[fid][1]
+		check(is_equal_approx(GameState.formation_passive(key), want),
+			"%s の %s が %.2f でない(実際 %.3f)" % [str(fid), key, want, GameState.formation_passive(key)])
+		# 他の陣形のキーが混ざっていないこと
+		for other in expect:
+			if str(other) == str(fid):
+				continue
+			var okey: String = expect[other][0]
+			if okey == key:
+				continue
+			check(is_equal_approx(GameState.formation_passive(okey), 1.0),
+				"%s なのに %s の効果が乗っている" % [str(fid), okey])
+
+	# 輪形陣の被ダメ軽減が実際に効くこと(実コードを通す)
+	GameState.formations[0] = "ring"
+	GameState.formation_slot = 0
+	GameState.fleet[0].crew = []
+	GameState.at_sea = true
+	GameState.docking_locked = false
+	GameState.run_armor = 1000.0
+	GameState.damage_player(100.0)
+	check(is_equal_approx(GameState.run_armor, 910.0), "輪形陣の被ダメ-10%が効いていない(残装甲 %.1f)" % GameState.run_armor)
+	GameState.formations[0] = "line"
+	GameState.run_armor = 1000.0
+	GameState.damage_player(100.0)
+	check(is_equal_approx(GameState.run_armor, 900.0), "輪形陣以外で被ダメが軽減されている(残装甲 %.1f)" % GameState.run_armor)
+	GameState.at_sea = false
+
+	# --- #224再2: 陣形スキルの定義 ---
+	var want_sk := {"line": ["一斉射撃", "volley", 20], "column": ["突撃", "charge", 15],
+		"vee": ["楔の突撃", "wedge", 17], "inv_vee": ["包囲射撃", "encircle", 25],
+		"echelon": ["速射態勢", "rapid", 22], "ring": ["防御弾幕", "barrier", 25]}
+	for fid2 in want_sk:
+		var sk: Dictionary = GameState.FORMATION_SKILLS.get(str(fid2), {})
+		check(str(sk.get("name", "")) == str(want_sk[fid2][0]), "%s のスキル名が違う" % str(fid2))
+		check(str(sk.get("kind", "")) == str(want_sk[fid2][1]), "%s のスキル種別が違う" % str(fid2))
+		check(int(sk.get("cd", 0)) == int(want_sk[fid2][2]), "%s のCDが違う" % str(fid2))
+		check(str(sk.get("desc", "")) != "", "%s のスキル説明が空(編成画面に出せない)" % str(fid2))
+		check(str(GameState.FORMATION_PASSIVE_TEXT.get(str(fid2), "")) != "", "%s のパッシブ説明が空" % str(fid2))
+
+	# 包囲射撃の回避無効が実コードで効くこと
+	var Enemy3 = preload("res://scripts2d/Enemy2D.gd")
+	var dodger := CharacterBody2D.new()
+	dodger.set_script(Enemy3)
+	dodger.setup("mob", "charybdis")   # dodge 0.20
+	add_child(dodger)
+	await get_tree().process_frame
+	dodger.suppress_dodge(2.0)
+	var evaded := 0
+	for i in 200:
+		dodger.hp = 1e9
+		if dodger.take_hit(1.0, false, false) != 0:
+			evaded += 1
+	check(evaded == 0, "包囲射撃中なのに回避された(%d/200)" % evaded)
+	dodger._no_dodge_t = 0.0
+	evaded = 0
+	for i in 400:
+		dodger.hp = 1e9
+		if dodger.take_hit(1.0, false, false) != 0:
+			evaded += 1
+	check(evaded > 0, "回避無効を解除しても回避が起きない(判定が壊れている)")
+	dodger.free()
+
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK crit_sfx/melee_direction/dock_silence/fishing_band/pause/icons/title_click")
+		print("MAINTENANCE_TEST_OK crit_sfx/melee_direction/dock_silence/fishing_band/pause/icons/title_click/enemy_wpn_sfx/formation")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)

@@ -38,7 +38,7 @@ func _ready() -> void:
 	# #227再: 僚艦(4)との衝突は撤回(僚艦は陣形へ張り付くため旗艦が押し出されて吹っ飛ぶ)。
 	# 島・障害物(1)と敵(2)とは従来どおり衝突する
 	collision_mask = 3
-	max_speed = GameState.fleet_speed() * K   # #196: 船団は最も遅い船に合わせる
+	max_speed = GameState.fleet_speed() * K * GameState.formation_passive("speed")   # #196/#224再2: 単縦陣で+5%
 	_build_visual()
 
 # 蒸気船のドット絵(#28)。真上から見た16x30。文字→色のピクセルマップ。
@@ -623,7 +623,7 @@ func rebuild_visual() -> void:
 	_dmg_state = -1   # #178: 損傷煙の状態を作り直し後に再評価させる
 	for c in get_children():
 		c.queue_free()
-	max_speed = GameState.fleet_speed() * K   # #196: 船団は最も遅い船に合わせる
+	max_speed = GameState.fleet_speed() * K * GameState.formation_passive("speed")   # #196/#224再2: 単縦陣で+5%
 	_build_visual()
 
 func forward() -> Vector2:
@@ -757,6 +757,7 @@ func _check_obstacle_bump() -> void:
 # #224再6: 突撃中の貫通。自分のマスクから敵を外すだけでは、敵側のマスクに
 # こちらのレイヤーが含まれているため敵の move_and_slide が押し返してしまう。
 # 衝突例外は双方向に効くので、突撃中だけ敵1体ずつと例外を張る。
+var wedge_mult: float = 1.0   # #224再2: 「楔の突撃」中は1.5(World2Dが設定)
 var _charge_excepted: Array = []
 
 func _apply_charge_exceptions() -> void:
@@ -826,8 +827,11 @@ func _charge_pierce() -> void:
 		if global_position.distance_to(e.global_position) > reach + er:
 			continue
 		_charge_hit.append(e.get_instance_id())
-		var dmg := rd * (0.5 + velocity.length() / maxf(max_speed, 1.0))
+		# #224再2: 鋒矢陣のパッシブ(+15%)と、スキル「楔の突撃」の1.5倍を掛ける
+		var dmg := rd * (0.5 + velocity.length() / maxf(max_speed, 1.0)) * GameState.formation_passive("ram") * wedge_mult
 		e.take_hit(dmg, false, false)
+		if wedge_mult > 1.0 and e is CharacterBody2D:
+			e.velocity += forward() * 520.0   # 楔の突撃: 命中した敵を後方へ押し込む
 		GameState.notice.emit("突撃の%s! %d ダメージ" % ["体当たり" if by_hull else "衝角", int(dmg)])
 		Audio.play("sfx_cannon", -6.0, 1.3)
 
@@ -920,7 +924,7 @@ func _handle_ram() -> void:
 			continue
 		if vdir.dot(to.normalized()) < 0.3:
 			continue   # 前方(突撃方向)にいる敵だけを衝角で突く
-		var ram_dmg := rd * (0.5 + velocity.length() / maxf(max_speed, 1.0))
+		var ram_dmg := rd * (0.5 + velocity.length() / maxf(max_speed, 1.0)) * GameState.formation_passive("ram")   # #224再2: 鋒矢陣
 		e.take_hit(ram_dmg, false, false)
 		# #54: 突撃の手応え(通知+ノックバック+強い音)
 		GameState.notice.emit("衝角の一撃! %d ダメージ" % int(ram_dmg))
