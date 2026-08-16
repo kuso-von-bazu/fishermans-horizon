@@ -154,8 +154,15 @@ func _ready() -> void:
 	var host := Control.new()
 	add_child(host)
 	check(not get_tree().paused, "テスト開始時点でポーズしている")
+	# #236再3: ポーズするのは航海中だけ。タイトル・港ではBGMを途切れさせないため止めない
+	GameState.at_sea = false
 	Overlay2.show_help(host)
-	check(get_tree().paused, "早見表を開いてもポーズしない")
+	check(not get_tree().paused, "港・タイトルでポーズしている(BGMが途切れる)")
+	host.get_node("SharedOverlay").free()
+	await get_tree().process_frame
+	GameState.at_sea = true
+	Overlay2.show_help(host)
+	check(get_tree().paused, "航海中に早見表を開いてもポーズしない")
 	var ov: Node = host.get_node_or_null("SharedOverlay")
 	check(ov != null, "オーバーレイが生成されない")
 	if ov != null:
@@ -167,6 +174,7 @@ func _ready() -> void:
 	host.get_node("SharedOverlay").free()
 	await get_tree().process_frame
 	check(not get_tree().paused, "オーバーレイを閉じてもポーズが解除されない")
+	GameState.at_sea = false
 	host.free()
 
 	# --- #235再/#236再: 歯車・?は画像アイコン(フォント依存の文字化けを回避) ---

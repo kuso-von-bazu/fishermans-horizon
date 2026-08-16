@@ -741,6 +741,20 @@ func show_fleet() -> void:
 
 	# --- ストック ---
 	content.add_child(_p(""))
+	# #240: クルーのストック(船から降ろした待機クルー)
+	content.add_child(_p(""))
+	content.add_child(_h("クルーのストック(船に乗っていない待機中のクルー)", 18))
+	content.add_child(_p("船団から外した船に乗っていたクルーはここへ移ります。賃金はかからず、成長もしません。"))
+	if GameState.crew_stock.is_empty():
+		content.add_child(_p("(なし)"))
+	for sm in GameState.crew_stock.duplicate():
+		content.add_child(_crew_stock_row(sm))
+	# ストックの空き行(船のクルーを選んでここを押すと降ろせる)
+	var stock_slot := _crew_button("(ストックへ降ろす)", false, func(): _on_crew_slot_clicked(-1))
+	stock_slot.add_theme_color_override("font_color", Color(0.6, 0.68, 0.75))
+	content.add_child(stock_slot)
+
+	content.add_child(_p(""))
 	content.add_child(_h("ストック(購入済み・未編入)", 18))
 	if GameState.ship_stock.is_empty():
 		content.add_child(_p("ストックはありません。造船所で購入した船がここに入ります。"))
@@ -828,11 +842,11 @@ func _crew_button(bb_text: String, picked: bool, cb: Callable) -> Button:
 	b.add_child(rt)
 	return b
 
-# クルーをクリックしたとき
+# クルーをクリックしたとき(ship_idx = -1 はストック)
 func _on_crew_clicked(ship_idx: int, member: Dictionary) -> void:
 	if _crew_pick.is_empty():
 		_crew_pick = {"ship": ship_idx, "member": member}
-		GameState.notice.emit("%s を選択(移動先か、交代する相手をクリック)" % str(member.name))
+		GameState.notice.emit("%s を選択(移動先の空きか、交代する相手をクリック)" % str(member.name))
 		show_fleet()
 		return
 	var from_i: int = int(_crew_pick.ship)
@@ -841,22 +855,50 @@ func _on_crew_clicked(ship_idx: int, member: Dictionary) -> void:
 		_crew_pick = {}          # 同じ人をもう一度押したら選択解除
 		show_fleet()
 		return
-	if from_i == ship_idx:
+	# #240: ストックが絡む交代(どちらを先に選んでもよい)
+	if from_i == -1 and ship_idx >= 0:
+		GameState.crew_stock_swap(GameState.crew_stock.find(a), ship_idx, member)
+	elif from_i >= 0 and ship_idx == -1:
+		GameState.crew_stock_swap(GameState.crew_stock.find(member), from_i, a)
+	elif from_i == -1 and ship_idx == -1:
+		var ia := GameState.crew_stock.find(a)
+		var ib := GameState.crew_stock.find(member)
+		if ia >= 0 and ib >= 0:
+			GameState.crew_stock[ia] = member
+			GameState.crew_stock[ib] = a   # ストック内の並び替え
+	elif from_i == ship_idx:
 		GameState.reorder_crew(ship_idx, a, member)   # 同じ船の中なら並び替え
 	else:
 		GameState.swap_crew(from_i, a, ship_idx, member)
 	_crew_pick = {}
 	show_fleet()
 
-# 「空き」をクリックしたとき=その船へ移動
+# 「空き」をクリックしたとき=その船へ移動(ship_idx = -1 はストックへ降ろす)
 func _on_crew_slot_clicked(ship_idx: int) -> void:
 	if _crew_pick.is_empty():
 		return
 	var from_i: int = int(_crew_pick.ship)
-	if from_i != ship_idx:
+	if from_i == ship_idx:
+		_crew_pick = {}
+		show_fleet()
+		return
+	if ship_idx == -1:
+		GameState.crew_ship_to_stock(from_i, _crew_pick.member)      # #240: 船 → ストック
+	elif from_i == -1:
+		GameState.crew_stock_to_ship(GameState.crew_stock.find(_crew_pick.member), ship_idx)   # #240: ストック → 船
+	else:
 		GameState.move_crew(from_i, _crew_pick.member, ship_idx)
 	_crew_pick = {}
 	show_fleet()
+
+# #240: ストックのクルーを1人ぶん表示する行を作る
+func _crew_stock_row(m: Dictionary) -> Button:
+	var picked: bool = (not _crew_pick.is_empty()) and _crew_pick.member == m
+	var label := "%s [%s] %s %s %s %s %s" % [m.name, GameState.jobs[m.job].name,
+		_stat_bb("体", int(m.hp)), _stat_bb("敏", int(m.agi)), _stat_bb("射", int(m.sht)),
+		_stat_bb("知", int(m.int_)), _stat_bb("視", int(m.vis))]
+	var mem: Dictionary = m
+	return _crew_button(label, picked, func(): _on_crew_clicked(-1, mem))
 
 var _crew_swap: Dictionary = {}     # #196再3: 満員の船へ乗り換える際の交代待ち(現在は未使用)
 

@@ -50,11 +50,17 @@ static func _base(parent: Control, title: String, want_h := 500.0) -> Dictionary
 	# #236再: 表示中はゲームを止める。オーバーレイ自身は止まらないよう
 	# ALWAYS にしておく(閉じるボタンとスライダーは動かす必要がある)。
 	overlay.process_mode = Node.PROCESS_MODE_ALWAYS
-	overlay.tree_exiting.connect(func():
-		if is_instance_valid(parent) and parent.get_tree():
-			parent.get_tree().paused = false)
+	# #236再3/#235再2: ポーズするのは**航海中だけ**にする。
+	# タイトル・港で止めるとBGMまで途切れて違和感が出るため。
+	# 音量設定はスライダーを動かしながら音量を確かめたいので、
+	# 開いている間もBGMが鳴っている必要がある(設定は港とタイトルからのみ開く)。
+	var want_pause: bool = GameState.at_sea
+	if want_pause:
+		overlay.tree_exiting.connect(func():
+			if is_instance_valid(parent) and parent.get_tree():
+				parent.get_tree().paused = false)
 	parent.add_child(overlay)
-	if parent.get_tree():
+	if want_pause and parent.get_tree():
 		parent.get_tree().paused = true
 	parent.move_child(overlay, parent.get_child_count() - 1)
 	var veil := ColorRect.new()

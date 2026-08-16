@@ -17,6 +17,8 @@ var fame: int = 0
 # 既存コード(クルー効果・武器発射・積荷など)をそのまま動かす。
 var fleet: Array = []
 var ship_stock: Array[String] = []        # 購入済みで船団に未編入の船
+# #240: 船から降ろしたクルーの待機場所。ここにいる間は賃金も成長も発生しない
+var crew_stock: Array = []
 const FLEET_MAX := 5
 # 陣形1〜4に割り当てた陣形id(航海中に1〜4キーで切替)
 var formations: Array[String] = ["line", "column", "vee", "inv_vee"]
@@ -435,6 +437,7 @@ func reset_all() -> void:
 	fame = 0
 	fleet = [new_ship_entry("raft", ["gatling"])]   # #196
 	ship_stock = []
+	crew_stock = []
 	formations = ["line", "column", "vee", "inv_vee"]
 	formation_slot = 0
 	cargo = {}
@@ -497,7 +500,7 @@ func heal_fleet_percent(pct: float) -> void:
 func save_game() -> void:
 	var data := {
 		"money": money, "fame": fame,
-		"fleet": fleet, "ship_stock": ship_stock,          # #196
+		"fleet": fleet, "ship_stock": ship_stock, "crew_stock": crew_stock,          # #196/#240
 		"formations": formations, "formation_slot": formation_slot,
 		"ram_id": ram_id, "harpoon_debuff": harpoon_debuff,
 		"cargo": cargo, "heads": heads, "relics": relics,
@@ -557,6 +560,7 @@ func load_game() -> bool:
 		fleet[0]["ram"] = str(data.get("ram_id", "none"))
 		fleet[0]["harpoon"] = str(data.get("harpoon_debuff", "slip"))
 	ship_stock.assign(_to_str_array(data.get("ship_stock", [])))
+	crew_stock = data.get("crew_stock", [])   # #240
 	formations.assign(_to_str_array(data.get("formations", ["line", "column", "vee", "inv_vee"])))
 	formation_slot = int(data.get("formation_slot", 0))
 	unlocked_islands.assign(_to_int_array(data.get("unlocked_islands", [0])))
@@ -902,9 +906,14 @@ func fleet_remove(idx: int) -> bool:
 	if idx <= 0 or idx >= fleet.size():
 		return false   # 旗艦は外せない
 	var e: Dictionary = fleet[idx]
-	if not e.crew.is_empty():
-		notice.emit("先にクルーを降ろしてください")
-		return false
+	# #240: クルーが乗っていても、そのクルーをストックへ移して船を外せるようにする
+	var moved := 0
+	for m in (e.crew as Array).duplicate():
+		crew_stock.append(m)
+		moved += 1
+	e.crew.clear()
+	if moved > 0:
+		notice.emit("クルー%d名をストックへ移した" % moved)
 	ship_stock.append(str(e.ship_id))
 	fleet.remove_at(idx)
 	notice.emit("%s を船団から外した(ストックへ)" % Database.ships[str(e.ship_id)].name)
@@ -946,6 +955,58 @@ func move_crew(from_idx: int, member: Dictionary, to_idx: int) -> bool:
 	stats_changed.emit()
 	return true
 
+# #240: ストックのクルーを船の空きへ乗せる
+func crew_stock_to_ship(stock_idx: int, ship_idx: int) -> bool:
+	if stock_idx < 0 or stock_idx >= crew_stock.size():
+		return false
+	if ship_idx < 0 or ship_idx >= fleet.size():
+		return false
+	var m: Dictionary = crew_stock[stock_idx]
+	if fleet[ship_idx].crew.size() >= CREW_MAX:
+		notice.emit("その船は満員です(%d名まで)" % CREW_MAX)
+		return false
+	if str(m.job) == "firstmate" and has_firstmate_on(ship_idx):
+		notice.emit("副船長は1隻に1名までです")
+		return false
+	crew_stock.remove_at(stock_idx)
+	fleet[ship_idx].crew.append(m)
+	notice.emit("%s を %s に乗せた" % [str(m.name), fleet_label(ship_idx)])
+	stats_changed.emit()
+	return true
+
+# #240: 船のクルーをストックへ降ろす
+func crew_ship_to_stock(ship_idx: int, member: Dictionary) -> bool:
+	if ship_idx < 0 or ship_idx >= fleet.size():
+		return false
+	if not fleet[ship_idx].crew.has(member):
+		return false
+	fleet[ship_idx].crew.erase(member)
+	crew_stock.append(member)
+	notice.emit("%s をストックへ降ろした" % str(member.name))
+	stats_changed.emit()
+	return true
+
+# #240: ストックのクルーと、船に乗っているクルーを入れ替える
+func crew_stock_swap(stock_idx: int, ship_idx: int, member: Dictionary) -> bool:
+	if stock_idx < 0 or stock_idx >= crew_stock.size():
+		return false
+	if ship_idx < 0 or ship_idx >= fleet.size():
+		return false
+	var c: Array = fleet[ship_idx].crew
+	var ii := c.find(member)
+	if ii < 0:
+		return false
+	var m: Dictionary = crew_stock[stock_idx]
+	# 副船長1隻1名(相手が副船長なら入れ替わるので問題ない)
+	if str(m.job) == "firstmate" and str(member.job) != "firstmate" and has_firstmate_on(ship_idx):
+		notice.emit("副船長は1隻に1名までです")
+		return false
+	c[ii] = m                       # #231再4: 元いた位置へ入れる
+	crew_stock[stock_idx] = member
+	notice.emit("%s と %s を交代した" % [str(member.name), str(m.name)])
+	stats_changed.emit()
+	return true
+
 # #231再3: 同じ船の中でクルーの並び順を入れ替える(編成画面のクリック方式で使う)
 func reorder_crew(ship_idx: int, a: Dictionary, b: Dictionary) -> bool:
 	if ship_idx < 0 or ship_idx >= fleet.size():
@@ -971,10 +1032,19 @@ func swap_crew(from_idx: int, a: Dictionary, to_idx: int, b: Dictionary) -> bool
 	var cb: Array = fleet[to_idx].crew
 	if not ca.has(a) or not cb.has(b):
 		return false
-	ca.erase(a)
-	cb.erase(b)
-	ca.append(b)
-	cb.append(a)
+	# #231再4: 交代でも副船長1隻1名の制約を守る。移動(move_crew)にはあったが
+	# 交代側に無く、副船長どうし以外の交代で1隻に2名置けてしまっていた。
+	if str(a.job) == "firstmate" and str(b.job) != "firstmate" and has_firstmate_on(to_idx):
+		notice.emit("副船長は1隻に1名までです")
+		return false
+	if str(b.job) == "firstmate" and str(a.job) != "firstmate" and has_firstmate_on(from_idx):
+		notice.emit("副船長は1隻に1名までです")
+		return false
+	# #231再4: 末尾へ足すのではなく「元いた位置」へ入れる(並びが崩れないように)
+	var ia := ca.find(a)
+	var ib := cb.find(b)
+	ca[ia] = b
+	cb[ib] = a
 	notice.emit("%s と %s を交代した" % [a.name, b.name])
 	stats_changed.emit()
 	return true

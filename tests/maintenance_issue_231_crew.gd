@@ -99,9 +99,82 @@ func _ready() -> void:
 	port.open()
 	check(port._crew_pick.is_empty(), "寄港しても前回の選択が残っている")
 
+	# --- #231再4: 交代したクルーは「元いた位置」へ入る(末尾に寄らない) ---
+	GameState.fleet[0].crew = [_mk("A1"), _mk("A2"), _mk("A3")]
+	GameState.fleet[1].crew = [_mk("B1"), _mk("B2"), _mk("B3")]
+	port._crew_pick = {}
+	port._on_crew_clicked(0, GameState.fleet[0].crew[0])   # A1(先頭)
+	port._on_crew_clicked(1, GameState.fleet[1].crew[2])   # B3(3番目)
+	check(str(GameState.fleet[0].crew[0].name) == "B3", "交代相手が元の位置(先頭)に入っていない(%s)" % GameState.fleet[0].crew[0].name)
+	check(str(GameState.fleet[1].crew[2].name) == "A1", "交代相手が元の位置(3番目)に入っていない(%s)" % GameState.fleet[1].crew[2].name)
+	check(str(GameState.fleet[0].crew[1].name) == "A2" and str(GameState.fleet[1].crew[0].name) == "B1",
+		"交代で無関係のクルーの並びが動いた")
+
+	# --- #231再4: 交代でも副船長は1隻に1名まで(以前は交代経由で2名置けた) ---
+	GameState.fleet[0].crew = [_mk("S1", "firstmate"), _mk("N1")]
+	GameState.fleet[1].crew = [_mk("S2", "firstmate"), _mk("N2")]
+	port._crew_pick = {}
+	port._on_crew_clicked(0, GameState.fleet[0].crew[0])   # 旗艦の副船長
+	port._on_crew_clicked(1, GameState.fleet[1].crew[1])   # 2番艦の一般クルーと交代しようとする
+	var fm := 0
+	for c2 in GameState.fleet[1].crew:
+		if str(c2.job) == "firstmate":
+			fm += 1
+	check(fm <= 1, "交代で1隻に副船長が%d名になった" % fm)
+	# 副船長どうしの交代は通ること
+	port._crew_pick = {}
+	port._on_crew_clicked(0, GameState.fleet[0].crew[0])
+	port._on_crew_clicked(1, GameState.fleet[1].crew[0])
+	check(str(GameState.fleet[0].crew[0].name) == "S2", "副船長どうしの交代ができない")
+
+	# --- #240: 船団から外すとクルーはストックへ ---
+	GameState.crew_stock = []
+	GameState.fleet = [GameState.new_ship_entry("raft"), GameState.new_ship_entry("raft")]
+	GameState.fleet[1].crew = [_mk("K1"), _mk("K2")]
+	check(GameState.fleet_remove(1), "クルーが乗っていると船団から外せない")
+	check(GameState.fleet.size() == 1, "船団から外れていない")
+	check(GameState.crew_stock.size() == 2, "外した船のクルーがストックへ移っていない(%d)" % GameState.crew_stock.size())
+
+	# --- #240: ストック → 空きへ乗せる(どちらを先に選んでもよい) ---
+	GameState.fleet = [GameState.new_ship_entry("raft"), GameState.new_ship_entry("raft")]
+	GameState.crew_stock = [_mk("T1")]
+	port._crew_pick = {}
+	port._on_crew_clicked(-1, GameState.crew_stock[0])   # ストックを先に選ぶ
+	port._on_crew_slot_clicked(1)
+	check(GameState.fleet[1].crew.size() == 1 and GameState.crew_stock.is_empty(),
+		"ストックから船へ乗せられない(船%d / ストック%d)" % [GameState.fleet[1].crew.size(), GameState.crew_stock.size()])
+
+	# 船 → ストックへ降ろす(空きを先に押す順でも動く)
+	port._crew_pick = {}
+	port._on_crew_clicked(1, GameState.fleet[1].crew[0])
+	port._on_crew_slot_clicked(-1)
+	check(GameState.crew_stock.size() == 1 and GameState.fleet[1].crew.is_empty(),
+		"船からストックへ降ろせない")
+
+	# --- #240: ストックと乗員の交代(どちらを先に選んでも同じ結果) ---
+	for first_stock in [true, false]:
+		GameState.fleet = [GameState.new_ship_entry("raft")]
+		GameState.fleet[0].crew = [_mk("ON")]
+		GameState.crew_stock = [_mk("OFF")]
+		port._crew_pick = {}
+		if first_stock:
+			port._on_crew_clicked(-1, GameState.crew_stock[0])
+			port._on_crew_clicked(0, GameState.fleet[0].crew[0])
+		else:
+			port._on_crew_clicked(0, GameState.fleet[0].crew[0])
+			port._on_crew_clicked(-1, GameState.crew_stock[0])
+		check(str(GameState.fleet[0].crew[0].name) == "OFF" and str(GameState.crew_stock[0].name) == "ON",
+			"ストックとの交代に失敗(先にストックを選んだ=%s)" % str(first_stock))
+
+	# --- #240: ストックのクルーは賃金の対象外 ---
+	GameState.fleet = [GameState.new_ship_entry("raft")]
+	GameState.fleet[0].crew = [_mk("W1")]
+	GameState.crew_stock = [_mk("W2"), _mk("W3")]
+	check(GameState.all_crew().size() == 1, "ストックのクルーが乗員として数えられている(%d)" % GameState.all_crew().size())
+
 	port.free()
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK crew_click_move/swap/reorder/deselect/firstmate")
+		print("MAINTENANCE_TEST_OK crew_click/swap_pos/firstmate/stock")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)
