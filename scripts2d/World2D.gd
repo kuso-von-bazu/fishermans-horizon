@@ -558,7 +558,7 @@ func _update_fishing(delta: float) -> void:
 		# 端すぎると狙えないので、帯全体が 0.06〜0.94 に収まる範囲で左寄り〜右寄りを取る。
 		_fishing_band = randf_range(0.06, 0.94 - FISHING_BAND_W)
 	if Input.is_action_pressed("interact") and is_instance_valid(_fishing_target):
-		_fishing_phase += delta * 1.305   # #232再2: 往復速度を0.9倍(1.45→1.305)
+		_fishing_phase += delta * 1.2   # #232再3: 往復速度を1.2へ
 		_fishing_value = (sin(_fishing_phase * TAU - PI * 0.5) + 1.0) * 0.5
 		hud.set_fishing_meter(_fishing_value, true, _fishing_band)
 	elif Input.is_action_just_released("interact") and is_instance_valid(_fishing_target):

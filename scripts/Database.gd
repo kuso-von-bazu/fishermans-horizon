@@ -283,6 +283,22 @@ func island(idx: int) -> Dictionary:
 
 # #239: 島の進行段階。強さ・価格帯・販売解禁・雇用条件は index ではなく tier で見る
 # (島を末尾に追加してもこれらが壊れないようにするため)
+# #239再: 航路メニューなどで見せる並び順(進行順)。
+# islands の並びは「index を動かさない」都合で追加順になっているため、
+# 表示は tier 順 → 同じ tier 内は本来の攻略順(月下→星霜→常闇 / 嵐越え→海嘯)にする。
+const ISLAND_ORDER := [0, 1, 2, 5, 6, 3, 7, 4]
+
+func islands_in_order() -> Array:
+	var out: Array = []
+	for i in ISLAND_ORDER:
+		if int(i) < islands.size():
+			out.append(islands[int(i)])
+	# 定義漏れがあっても取りこぼさないよう、未掲載の島は末尾へ足す
+	for isle in islands:
+		if not out.has(isle):
+			out.append(isle)
+	return out
+
 func tier_of(idx: int) -> int:
 	return int(island(idx).get("tier", clampi(idx, 0, 4)))
 

@@ -585,7 +585,7 @@ func show_travel() -> void:
 	content.add_child(_h("航路 — 既知の島へファストトラベル", 22))
 	content.add_child(_p("到達済みの島へ移動できます。未到達の島へは方角を頼りに自力で航行してください。"))
 	var here: Vector3 = Database.island(GameState.current_island).pos
-	for isle in Database.islands:
+	for isle in Database.islands_in_order():   # #239再: 進行順に並べる
 		if isle.id == GameState.current_island:
 			content.add_child(_p("・%s  [現在地]" % isle.name))
 			continue
@@ -711,8 +711,9 @@ func show_fleet() -> void:
 				_on_crew_clicked(idx, mem))
 			card_box.add_child(cb)
 		# 空きスロット(移動先として押せる)。これが無いと「空いている船へ移す」操作ができない
+		var slot_picked: bool = bool(_crew_pick.get("slot", false)) and int(_crew_pick.get("ship", -99)) == idx
 		for _s in range(e.crew.size(), GameState.CREW_MAX):
-			var eb := _crew_button("(空き)", false, func():
+			var eb := _crew_button("(空き)", slot_picked, func():
 				_on_crew_slot_clicked(idx))
 			eb.add_theme_color_override("font_color", Color(0.6, 0.68, 0.75))
 			card_box.add_child(eb)
@@ -750,7 +751,8 @@ func show_fleet() -> void:
 	for sm in GameState.crew_stock.duplicate():
 		content.add_child(_crew_stock_row(sm))
 	# ストックの空き行(船のクルーを選んでここを押すと降ろせる)
-	var stock_slot := _crew_button("(ストックへ降ろす)", false, func(): _on_crew_slot_clicked(-1))
+	var stock_picked: bool = bool(_crew_pick.get("slot", false)) and int(_crew_pick.get("ship", -99)) == -1
+	var stock_slot := _crew_button("(ストックへ降ろす)", stock_picked, func(): _on_crew_slot_clicked(-1))
 	stock_slot.add_theme_color_override("font_color", Color(0.6, 0.68, 0.75))
 	content.add_child(stock_slot)
 
@@ -850,6 +852,22 @@ func _on_crew_clicked(ship_idx: int, member: Dictionary) -> void:
 		show_fleet()
 		return
 	var from_i: int = int(_crew_pick.ship)
+	# #240再: 先に「空き」を選んでいた場合は、このクルーをそこへ移す
+	if bool(_crew_pick.get("slot", false)):
+		var dest: int = from_i
+		if dest == ship_idx:
+			_crew_pick = {}       # 同じ場所なら何もしない
+			show_fleet()
+			return
+		if dest == -1:
+			GameState.crew_ship_to_stock(ship_idx, member)
+		elif ship_idx == -1:
+			GameState.crew_stock_to_ship(GameState.crew_stock.find(member), dest)
+		else:
+			GameState.move_crew(ship_idx, member, dest)
+		_crew_pick = {}
+		show_fleet()
+		return
 	var a: Dictionary = _crew_pick.member
 	if a == member:
 		_crew_pick = {}          # 同じ人をもう一度押したら選択解除
@@ -876,6 +894,17 @@ func _on_crew_clicked(ship_idx: int, member: Dictionary) -> void:
 # 「空き」をクリックしたとき=その船へ移動(ship_idx = -1 はストックへ降ろす)
 func _on_crew_slot_clicked(ship_idx: int) -> void:
 	if _crew_pick.is_empty():
+		# #240再: 空きを先に押しても選べるようにする。
+		# このあとクルーをクリックすると、その空きへ移動する。
+		_crew_pick = {"ship": ship_idx, "member": {}, "slot": true}
+		GameState.notice.emit("%s の空きを選択(乗せたいクルーをクリック)" %
+			("ストック" if ship_idx == -1 else GameState.fleet_label(ship_idx)))
+		show_fleet()
+		return
+	if bool(_crew_pick.get("slot", false)):
+		# 空き→空き は入れ替える対象がないので選び直し
+		_crew_pick = {"ship": ship_idx, "member": {}, "slot": true}
+		show_fleet()
 		return
 	var from_i: int = int(_crew_pick.ship)
 	if from_i == ship_idx:

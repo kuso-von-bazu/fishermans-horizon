@@ -172,9 +172,58 @@ func _ready() -> void:
 	GameState.crew_stock = [_mk("W2"), _mk("W3")]
 	check(GameState.all_crew().size() == 1, "ストックのクルーが乗員として数えられている(%d)" % GameState.all_crew().size())
 
+	# --- #240再: 「空き」を先にクリックしてからクルーを選ぶ順でも動く ---
+	# 船の空き → 別の船のクルー
+	GameState.fleet = [GameState.new_ship_entry("raft"), GameState.new_ship_entry("raft")]
+	GameState.fleet[1].crew = [_mk("M1")]
+	GameState.crew_stock = []
+	port._crew_pick = {}
+	port._on_crew_slot_clicked(0)                        # 旗艦の空きを先に押す
+	check(bool(port._crew_pick.get("slot", false)), "空きを先に押しても選択されない")
+	port._on_crew_clicked(1, GameState.fleet[1].crew[0]) # 2番艦のクルーを押す
+	check(GameState.fleet[0].crew.size() == 1 and GameState.fleet[1].crew.is_empty(),
+		"空き→クルーの順で移動できない(旗艦%d / 2番艦%d)" % [GameState.fleet[0].crew.size(), GameState.fleet[1].crew.size()])
+	check(port._crew_pick.is_empty(), "移動後に選択が残っている")
+
+	# 船の空き → ストックのクルー
+	GameState.fleet = [GameState.new_ship_entry("raft")]
+	GameState.crew_stock = [_mk("M2")]
+	port._crew_pick = {}
+	port._on_crew_slot_clicked(0)
+	port._on_crew_clicked(-1, GameState.crew_stock[0])
+	check(GameState.fleet[0].crew.size() == 1 and GameState.crew_stock.is_empty(),
+		"空き→ストックのクルーの順で乗せられない")
+
+	# ストックの空き → 船のクルー(降ろす)
+	GameState.fleet = [GameState.new_ship_entry("raft")]
+	GameState.fleet[0].crew = [_mk("M3")]
+	GameState.crew_stock = []
+	port._crew_pick = {}
+	port._on_crew_slot_clicked(-1)                       # 「ストックへ降ろす」を先に押す
+	port._on_crew_clicked(0, GameState.fleet[0].crew[0])
+	check(GameState.crew_stock.size() == 1 and GameState.fleet[0].crew.is_empty(),
+		"ストックの空き→クルーの順で降ろせない")
+
+	# 空きを押したあと別の空きを押したら、選び直しになる(操作不能にならない)
+	GameState.fleet = [GameState.new_ship_entry("raft"), GameState.new_ship_entry("raft")]
+	port._crew_pick = {}
+	port._on_crew_slot_clicked(0)
+	port._on_crew_slot_clicked(1)
+	check(bool(port._crew_pick.get("slot", false)) and int(port._crew_pick.ship) == 1,
+		"空き→空きで選び直しになっていない")
+	port._crew_pick = {}
+
+	# --- #239再: 航路の並び順が進行順であること ---
+	var order: Array = []
+	for isle in Database.islands_in_order():
+		order.append(str(isle.name))
+	var want := ["始まりの島", "潮鳴りの島", "月下の島", "星霜の島", "常闇の島", "嵐越えの島", "海嘯の島", "果ての島"]
+	check(order == want, "航路の並び順が指定と違う: %s" % str(order))
+	check(order.size() == Database.islands.size(), "並び順に載っていない島がある")
+
 	port.free()
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK crew_click/swap_pos/firstmate/stock")
+		print("MAINTENANCE_TEST_OK crew_click/swap_pos/firstmate/stock/slot_first/island_order")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)
