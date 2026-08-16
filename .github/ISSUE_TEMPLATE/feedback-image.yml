@@ -1,0 +1,49 @@
+name: 画像生成をともなう要望
+description: 新しい敵・アイテム・UIなど「絵を新しく描き起こす必要がある」要望はこちら。生成コストを見積もるため通常の意見と分けています。
+title: "[画像] "
+labels: ["feedback", "画像生成"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **絵を新しく生成する必要がある要望**はこちらへお願いします。
+        (例: 新しい敵・主のグラフィック、新しいアイコン、新しい島の挿絵 など)
+
+        既存の絵をそのまま使う要望や、挙動・バランス・UIの配置だけの要望は
+        「ゲームへの意見・フィードバック」の方をお使いください。
+  - type: dropdown
+    id: art_kind
+    attributes:
+      label: 生成する絵の種類
+      options:
+        - 敵・近海の主(一枚絵+4方向ドット絵)
+        - 魚・漁獲物
+        - 船
+        - 島・背景・海の演出
+        - UIアイコン(歯車・矢印など単純な図形)
+        - その他
+    validations:
+      required: true
+  - type: input
+    id: art_count
+    attributes:
+      label: 必要な絵の数(概算)
+      description: 生成コストの見積もりに使います。分からなければ「不明」で構いません。
+      placeholder: 例) 敵3体(1体あたり一枚絵1+ドット絵3なので計12枚)
+    validations:
+      required: true
+  - type: textarea
+    id: detail
+    attributes:
+      label: 内容
+      description: 描いてほしい見た目を具体的に。挙動やパラメータも決まっていれば併せて書いてください。
+      placeholder: |
+        ・○○(名前) … △△な姿。□□な色。
+        ・挙動: ~~
+    validations:
+      required: true
+  - type: textarea
+    id: note
+    attributes:
+      label: 補足(任意)
+      placeholder: 既存のどのキャラに似せたいか、画風の希望など
