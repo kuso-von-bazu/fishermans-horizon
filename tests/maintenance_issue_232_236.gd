@@ -18,6 +18,11 @@ func _ready() -> void:
 	check(ResourceLoader.exists("res://assets/audio/sfx_crit.wav"), "sfx_crit.wav が未インポート")
 	var crit_stream: AudioStream = Audio._stream_of("sfx_crit")
 	check(crit_stream != null, "sfx_crit が読み込めない(--headless --import 漏れ)")
+	# #233再2: 共有者提供の クリティカル.mp3 が合成wavより優先されること
+	check(ResourceLoader.exists("res://assets/audio/クリティカル.mp3"), "提供された クリティカル.mp3 が無い")
+	check(crit_stream is AudioStreamMP3, "sfx_crit が提供mp3でなく合成wavのまま")
+	if crit_stream is AudioStreamMP3:
+		check(not (crit_stream as AudioStreamMP3).loop, "効果音がループ再生になっている")
 	var hit_stream: AudioStream = Audio._stream_of("sfx_enemy_hit")
 	if crit_stream != null and hit_stream != null:
 		# 着弾音より長い余韻を持つ = 単なるピッチ違いの流用ではない

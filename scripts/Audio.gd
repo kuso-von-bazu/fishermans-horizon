@@ -41,6 +41,8 @@ const SFX_FILES := {
 	"sfx_torpedo": "res://assets/audio/魚雷.mp3",       # #226再3: 魚雷・追尾魚雷改
 	"sfx_harpoon": "res://assets/audio/銛.mp3",         # #47再3: 銛・強化銛砲
 	"sfx_lord_roar": "res://assets/audio/近海の主の鳴き声.mp3",   # #79再: 主・レヴィアタン出現時
+	# #233再2: 共有者提供の効果音。無ければ音声生成.py の合成wavへフォールバック
+	"sfx_crit": "res://assets/audio/クリティカル.mp3",
 }
 
 func _stream_of(name: String) -> AudioStream:

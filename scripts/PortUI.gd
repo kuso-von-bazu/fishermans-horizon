@@ -366,13 +366,16 @@ func show_tavern() -> void:
 		row.add_theme_constant_override("separation", 12)
 		row.add_child(_portrait(lid, 72))
 		var compass: String = Database.compass(float(ld.get("dir", 0)))
-		var info := _p("%s
+		var info := _rt("%s
 HP:%d  賞金:%d  [%s]
 情報: 港の【%s】の沖にいるらしい
 %s" % [ld.name, Database.scaled_hp(float(ld.hp), isle), ld.bounty, st, compass, str(ld.get("lore", ""))])
-		info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		# #231再2: autowrap付きの Label は行間が大きく開いてしまい、
+		# 「項目ごとに1行あいている」ように見える。早見表(#236再)と同じく
+		# RichTextLabel + fit_content にすると内容ぴったりの行間になる。
 		info.custom_minimum_size = Vector2(380, 0)
 		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(info)
 		if st == "未討伐":
 			var lid2: String = lid
@@ -410,15 +413,17 @@ func show_bestiary() -> void:
 				stat += "  速度:%d" % int(d.get("speed", 0))
 			if e.kind == "pirate":
 				stat += "  賞金:%d" % int(d.get("bounty", 0))
-			var info := _p("%s  討伐数:%d\n%s\n%s" % [str(d.get("name", "?")), cnt, stat, str(e.get("desc", ""))])
-			info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			# #231再2: autowrap付き Label は行間が開くので RichTextLabel を使う
+			var info := _rt("%s  討伐数:%d\n%s\n%s" % [str(d.get("name", "?")), cnt, stat, str(e.get("desc", ""))])
 			info.custom_minimum_size = Vector2(500, 0)
 			info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			info.size_flags_vertical = Control.SIZE_SHRINK_CENTER   # #231再2: 挿絵の高さに引き伸ばされて行間が開くのを防ぐ
 			row.add_child(info)
 		else:
 			row.add_child(_unknown_portrait(72))
-			var info := _p("？？？\n未討伐")
+			var info := _rt("？？？\n未討伐")
 			info.custom_minimum_size = Vector2(500, 0)
+			info.size_flags_vertical = Control.SIZE_SHRINK_CENTER   # #231再2
 			row.add_child(info)
 		content.add_child(row)
 
@@ -920,6 +925,18 @@ func _money_btn(t: String, cost: int, cb: Callable) -> Button:
 		b.modulate = Color(0.55, 0.55, 0.58, 0.85)
 		b.tooltip_text = "資金が足りません(必要%d)" % cost
 	return b
+
+# #231再2: 複数行の説明用。autowrap付き Label は行間が大きく開くので、
+# 内容ぴったりの高さになる RichTextLabel を使う(#236再の早見表と同じ対処)。
+func _rt(t: String) -> RichTextLabel:
+	var r := RichTextLabel.new()
+	r.bbcode_enabled = false
+	r.fit_content = true
+	r.scroll_active = false
+	r.text = t
+	r.add_theme_font_size_override("normal_font_size", 17)
+	r.add_theme_color_override("default_color", Color.WHITE)
+	return r
 
 func _btn(t: String, cb: Callable) -> Button:
 	var b := Button.new()

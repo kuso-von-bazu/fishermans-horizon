@@ -1697,6 +1697,12 @@ func _maybe_screenshot() -> void:
 		phase = "dock"
 		port_ui.open()
 		if want_tavern:
+			# #231再2: --shot:port:tavern:lords で「主の情報」タブを撮影する
+			for a2 in args:
+				if a2.find("lords") != -1:
+					port_ui._tavern_section = "lords"
+				elif a2.find("crew") != -1:
+					port_ui._tavern_section = "crew"
 			port_ui.show_tavern()
 		if want_yard:
 			port_ui.show_shipyard()
