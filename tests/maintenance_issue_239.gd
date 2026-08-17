@@ -168,9 +168,10 @@ func _ready() -> void:
 	var base_mult := [1.0, 1.5, 1.9, 2.7, 3.3]   # 引き上げ前の値
 	check(is_equal_approx(Database.HP_TIER_MULT[0], 1.0), "始まりの島のHP倍率が変わっている")
 	for t in range(1, 5):
-		var want: float = float(base_mult[t]) * 1.02
+		# #202再3(+2%)と再4(+3%)の累計 = 1.02 * 1.03
+		var want: float = float(base_mult[t]) * 1.02 * 1.03
 		check(absf(float(Database.HP_TIER_MULT[t]) - want) < 0.0005,
-			"tier%d のHP倍率が2%%引き上げ後の値でない(%.4f / 期待%.4f)" % [t, Database.HP_TIER_MULT[t], want])
+			"tier%d のHP倍率が累計引き上げ後の値でない(%.5f / 期待%.5f)" % [t, Database.HP_TIER_MULT[t], want])
 
 	# --- #239再2: 航路の並び(海嘯 → 嵐越え の順) ---
 	var order2: Array = []

@@ -23,6 +23,9 @@ var crew_stock: Array = []
 # 「名声22以上になった後の初回」ヒントを出したかどうか
 var departures: Dictionary = {}
 var hint_fame22_used: bool = false
+# #241再2: 実際に表示したヒントの履歴(新しいものが先頭)。早見表から見返せる
+var hint_log: Array = []
+const HINT_LOG_MAX := 40
 const FLEET_MAX := 5
 # 陣形1〜4に割り当てた陣形id(航海中に1〜4キーで切替)
 var formations: Array[String] = ["line", "column", "vee", "inv_vee"]
@@ -444,6 +447,7 @@ func reset_all() -> void:
 	crew_stock = []
 	departures = {}
 	hint_fame22_used = false
+	hint_log = []
 	formations = ["line", "column", "vee", "inv_vee"]
 	formation_slot = 0
 	cargo = {}
@@ -507,7 +511,7 @@ func save_game() -> void:
 	var data := {
 		"money": money, "fame": fame,
 		"fleet": fleet, "ship_stock": ship_stock, "crew_stock": crew_stock,          # #196/#240
-		"departures": departures, "hint_fame22_used": hint_fame22_used,   # #241
+		"departures": departures, "hint_fame22_used": hint_fame22_used, "hint_log": hint_log,   # #241
 		"formations": formations, "formation_slot": formation_slot,
 		"ram_id": ram_id, "harpoon_debuff": harpoon_debuff,
 		"cargo": cargo, "heads": heads, "relics": relics,
@@ -570,6 +574,7 @@ func load_game() -> bool:
 	crew_stock = data.get("crew_stock", [])   # #240
 	departures = _to_int_key_dict(data.get("departures", {}))   # #241
 	hint_fame22_used = bool(data.get("hint_fame22_used", false))
+	hint_log = data.get("hint_log", [])   # #241再2
 	formations.assign(_to_str_array(data.get("formations", ["line", "column", "vee", "inv_vee"])))
 	formation_slot = int(data.get("formation_slot", 0))
 	unlocked_islands.assign(_to_int_array(data.get("unlocked_islands", [0])))
@@ -1035,7 +1040,13 @@ func next_departure_hint() -> String:
 		return ""
 	if bool(h.get("fame22", false)):
 		hint_fame22_used = true
-	return str(h.get("text", ""))
+	var txt := str(h.get("text", ""))
+	# #241再2: 実際に表示したものだけを新しい順で記録する
+	if txt != "":
+		hint_log.push_front({"island": Database.island(isle).name, "text": txt})
+		while hint_log.size() > HINT_LOG_MAX:
+			hint_log.pop_back()
+	return txt
 
 # #231再3: 同じ船の中でクルーの並び順を入れ替える(編成画面のクリック方式で使う)
 func reorder_crew(ship_idx: int, a: Dictionary, b: Dictionary) -> bool:

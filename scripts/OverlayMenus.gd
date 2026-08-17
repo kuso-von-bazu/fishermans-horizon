@@ -172,4 +172,66 @@ static func show_help(parent: Control) -> void:
 	help.add_theme_color_override("default_color", Color(0.88, 0.93, 0.98))
 	help.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	box.add_child(help)
+
+	# #241再2: 早見表の下に、直近に表示されたヒントを別枠で載せる
+	if not GameState.hint_log.is_empty():
+		box.add_child(HSeparator.new())
+		var head := Label.new()
+		head.text = "直近のヒント"
+		head.add_theme_font_size_override("font_size", 20)
+		head.add_theme_color_override("font_color", Color(0.78, 0.96, 1.0))
+		box.add_child(head)
+		var latest: Dictionary = GameState.hint_log[0]
+		var last := RichTextLabel.new()
+		last.bbcode_enabled = false
+		last.fit_content = true
+		last.scroll_active = false
+		last.text = "ヒント：%s" % str(latest.get("text", ""))
+		last.add_theme_font_size_override("normal_font_size", 19)
+		last.add_theme_color_override("default_color", Color(0.95, 0.98, 1.0))
+		last.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		box.add_child(last)
+	# ヒントログへの導線(記録があれば中身が出る)
+	var log_btn := Button.new()
+	log_btn.text = "ヒントログ"
+	log_btn.custom_minimum_size = Vector2(200, 42)
+	log_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	log_btn.add_theme_font_size_override("font_size", 19)
+	log_btn.focus_mode = Control.FOCUS_NONE
+	log_btn.pressed.connect(func(): show_hint_log(parent))
+	(ui.outer as VBoxContainer).add_child(log_btn)
+	_close_button(ui, ui.overlay)
+
+# #241再2: これまで実際に表示されたヒントの一覧(上から新しい順)
+static func show_hint_log(parent: Control) -> void:
+	var ui := _base(parent, "ヒントログ")
+	var box: VBoxContainer = ui.box
+	if GameState.hint_log.is_empty():
+		var none := Label.new()
+		none.text = "まだヒントは表示されていません。"
+		none.add_theme_font_size_override("font_size", 19)
+		none.add_theme_color_override("font_color", Color(0.8, 0.86, 0.92))
+		box.add_child(none)
+	else:
+		var lines: Array = []
+		for e in GameState.hint_log:
+			lines.append("・[%s] %s" % [str(e.get("island", "")), str(e.get("text", ""))])
+		var rt := RichTextLabel.new()
+		rt.bbcode_enabled = false
+		rt.fit_content = true
+		rt.scroll_active = false
+		rt.text = "\n".join(lines)
+		rt.add_theme_font_size_override("normal_font_size", 18)
+		rt.add_theme_color_override("default_color", Color(0.9, 0.95, 1.0))
+		rt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		box.add_child(rt)
+	# 早見表へ戻れるようにする
+	var back := Button.new()
+	back.text = "早見表へ戻る"
+	back.custom_minimum_size = Vector2(200, 42)
+	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	back.add_theme_font_size_override("font_size", 19)
+	back.focus_mode = Control.FOCUS_NONE
+	back.pressed.connect(func(): show_help(parent))
+	(ui.outer as VBoxContainer).add_child(back)
 	_close_button(ui, ui.overlay)

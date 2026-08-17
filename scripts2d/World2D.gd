@@ -1660,6 +1660,7 @@ func _maybe_screenshot() -> void:
 	var want_help := false      # #236: 操作早見表
 	var want_settings := false  # #235: 音量設定
 	var want_fleet := false     # #224再2: 編成タブ
+	var want_hintlog := false   # #241再2: ヒントログ
 	for a in args:
 		if a.begins_with("--shot"):
 			want_shot = true
@@ -1676,9 +1677,10 @@ func _maybe_screenshot() -> void:
 			want_brwin = a.find("brwin") != -1   # #209: ボスラッシュ制覇画面
 			want_title = a.find("title") != -1   # #209再
 			want_confirm = a.find("confirm") != -1   # #225再
-			want_help = a.find("help") != -1         # #236
+			want_help = a.find("help") != -1 or a.find("hintlog") != -1   # #236/#241再2
 			want_settings = a.find("settings") != -1 # #235
 			want_fleet = a.find("fleet") != -1       # #224再2
+			want_hintlog = a.find("hintlog") != -1   # #241再2
 			# #190: isle<N> で撮影する海域(島index)を指定(天候・障害物の確認用)
 			var ip := a.find("isle")
 			if ip != -1 and ip + 4 < a.length():
@@ -1835,7 +1837,15 @@ func _maybe_screenshot() -> void:
 		if want_settings:
 			OverlayMenusScript.show_settings(host)
 		else:
-			OverlayMenusScript.show_help(host)
+			# #241再2: 早見表/ヒントログの確認用にログを仕込む
+			if GameState.hint_log.is_empty():
+				GameState.current_island = 0
+				GameState.next_departure_hint()
+				GameState.next_departure_hint()
+			if want_hintlog:
+				OverlayMenusScript.show_hint_log(host)
+			else:
+				OverlayMenusScript.show_help(host)
 		await get_tree().create_timer(0.35).timeout
 	await RenderingServer.frame_post_draw
 	var img := get_viewport().get_texture().get_image()

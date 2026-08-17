@@ -123,8 +123,68 @@ func _ready() -> void:
 	check(hud.lbl_hint.text == "ヒント：テスト", "空文字でヒントが上書きされた")
 	hud.free()
 
+	# --- #241再2: ヒントログ ---
+	GameState.reset_all()
+	GameState.current_island = 0
+	check(GameState.hint_log.is_empty(), "初期状態でヒントログが空でない")
+	var h1 := GameState.next_departure_hint()
+	var h2 := GameState.next_departure_hint()
+	check(GameState.hint_log.size() == 2, "表示したヒントが記録されない(%d)" % GameState.hint_log.size())
+	# 新しい順(先頭が直近)
+	check(str(GameState.hint_log[0].text) == h2, "ヒントログが新しい順でない")
+	check(str(GameState.hint_log[1].text) == h1, "ヒントログの2件目が古い方でない")
+	check(str(GameState.hint_log[0].island) == "始まりの島", "ヒントログに島名が入っていない")
+	# 上限を超えても古いものから捨てる
+	for i in 60:
+		GameState.next_departure_hint()
+	check(GameState.hint_log.size() <= GameState.HINT_LOG_MAX,
+		"ヒントログが上限(%d)を超えている(%d)" % [GameState.HINT_LOG_MAX, GameState.hint_log.size()])
+	# セーブ・ロードで保たれる
+	GameState.save_game()
+	var keep := str(GameState.hint_log[0].text)
+	GameState.reset_all()
+	check(GameState.load_game(), "セーブのロードに失敗")
+	check(not GameState.hint_log.is_empty() and str(GameState.hint_log[0].text) == keep,
+		"ロード後にヒントログが復元されない")
+
+	# 早見表に「直近のヒント」とヒントログボタンが出ること
+	var Overlay = preload("res://scripts/OverlayMenus.gd")
+	var host := Control.new()
+	add_child(host)
+	GameState.at_sea = false
+	Overlay.show_help(host)
+	var txt := ""
+	for n2 in host.find_children("*", "Label", true, false):
+		txt += n2.text
+	for n3 in host.find_children("*", "RichTextLabel", true, false):
+		txt += n3.text
+	check(txt.contains("直近のヒント"), "早見表に直近のヒント枠が無い")
+	check(txt.contains(keep), "早見表に直近のヒント本文が出ていない")
+	var has_log_btn := false
+	for b2 in host.find_children("*", "Button", true, false):
+		if b2.text == "ヒントログ":
+			has_log_btn = true
+	check(has_log_btn, "早見表にヒントログボタンが無い")
+
+	# ヒントログ画面が新しい順に並ぶこと
+	Overlay.show_hint_log(host)
+	var logtxt := ""
+	for n4 in host.find_children("*", "RichTextLabel", true, false):
+		logtxt += n4.text
+	check(logtxt.contains(keep), "ヒントログに直近のヒストが出ていない")
+	var lines: Array = logtxt.split("
+")
+	if lines.size() >= 2:
+		check(str(lines[0]).contains(keep), "ヒントログの先頭が直近のヒントでない")
+	var has_back := false
+	for b3 in host.find_children("*", "Button", true, false):
+		if b3.text == "早見表へ戻る":
+			has_back = true
+	check(has_back, "ヒントログから早見表へ戻れない")
+	host.free()
+
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK departure_hints")
+		print("MAINTENANCE_TEST_OK departure_hints/hint_log")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)
