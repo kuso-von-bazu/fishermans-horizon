@@ -242,8 +242,17 @@ func _ready() -> void:
 	# --- #200再: 果ての島の名声要件 ---
 	check(int(Database.island(4).fame_req) == 400, "果ての島の必要名声が400でない(%d)" % Database.island(4).fame_req)
 
+	# --- #244/#239再5: 指定された「実際に出現する海域でのHP」になっていること ---
+	# 表示HPの丸めがあるので、base値ではなく scaled_hp の結果で検証する
+	for spec in [["whale", 2600], ["walrus", 1600], ["undine", 9000], ["siren", 8000]]:
+		var lid3: String = str(spec[0])
+		var want_hp: int = int(spec[1])
+		var isl: int = int(Database.lords[lid3].island)
+		var got_hp: int = Database.scaled_hp(float(Database.lords[lid3].hp), isl)
+		check(got_hp == want_hp, "%s の海域HPが %d でない(%d)" % [str(Database.lords[lid3].name), want_hp, got_hp])
+
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK islands/tier/mobs/lords/fame/weather/behaviours/hp2pct/order/weapons/bossrush/split_alive")
+		print("MAINTENANCE_TEST_OK islands/tier/mobs/lords/fame/weather/behaviours/hp2pct/order/weapons/bossrush/split_alive/lord_hp")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)
