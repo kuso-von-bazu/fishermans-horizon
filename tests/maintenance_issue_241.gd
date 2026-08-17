@@ -105,7 +105,19 @@ func _ready() -> void:
 	add_child(hud)
 	await get_tree().process_frame
 	hud.show_departure_hint("テスト")
-	check(hud.lbl_hint.visible, "ヒントが表示されない")
+	check(hud._hint_box.visible, "ヒントが表示されない")
+	# #241再: 資金/名声と同じ半透明グレーの枠に入っていること
+	var panel: PanelContainer = null
+	for c in hud._hint_box.get_children():
+		if c is PanelContainer:
+			panel = c
+	check(panel != null, "ヒントに枠(PanelContainer)が付いていない")
+	if panel != null:
+		var sb: StyleBox = panel.get_theme_stylebox("panel")
+		check(sb is StyleBoxFlat, "ヒントの枠に背景スタイルが無い")
+		if sb is StyleBoxFlat:
+			var bg: Color = (sb as StyleBoxFlat).bg_color
+			check(bg.a > 0.2 and bg.a < 0.9, "ヒントの枠が半透明でない(a=%.2f)" % bg.a)
 	check(hud.lbl_hint.text == "ヒント：テスト", "ヒントの書式が「ヒント：〇〇」でない(%s)" % hud.lbl_hint.text)
 	hud.show_departure_hint("")   # 空なら何もしない
 	check(hud.lbl_hint.text == "ヒント：テスト", "空文字でヒントが上書きされた")

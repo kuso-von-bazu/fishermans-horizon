@@ -14,6 +14,7 @@ var lbl_armor_val: Label
 var lbl_status: Label   # #64: 炎上/毒の表示
 var lbl_return: Label   # #68: 帰還長押しの進捗
 var lbl_hint: Label     # #241: 出港時のワンポイントヒント
+var _hint_box: CenterContainer   # #241再: ヒントを囲む半透明枠
 var lbl_catch: Label    # #232再4: 「大漁!」(漁ゲージと同じ位置)
 var lbl_guide: Label    # #232: ガイド対象名と残距離
 var cargo_box: HBoxContainer
@@ -201,22 +202,28 @@ func _build() -> void:
 	root.add_child(weapon_box)
 
 	# #241: 出港時のワンポイントヒント(武器スロットの上に3秒)
+	# #241再: 資金・名声などと同じ半透明グレーの枠に入れて読みやすくする。
+	# 枠は中身の幅に合わせたいので CenterContainer で包む(全幅の帯にしない)。
+	_hint_box = CenterContainer.new()
+	_hint_box.anchor_left = 0.5
+	_hint_box.anchor_right = 0.5
+	_hint_box.anchor_top = 1.0
+	_hint_box.anchor_bottom = 1.0
+	_hint_box.offset_left = -560
+	_hint_box.offset_right = 560
+	_hint_box.offset_top = -156   # 案内文(-110)よりさらに上。武器スロットとも重ならない
+	_hint_box.offset_bottom = -110
+	_hint_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hint_box.visible = false
+	root.add_child(_hint_box)
+	var hint_panel := PanelContainer.new()
+	_style(hint_panel)   # 資金/名声パネルと同じ半透明グレー+角丸
+	_hint_box.add_child(hint_panel)
 	lbl_hint = _label("", 21)
-	lbl_hint.anchor_left = 0.5
-	lbl_hint.anchor_right = 0.5
-	lbl_hint.anchor_top = 1.0
-	lbl_hint.anchor_bottom = 1.0
-	lbl_hint.offset_left = -520
-	lbl_hint.offset_right = 520
-	lbl_hint.offset_top = -150   # 案内文(-110)よりさらに上。武器スロットとも重ならない
-	lbl_hint.offset_bottom = -114
 	lbl_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl_hint.add_theme_color_override("font_color", Color(0.72, 0.95, 1.0))
-	lbl_hint.add_theme_constant_override("outline_size", 6)
-	lbl_hint.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	lbl_hint.add_theme_color_override("font_color", Color(0.78, 0.96, 1.0))
 	lbl_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	lbl_hint.visible = false
-	root.add_child(lbl_hint)
+	hint_panel.add_child(lbl_hint)
 
 	# 中央下: 案内
 	prompt = _label("", 22)
@@ -492,15 +499,15 @@ func set_formation(slot: int) -> void:
 
 # #241: 出港時のワンポイントヒントを一定時間だけ表示する
 func show_departure_hint(text: String, hold := 3.0) -> void:
-	if lbl_hint == null or text.strip_edges() == "":
+	if lbl_hint == null or _hint_box == null or text.strip_edges() == "":
 		return
 	lbl_hint.text = "ヒント：%s" % text
-	lbl_hint.visible = true
-	lbl_hint.modulate.a = 1.0
+	_hint_box.visible = true
+	_hint_box.modulate.a = 1.0
 	var tw := create_tween()
 	tw.tween_interval(hold)
-	tw.tween_property(lbl_hint, "modulate:a", 0.0, 0.6)
-	tw.tween_callback(func(): lbl_hint.visible = false)
+	tw.tween_property(_hint_box, "modulate:a", 0.0, 0.6)
+	tw.tween_callback(func(): _hint_box.visible = false)
 
 # #232再4: 漁ゲージがあった位置に「大漁!」を出す
 func show_catch_bonus(text: String, hold := 1.2) -> void:
