@@ -209,6 +209,27 @@ func _ready() -> void:
 	check(after_txt.contains("ヒントログ"), "遅延後にヒントログへ切り替わらない")
 	# 遷移後もポーズ状態が壊れていないこと(航海中でなければポーズしない)
 	check(not get_tree().paused, "港・タイトルで遷移するとポーズしてしまう")
+
+	# --- #241再5: 航海中の画面移動でポーズを一度も解除しない(BGMが一瞬鳴る原因) ---
+	GameState.at_sea = true
+	Overlay.show_help(host)
+	check(get_tree().paused, "航海中に早見表を開いてポーズしない")
+	Overlay.unpause_count = 0
+	# 早見表 → ヒントログ → 直近のヒント → 早見表 と行き来する
+	Overlay.show_hint_log(host)
+	check(get_tree().paused, "ヒントログへ移るとポーズが解ける")
+	Overlay.show_last_hint(host)
+	check(get_tree().paused, "直近のヒントへ移るとポーズが解ける")
+	Overlay.show_help(host)
+	check(get_tree().paused, "早見表へ戻るとポーズが解ける")
+	check(Overlay.unpause_count == 0,
+		"画面の移動中にポーズを%d回解除している(BGMが一瞬鳴る)" % Overlay.unpause_count)
+	# 実際に閉じたときは解除されること
+	host.get_node("SharedOverlay").free()
+	await get_tree().process_frame
+	check(not get_tree().paused, "閉じてもポーズが解除されない")
+	check(Overlay.unpause_count == 1, "閉じたときの解除が記録されない(%d)" % Overlay.unpause_count)
+	GameState.at_sea = false
 	host.free()
 
 	if failures.is_empty():

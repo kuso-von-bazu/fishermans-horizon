@@ -26,7 +26,7 @@ var prompt: Label
 var _fishing_meter: Control   # #232: E長押し中の往復ゲージ
 var _fishing_value: float = 0.0
 var _fishing_bonus: bool = false
-const FISHING_BAND_W := 0.176    # #232再4: 発光帯の幅(World2D と同じ値。1.1倍)
+const FISHING_BAND_W := 0.19     # #232再5: 発光帯の幅(World2D と同じ値)
 var _fishing_band: float = 0.72  # #232再: 発光帯の左端(漁ごとに抽選)
 
 var _sonar_blips: Array = []   # [{pos:Vector2, color:Color}]

@@ -1,6 +1,9 @@
 extends RefCounted
 ## タイトル・港・航海HUDで共有する設定／操作早見表モーダル。
 
+# #241再5: 検証用。ポーズを実際に解除した回数(画面の移動では増えないこと)
+static var unpause_count: int = 0
+
 const HELP_TEXT := """【操作】
 W / S　前進・後進
 A / D　旋回
@@ -57,6 +60,10 @@ static func _base(parent: Control, title: String, want_h := 500.0) -> Dictionary
 	if old:
 		# #236再: queue_free だと解放(=ポーズ解除)がこの関数の後になり、
 		# 新しいオーバーレイを出した直後にポーズが解けてしまう。即時解放する。
+		# #241再5: ただし「別のオーバーレイへ移るための解放」ではポーズを
+		# 解いてはいけない。ほんの一瞬でも解除するとBGMが鳴ってしまう
+		# (音声は別スレッドで動くため、1フレーム未満でも音が出る)。
+		old.set_meta("suppress_unpause", true)
 		old.free()
 	var overlay := Control.new()
 	overlay.name = "SharedOverlay"
@@ -73,8 +80,12 @@ static func _base(parent: Control, title: String, want_h := 500.0) -> Dictionary
 	var want_pause: bool = GameState.at_sea
 	if want_pause:
 		overlay.tree_exiting.connect(func():
+			# #241再5: 画面の移動中(次のオーバーレイを出すための解放)では解除しない
+			if overlay.has_meta("suppress_unpause"):
+				return
 			if is_instance_valid(parent) and parent.get_tree():
-				parent.get_tree().paused = false)
+				parent.get_tree().paused = false
+				unpause_count += 1)
 	parent.add_child(overlay)
 	if want_pause and parent.get_tree():
 		parent.get_tree().paused = true

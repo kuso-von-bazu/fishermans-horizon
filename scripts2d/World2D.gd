@@ -65,7 +65,7 @@ var _fishing_target: Node = null     # #232: 漁ゲージの対象魚群
 var _fishing_phase: float = 0.0
 var _fishing_value: float = 0.0
 # #232再: 発光帯(2倍)の左端。漁のたびに抽選して当たりの位置を固定させない
-const FISHING_BAND_W := 0.176   # #232再4: 帯の幅を1.1倍
+const FISHING_BAND_W := 0.19   # #232再5: 帯の幅
 var _fishing_band: float = 0.72
 
 # 離した瞬間の針が発光帯の中にあるか
