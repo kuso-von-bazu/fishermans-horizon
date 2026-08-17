@@ -106,6 +106,42 @@ func _ready() -> void:
 	e._atk_timer = 0.0
 	e._attack(1.0, 0.0)
 	check(world_stub.received == null, "寄港確定後も近接攻撃が通っている")
+
+	# #237再2: 遅れて発火する攻撃(多段近接の2段目以降)でも音・演出を出さない。
+	# 攻撃を始めた時点では航海中で、着弾が寄港後になるケースを再現する。
+	GameState.docking_locked = false
+	var octo := CharacterBody2D.new()
+	octo.set_script(Enemy)
+	octo.setup("lord", "kraken_lord")   # multi_melee を持つ主
+	world_stub.add_child(octo)
+	await get_tree().process_frame
+	octo.global_position = Vector2(120, 0)
+	world_stub.received = null
+	octo._atk_timer = 0.0
+	octo._attack(1.0, 0.0)               # 航海中に多段近接を開始
+	check(world_stub.received != null, "航海中の多段近接が当たっていない(前提が崩れている)")
+	# ここで寄港が確定し、2段目以降が遅れて発火する
+	GameState.docking_locked = true
+	world_stub.received = null
+	await get_tree().create_timer(0.6).timeout
+	check(world_stub.received == null, "寄港確定後に遅延ヒットが通っている(被弾音が鳴る)")
+	# ダメージ処理そのものを直接叩いても止まること。
+	# **僚艦を相手にした経路**を通すのが要点。旗艦相手だと _damage_player 側の
+	# ガードに拾われてしまい、_damage_victim の穴(最後の被弾音)を素通りする。
+	var spy := Node2D.new()
+	spy.set_script(preload("res://tests/spy_victim.gd"))
+	spy.add_to_group("fleet_ship")
+	world_stub.add_child(spy)
+	spy.global_position = Vector2(60, 0)
+	octo._damage_victim(10.0, spy)
+	check(spy.hits == 0, "寄港確定後に僚艦へのダメージ処理が通っている(被弾音が鳴る)")
+	# 航海中なら通ること(ガードが効きすぎていないか)
+	GameState.docking_locked = false
+	octo._damage_victim(10.0, spy)
+	check(spy.hits == 1, "航海中なのに僚艦へのダメージ処理が通らない")
+	GameState.docking_locked = true
+	spy.free()
+	octo.free()
 	GameState.docking_locked = false
 
 	# --- #232再: 漁の発光帯の位置がランダム(右寄り固定でない) ---

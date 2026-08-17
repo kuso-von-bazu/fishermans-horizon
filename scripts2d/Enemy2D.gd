@@ -612,6 +612,12 @@ func _melee_victim(melee_r: float) -> Node2D:
 
 # 近接ダメージを対象へ与える(僚艦なら僚艦の装甲へ)
 func _damage_victim(amount: float, victim: Node2D) -> void:
+	# #237再2: 寄港確定後は音も演出も出さない。_attack にガードを入れたが、
+	# 多段近接(multi_melee)の2段目以降はタイマーで遅れて発火するため、
+	# 発火時点で寄港していると被弾音だけが鳴っていた(「たまに鳴る」の正体)。
+	# 入口ではなくダメージ処理そのものを塞ぐ。
+	if GameState.docking_locked or _dead:
+		return
 	if victim == null:
 		_damage_player(amount)
 		return
@@ -1058,6 +1064,8 @@ func _escorts_cleared() -> bool:
 	return true
 
 func _damage_player(amount: float) -> void:
+	if GameState.docking_locked or _dead:
+		return   # #237再2: 遅延して発火した攻撃で音・演出が出ないように
 	GameState.damage_player(amount)   # 敏捷カット込み(クルー#39)
 	# #69/#72: 触腕に絡めとられる(討伐まで鈍足) / 毒液スリップ
 	if bool(def.get("entangle", false)) and is_instance_valid(player) and player.has_method("add_entangler"):
