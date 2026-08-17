@@ -223,7 +223,7 @@ static func show_last_hint(parent: Control) -> void:
 		rt.text = "まだヒントは表示されていません。"
 	else:
 		var latest: Dictionary = GameState.hint_log[0]
-		rt.text = "[%s]\nヒント：%s" % [str(latest.get("island", "")), str(latest.get("text", ""))]
+		rt.text = "ヒント：%s" % str(latest.get("text", ""))   # #241再4: 島名は出さない
 	rt.add_theme_font_size_override("normal_font_size", 20)
 	rt.add_theme_color_override("default_color", Color(0.95, 0.98, 1.0))
 	rt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -261,7 +261,7 @@ static func show_hint_log(parent: Control) -> void:
 	else:
 		var lines: Array = []
 		for e in GameState.hint_log:
-			lines.append("・[%s] %s" % [str(e.get("island", "")), str(e.get("text", ""))])
+			lines.append("・%s" % str(e.get("text", "")))   # #241再4: 島名は出さない
 		var rt := RichTextLabel.new()
 		rt.bbcode_enabled = false
 		rt.fit_content = true

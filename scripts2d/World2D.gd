@@ -761,7 +761,14 @@ func _try_spawn_lord() -> void:
 
 func _lord_id_alive(id: String) -> bool:
 	for e in enemies:
-		if is_instance_valid(e) and e.kind == "lord" and e.id == id:
+		if not is_instance_valid(e) or e.kind != "lord":
+			continue
+		if e.id == id:
+			return true
+		# #239再4: 分裂した個体(夜の帝王→中型→小型)が生きている間は、
+		# 元の主もまだ討伐されていない扱いにする。これが無いと
+		# 「本体が消えた=未出現」と見なされ、分裂中に2体目が湧いてしまう。
+		if str(e.get("split_root")) == id:
 			return true
 	return false
 
@@ -793,7 +800,8 @@ func _spawn_escorts(center: Vector2, lord_id: String = "", tier: int = -1) -> Ar
 		for i in 2:
 			var mid: String = Database.pick_mob(tier)
 			var guard := 0
-			while mid == "merman" and guard < 8:   # #120: マーマン除外
+			# #120: マーマン / #239再4: ゾンビウオ は取り巻きにしない(群れで出る敵なので)
+			while (mid == "merman" or mid == "zombie_fish") and guard < 8:
 				mid = Database.pick_mob(tier)
 				guard += 1
 			if mid == "merman":

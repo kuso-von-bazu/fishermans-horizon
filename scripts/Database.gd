@@ -42,7 +42,7 @@ var combat_mobs := {
 	# #72再: ザッハーク。銀色の神々しい竜。空中(魚雷ロック不可)+俊敏+高火力、密度の高い3way弾(aim_tight)、攻撃回避率15%(回避時は弾が後方へ抜ける)。#72再々: ギザギザ移動廃止+より積極的に遠隔(atk_cd短縮/range_mult延長)
 	# #239: 星霜の島(tier2)。mermaid=引き撃ち+米粒弾ばら撒き, lamia=針状の1〜4way
 	"mermaid":       {"name": "マーメイド",     "hp": 560, "dmg": 18, "cap": 4, "price": 600, "ranged": true,  "aerial": false, "speed": 12.0, "atk_cd": 1.1, "kite": true, "size_mult": 0.7, "scatter_aim": true, "scatter": 9, "scatter_speeds": [0.55, 0.95], "small_shot": true, "way": 0, "shot_dmg_mult": 0.30, "shot_speed_mult": 0.8, "face_left": true, "color": Color(0.35,0.7,0.75)},
-	"lamia":         {"name": "ラミア",         "hp": 620, "dmg": 21, "cap": 4, "price": 620, "ranged": true,  "aerial": false, "speed": 11.5, "atk_cd": 1.25, "size_mult": 0.72, "way_choices": [1,2,3,4], "aim_tight": true, "needle_shot": true, "shot_dmg_mult": 0.55, "face_left": true, "color": Color(0.55,0.35,0.65)},
+	"lamia":         {"name": "ラミア",         "hp": 620, "dmg": 21, "cap": 4, "price": 620, "ranged": true,  "aerial": false, "speed": 11.5, "atk_cd": 0.8, "size_mult": 0.72, "way_choices": [2,3,4,5], "aim_tight": true, "needle_shot": true, "shot_dmg_mult": 0.55, "face_left": true, "color": Color(0.55,0.35,0.65)},
 	# #239: 常闇の島(tier2)。zombie_fish=群れで高速体当たり, moon_jelly=長リーチ近接+毒+鈍化
 	"zombie_fish":   {"name": "ゾンビウオ",     "hp": 300, "dmg": 17, "cap": 2, "price": 300, "ranged": false, "aerial": false, "speed": 16.5, "size_mult": 0.65, "group": 3, "aggro": 1500.0, "face_left": true, "color": Color(0.5,0.55,0.5)},
 	"moon_jelly":    {"name": "ムーンジェリー", "hp": 820, "dmg": 24, "cap": 5, "price": 660, "ranged": false, "aerial": false, "speed": 8.0,  "reach": 2.6, "entangle": true, "poison": true, "color": Color(0.7,0.75,0.95)},
@@ -392,7 +392,7 @@ var islands := [
 	{"id": 2, "name": "月下の島",     "tier": 2, "fame_req": 70,  "price_mult": 3.0, "pos": Vector3(1700, 0, 200),  "spawn": ["squid","octopus","bonito"], "lords": ["aspidochelone","legion"], "weather": "night"},
 	# #190: 月下の島の追加に伴い、嵐越え・果ては従来よりさらに遠方へ。#191/#192: 近海の天候演出
 	{"id": 3, "name": "嵐越えの島",   "tier": 3, "fame_req": 175,  "price_mult": 4.8, "pos": Vector3(2600, 0, 900),  "spawn": ["octopus","squid","bonito"], "lords": ["hydra","quetzal"], "weather": "storm"},
-	{"id": 4, "name": "果ての島",     "tier": 4, "fame_req": 272,  "price_mult": 10.8, "pos": Vector3(3600, 0, 300), "spawn": ["octopus","bonito"], "lords": ["ghost","leviathan"], "weather": "blizzard"},   # #187: 幽霊船はレヴィアタンの上(先に戦う想定)
+	{"id": 4, "name": "果ての島",     "tier": 4, "fame_req": 400,  "price_mult": 10.8, "pos": Vector3(3600, 0, 300), "spawn": ["octopus","bonito"], "lords": ["ghost","leviathan"], "weather": "blizzard"},   # #187: 幽霊船はレヴィアタンの上(先に戦う想定)
 	# #239: 月下の島と同格(tier 2)。星霜=月下の北、常闇=月下の南
 	{"id": 5, "name": "星霜の島",     "tier": 2, "fame_req": 70,  "price_mult": 3.0, "pos": Vector3(1700, 0, -700), "spawn": ["squid","octopus","bonito"], "lords": ["undine","siren"], "weather": "starry"},
 	{"id": 6, "name": "常闇の島",     "tier": 2, "fame_req": 70,  "price_mult": 3.0, "pos": Vector3(1700, 0, 1100), "spawn": ["squid","octopus","bonito"], "lords": ["night_emperor","wraith"], "weather": "dark"},

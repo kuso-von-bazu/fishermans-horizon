@@ -388,11 +388,17 @@ func _tick_blink(delta: float) -> void:
 	_blink_t = randf_range(float(iv[0]), float(iv[1]))
 	var dr: Array = bl.get("dist", [420.0, 900.0])
 	var ang := randf() * TAU
-	global_position = player.global_position + Vector2(cos(ang), sin(ang)) * randf_range(float(dr[0]), float(dr[1]))
+	var dest: Vector2 = player.global_position + Vector2(cos(ang), sin(ang)) * randf_range(float(dr[0]), float(dr[1]))
+	# #239再4: 瞬間移動の直前に急速に透明化してから飛ぶ(消えて現れる演出)
 	if sprite:
-		sprite.modulate = Color(1, 1, 1, 0.15)
 		var tw := create_tween()
-		tw.tween_property(sprite, "modulate", Color.WHITE, 0.35)
+		tw.tween_property(sprite, "modulate:a", 0.0, 0.18)
+		tw.tween_callback(func():
+			if is_instance_valid(self):
+				global_position = dest)
+		tw.tween_property(sprite, "modulate:a", 1.0, 0.30)
+	else:
+		global_position = dest
 var _blink_t: float = 2.0
 
 func take_hit(amount: float, slip: bool, debuff: bool, no_dodge: bool = false, debuff_kind: String = "") -> int:

@@ -108,11 +108,13 @@ void fragment() {
 		vec2 sf = fract(suv) - 0.5;
 		float rnd = fract(sin(sc.x * 12.9898 + sc.y * 78.233) * 43758.5453);
 		float dot_mask = 1.0 - smoothstep(0.10, 0.36, length(sf));
-		float twinkle = pow(max(sin(t * 1.6 + rnd * 24.0), 0.0), 18.0);
+		// #239再4: 以前は pow(...,18) で大半の時間 0 になり、星が点いたり消えたり
+		// していた。常に光らせたうえで、瞬きは明るさの揺らぎだけにする。
+		float twinkle = 0.72 + 0.28 * sin(t * 1.6 + rnd * 24.0);
 		float star = step(0.975, rnd) * twinkle * dot_mask;
 		// 波で上下に揺らして「映り込み」らしく見せる
 		float sway = 0.55 + 0.45 * sin(SCREEN_UV.y * 60.0 + h * 3.0 + t * 1.1);
-		col += vec3(0.82, 0.90, 1.0) * star * sway * 1.25 * night * stars;
+		col += vec3(0.82, 0.90, 1.0) * star * sway * 0.95 * night * stars;
 	}
 	COLOR = vec4(col, 1.0);
 }

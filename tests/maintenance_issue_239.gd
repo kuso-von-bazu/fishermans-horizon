@@ -92,7 +92,8 @@ func _ready() -> void:
 	check(t01 + low4 < storm_req, "嵐越えが主4体だけで解放されてしまう(%d >= %d)" % [t01 + low4, storm_req])
 	check(storm_req - (t01 + low4) <= 60, "嵐越えに必要な海賊狩りが多すぎる(あと%d)" % (storm_req - (t01 + low4)))
 	check(t01 + low4 + low3 < end_req, "果てが主だけで解放されてしまう")
-	check(end_req - (t01 + low4 + low3) <= 60, "果てに必要な海賊狩りが多すぎる(あと%d)" % (end_req - (t01 + low4 + low3)))
+	# #200再: 果ての島はレビュアー指定で400へ引き上げたため、海賊狩りの比重が大きい
+	check(end_req - (t01 + low4 + low3) <= 200, "果てに必要な海賊狩りが多すぎる(あと%d)" % (end_req - (t01 + low4 + low3)))
 	check(int(Database.island(7).fame_req) == storm_req, "海嘯の名声要件が嵐越えと違う")
 	check(int(Database.island(5).fame_req) == int(Database.island(2).fame_req), "星霜の名声要件が月下と違う")
 	check(int(Database.island(6).fame_req) == int(Database.island(2).fame_req), "常闇の名声要件が月下と違う")
@@ -208,8 +209,41 @@ func _ready() -> void:
 		else:
 			check(Database.pirates.has(str(spec3.id)), "ボスラッシュの海賊 %s が未定義" % str(spec3.id))
 
+	# --- #239再4: 分裂中は元の主を「生存中」とみなす(2体目が湧かない) ---
+	var W2 = preload("res://scripts2d/World2D.gd")
+	var w2 := Node2D.new()
+	w2.set_script(W2)
+	add_child(w2)
+	var Enemy2 = preload("res://scripts2d/Enemy2D.gd")
+	var bat := CharacterBody2D.new()
+	bat.set_script(Enemy2)
+	bat.setup("lord", "night_bat_medium")
+	bat.split_root = "night_emperor"      # 分裂で生まれた個体
+	w2.add_child(bat)
+	w2.enemies = [bat]
+	check(w2._lord_id_alive("night_emperor"),
+		"分裂中の個体がいるのに元の主が「不在」と判定される(2体目が湧く原因)")
+	check(not w2._lord_id_alive("undine"), "無関係の主まで生存扱いになっている")
+	w2.enemies = []
+	check(not w2._lord_id_alive("night_emperor"), "誰もいないのに生存扱いになっている")
+	bat.free()
+	w2.free()
+
+	# --- #239再4: ゾンビウオは取り巻きに選ばれない ---
+	var src := FileAccess.open("res://scripts2d/World2D.gd", FileAccess.READ).get_as_text()
+	check(src.contains('mid == "zombie_fish"'), "ゾンビウオが取り巻きから除外されていない")
+
+	# --- #239再4: ラミアの攻撃強化 ---
+	check(float(Database.combat_mobs["lamia"].atk_cd) <= 0.8,
+		"ラミアの攻撃間隔が短くなっていない(%.2f)" % Database.combat_mobs["lamia"].atk_cd)
+	check((Database.combat_mobs["lamia"].way_choices as Array).max() >= 5,
+		"ラミアの最大way数が増えていない")
+
+	# --- #200再: 果ての島の名声要件 ---
+	check(int(Database.island(4).fame_req) == 400, "果ての島の必要名声が400でない(%d)" % Database.island(4).fame_req)
+
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK islands/tier/mobs/lords/fame/weather/behaviours/hp2pct/order/weapons/bossrush")
+		print("MAINTENANCE_TEST_OK islands/tier/mobs/lords/fame/weather/behaviours/hp2pct/order/weapons/bossrush/split_alive")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)
