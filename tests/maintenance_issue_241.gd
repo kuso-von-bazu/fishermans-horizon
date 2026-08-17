@@ -105,6 +105,7 @@ func _ready() -> void:
 	add_child(hud)
 	await get_tree().process_frame
 	hud.show_departure_hint("テスト")
+	# #241再3: 表示時間は5秒
 	check(hud._hint_box.visible, "ヒントが表示されない")
 	# #241再: 資金/名声と同じ半透明グレーの枠に入っていること
 	var panel: PanelContainer = null
@@ -158,13 +159,23 @@ func _ready() -> void:
 		txt += n2.text
 	for n3 in host.find_children("*", "RichTextLabel", true, false):
 		txt += n3.text
-	check(txt.contains("直近のヒント"), "早見表に直近のヒント枠が無い")
-	check(txt.contains(keep), "早見表に直近のヒント本文が出ていない")
+	# #241再3: 直近のヒントは早見表の中ではなく別ウインドウ。早見表にはボタンだけ
+	check(not txt.contains(keep), "直近のヒント本文が早見表の中に残っている(別ウインドウにする)")
 	var has_log_btn := false
+	var has_last_btn := false
 	for b2 in host.find_children("*", "Button", true, false):
-		if b2.text == "ヒントログ":
-			has_log_btn = true
+		if b2.text == "ヒントログ": has_log_btn = true
+		if b2.text == "直近のヒント": has_last_btn = true
 	check(has_log_btn, "早見表にヒントログボタンが無い")
+	check(has_last_btn, "早見表に直近のヒントボタンが無い")
+
+	# 直近のヒント専用ウインドウ
+	Overlay.show_last_hint(host)
+	var lasttxt := ""
+	for n5 in host.find_children("*", "RichTextLabel", true, false):
+		lasttxt += n5.text
+	check(lasttxt.contains(keep), "直近のヒントウインドウに本文が出ていない")
+	check(not lasttxt.contains("W / S"), "直近のヒントウインドウに早見表の内容が混ざっている")
 
 	# ヒントログ画面が新しい順に並ぶこと
 	Overlay.show_hint_log(host)
@@ -181,6 +192,23 @@ func _ready() -> void:
 		if b3.text == "早見表へ戻る":
 			has_back = true
 	check(has_back, "ヒントログから早見表へ戻れない")
+
+	# #241再3: 画面遷移が「次フレームへ遅延」されること(即時だと操作不能になる)
+	# ボタンを押しても、その場では古いオーバーレイが生きたままであること
+	Overlay.show_help(host)
+	var before_node: Node = host.get_node_or_null("SharedOverlay")
+	for b4 in host.find_children("*", "Button", true, false):
+		if b4.text == "ヒントログ":
+			b4.emit_signal("pressed")
+	check(is_instance_valid(before_node), "ボタン押下と同時にオーバーレイが解放されている(操作不能の原因)")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var after_txt := ""
+	for n6 in host.find_children("*", "Label", true, false):
+		after_txt += n6.text
+	check(after_txt.contains("ヒントログ"), "遅延後にヒントログへ切り替わらない")
+	# 遷移後もポーズ状態が壊れていないこと(航海中でなければポーズしない)
+	check(not get_tree().paused, "港・タイトルで遷移するとポーズしてしまう")
 	host.free()
 
 	if failures.is_empty():

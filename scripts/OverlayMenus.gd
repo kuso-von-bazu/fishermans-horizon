@@ -36,6 +36,22 @@ static func icon_button(kind: String, tip: String, icon_px := 26) -> Button:
 		b.text = "?" if kind == "help" else "設定"   # 画像が無い時の保険
 	return b
 
+# #241再3: オーバーレイ内のボタンから別のオーバーレイへ移るとき、
+# その場で切り替えると _base() の old.free() が「今まさにシグナルを処理している
+# ボタン自身の祖先」を解放してしまい、入力を受け付けなくなる(操作不能)。
+# 必ず次フレームまで遅らせてから切り替える。
+static func _defer(parent: Control, which: String) -> void:
+	if parent == null or parent.get_tree() == null:
+		return
+	parent.get_tree().process_frame.connect(func():
+		if not is_instance_valid(parent):
+			return
+		match which:
+			"help": show_help(parent)
+			"log": show_hint_log(parent)
+			"last": show_last_hint(parent)
+	, CONNECT_ONE_SHOT)
+
 static func _base(parent: Control, title: String, want_h := 500.0) -> Dictionary:
 	var old := parent.get_node_or_null("SharedOverlay")
 	if old:
@@ -173,33 +189,63 @@ static func show_help(parent: Control) -> void:
 	help.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	box.add_child(help)
 
-	# #241再2: 早見表の下に、直近に表示されたヒントを別枠で載せる
-	if not GameState.hint_log.is_empty():
-		box.add_child(HSeparator.new())
-		var head := Label.new()
-		head.text = "直近のヒント"
-		head.add_theme_font_size_override("font_size", 20)
-		head.add_theme_color_override("font_color", Color(0.78, 0.96, 1.0))
-		box.add_child(head)
-		var latest: Dictionary = GameState.hint_log[0]
-		var last := RichTextLabel.new()
-		last.bbcode_enabled = false
-		last.fit_content = true
-		last.scroll_active = false
-		last.text = "ヒント：%s" % str(latest.get("text", ""))
-		last.add_theme_font_size_override("normal_font_size", 19)
-		last.add_theme_color_override("default_color", Color(0.95, 0.98, 1.0))
-		last.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		box.add_child(last)
-	# ヒントログへの導線(記録があれば中身が出る)
+	# #241再3: 直近のヒントは早見表とは**別ウインドウ**にする(レビュアー指定)。
+	# 早見表からはボタンで移動できるようにしておく。
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 10)
+	var last_btn := Button.new()
+	last_btn.text = "直近のヒント"
+	last_btn.custom_minimum_size = Vector2(190, 42)
+	last_btn.add_theme_font_size_override("font_size", 19)
+	last_btn.focus_mode = Control.FOCUS_NONE
+	last_btn.pressed.connect(func(): _defer(parent, "last"))
+	row.add_child(last_btn)
 	var log_btn := Button.new()
 	log_btn.text = "ヒントログ"
-	log_btn.custom_minimum_size = Vector2(200, 42)
-	log_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	log_btn.custom_minimum_size = Vector2(190, 42)
 	log_btn.add_theme_font_size_override("font_size", 19)
 	log_btn.focus_mode = Control.FOCUS_NONE
-	log_btn.pressed.connect(func(): show_hint_log(parent))
-	(ui.outer as VBoxContainer).add_child(log_btn)
+	log_btn.pressed.connect(func(): _defer(parent, "log"))
+	row.add_child(log_btn)
+	(ui.outer as VBoxContainer).add_child(row)
+	_close_button(ui, ui.overlay)
+
+# #241再3: 直近に表示されたヒントだけを見る専用ウインドウ
+static func show_last_hint(parent: Control) -> void:
+	var ui := _base(parent, "直近のヒント", 320.0)
+	var box: VBoxContainer = ui.box
+	var rt := RichTextLabel.new()
+	rt.bbcode_enabled = false
+	rt.fit_content = true
+	rt.scroll_active = false
+	if GameState.hint_log.is_empty():
+		rt.text = "まだヒントは表示されていません。"
+	else:
+		var latest: Dictionary = GameState.hint_log[0]
+		rt.text = "[%s]\nヒント：%s" % [str(latest.get("island", "")), str(latest.get("text", ""))]
+	rt.add_theme_font_size_override("normal_font_size", 20)
+	rt.add_theme_color_override("default_color", Color(0.95, 0.98, 1.0))
+	rt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_child(rt)
+	var row2 := HBoxContainer.new()
+	row2.alignment = BoxContainer.ALIGNMENT_CENTER
+	row2.add_theme_constant_override("separation", 10)
+	var to_log := Button.new()
+	to_log.text = "ヒントログ"
+	to_log.custom_minimum_size = Vector2(190, 42)
+	to_log.add_theme_font_size_override("font_size", 19)
+	to_log.focus_mode = Control.FOCUS_NONE
+	to_log.pressed.connect(func(): _defer(parent, "log"))
+	row2.add_child(to_log)
+	var to_help := Button.new()
+	to_help.text = "早見表へ戻る"
+	to_help.custom_minimum_size = Vector2(190, 42)
+	to_help.add_theme_font_size_override("font_size", 19)
+	to_help.focus_mode = Control.FOCUS_NONE
+	to_help.pressed.connect(func(): _defer(parent, "help"))
+	row2.add_child(to_help)
+	(ui.outer as VBoxContainer).add_child(row2)
 	_close_button(ui, ui.overlay)
 
 # #241再2: これまで実際に表示されたヒントの一覧(上から新しい順)
@@ -232,6 +278,6 @@ static func show_hint_log(parent: Control) -> void:
 	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	back.add_theme_font_size_override("font_size", 19)
 	back.focus_mode = Control.FOCUS_NONE
-	back.pressed.connect(func(): show_help(parent))
+	back.pressed.connect(func(): _defer(parent, "help"))
 	(ui.outer as VBoxContainer).add_child(back)
 	_close_button(ui, ui.overlay)

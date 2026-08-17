@@ -498,7 +498,7 @@ func set_formation(slot: int) -> void:
 		b.add_theme_color_override("font_color", Color(1, 0.95, 0.5) if i == slot else Color(0.85, 0.9, 0.95))
 
 # #241: 出港時のワンポイントヒントを一定時間だけ表示する
-func show_departure_hint(text: String, hold := 3.0) -> void:
+func show_departure_hint(text: String, hold := 5.0) -> void:   # #241再3: 3秒→5秒
 	if lbl_hint == null or _hint_box == null or text.strip_edges() == "":
 		return
 	lbl_hint.text = "ヒント：%s" % text
