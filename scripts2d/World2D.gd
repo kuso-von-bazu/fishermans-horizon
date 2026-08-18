@@ -1800,13 +1800,14 @@ func _maybe_screenshot() -> void:
 				{"dmg": 24, "shape": "note"},                # (参考)音符弾
 				{"dmg": 5, "shape": "flame_jet"},            # 火炎放射器
 				{"dmg": 5, "shape": "frost_jet"},            # 冷気放射器
+				{"dmg": 24, "shape": "lance_spear"},         # 槍砲
 			]
 			for i in specs.size():
 				var proj := Area2D.new()
 				proj.set_script(ProjectileScript)
 				add_child(proj)
 				proj.from_player = true
-				proj.global_position = player.global_position + Vector2((float(i) - 3.0) * 90.0, -120.0)
+				proj.global_position = player.global_position + Vector2((float(i) - 3.5) * 90.0, -120.0)
 				proj.setup(Vector2.UP, specs[i])
 				proj.speed = 0.0   # 静止させて撮影
 			# 敵の炎弾も1つ
@@ -1815,7 +1816,7 @@ func _maybe_screenshot() -> void:
 			add_child(fp)
 			fp.from_player = false
 			fp.fire = true
-			fp.global_position = player.global_position + Vector2(360.0, -120.0)   # #251: 追加した弾と重ならない位置へ
+			fp.global_position = player.global_position + Vector2(450.0, -120.0)   # #251: 追加した弾と重ならない位置へ
 			fp.setup(Vector2.UP, {"dmg": 20})
 			fp.speed = 0.0
 			await get_tree().create_timer(0.4).timeout
