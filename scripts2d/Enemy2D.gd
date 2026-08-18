@@ -45,6 +45,8 @@ var is_escort: bool = false   # #67: 主の取り巻き(上限・デスポーン
 var escorts: Array = []       # #118: この主の取り巻き参照(全滅で引き撃ち)
 var _bob: float = 0.0
 var _radius: float = 40.0
+var _base_radius: float = 40.0        # #190再: shrink_hp で縮める前の当たり判定半径
+var _hit_shape: CircleShape2D = null
 var locked: bool = false   # 魚雷ロック対象の表示(#16)
 var _offscreen_t: float = 0.0   # #166: 画面外にいる時間(モブ/海賊は一定時間で消滅し枠を空ける)
 var _spin: float = 0.0          # #190: 回転する敵(オニヒトデ/アスピドケロン)の現在角
@@ -132,6 +134,8 @@ func _ready() -> void:
 	sh.radius = _radius
 	col.shape = sh
 	add_child(col)
+	_base_radius = _radius
+	_hit_shape = sh
 	# 名前ラベル
 	var lbl := Label.new()
 	lbl.text = def.name
@@ -498,6 +502,10 @@ func _physics_process(delta: float) -> void:
 			var b: float = _base_scale() * f
 			sprite.scale.x = b
 			sprite.scale.y = b * squash
+			# #190再: 見た目が縮んだぶん当たり判定(と近接の間合い)も縮める
+			_radius = _base_radius * f
+			if _hit_shape:
+				_hit_shape.radius = _radius
 	if not is_instance_valid(player):
 		return
 	var to: Vector2 = player.global_position - global_position

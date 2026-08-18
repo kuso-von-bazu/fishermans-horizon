@@ -241,9 +241,44 @@ func _ready() -> void:
 	check(world._sea_pirate_top(8) == world._sea_pirate_top(4), "外れの小島の海賊の格が果てと違う")
 	world.free()
 
+	# ---------------- #190再: レギオンは縮むと当たり判定も縮む ----------------
+	var Enemy = preload("res://scripts2d/Enemy2D.gd")
+	var leg := CharacterBody2D.new()
+	leg.set_script(Enemy)
+	leg.setup("lord", "legion")
+	add_child(leg)
+	await get_tree().process_frame
+	var r_full: float = leg._hit_shape.radius
+	check(r_full > 0.0, "レギオンの当たり判定が無い")
+	leg.hp = leg.max_hp * 0.02      # ほぼ壊滅=最小まで縮んだ状態
+	for f2 in 3:
+		await get_tree().process_frame
+	var r_small: float = leg._hit_shape.radius
+	check(r_small < r_full * 0.75, "レギオンが縮んでも当たり判定が小さくならない(%.1f→%.1f)" % [r_full, r_small])
+	# 近接の間合いも一緒に縮む(_radius を見ているため)
+	check(leg._radius < r_full, "縮んだあとも近接の間合いが元のまま")
+	leg.free()
+
+	# ---------------- #73再: 海賊王は遠くから撃つ ----------------
+	var king := CharacterBody2D.new()
+	king.set_script(Enemy)
+	king.setup("pirate", "king")
+	add_child(king)
+	await get_tree().process_frame
+	var dread := CharacterBody2D.new()
+	dread.set_script(Enemy)
+	dread.setup("pirate", "dread")
+	add_child(dread)
+	await get_tree().process_frame
+	check(king.attack_range > dread.attack_range * 1.3,
+		"海賊王の射程が他の海賊とほとんど変わらない(%.0f / %.0f)" % [king.attack_range, dread.attack_range])
+	check(bool(Database.pirates["king"].get("shoot_moving", false)), "海賊王が移動しながら撃たない")
+	king.free()
+	dread.free()
+
 	port.free()
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts")
+		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)
