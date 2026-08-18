@@ -62,6 +62,37 @@ func _blob_count(img: Image) -> int:
 						stack.append(nk)
 	return blobs
 
+# #239再7: 背景の靄/板が焼き付いていないか。
+# 背景の矩形があると、下半分の各行の左右の縁がぴたりと同じ列に揃う(=まっすぐな縦の縁)。
+# 本来のシルエットなら縁は行ごとにばらつく。揃っている行の割合を返す。
+func _straight_edge_ratio(img: Image) -> float:
+	var w := img.get_width()
+	var h := img.get_height()
+	var lefts := {}
+	var rights := {}
+	var rows := 0
+	for y in range(h / 2, h):
+		var lx := -1
+		var rx := -1
+		for x in w:
+			if img.get_pixel(x, y).a > 0.5:
+				if lx < 0:
+					lx = x
+				rx = x
+		if lx < 0:
+			continue
+		rows += 1
+		lefts[lx] = int(lefts.get(lx, 0)) + 1
+		rights[rx] = int(rights.get(rx, 0)) + 1
+	if rows == 0:
+		return 0.0
+	var best := 0
+	for k in lefts:
+		best = maxi(best, int(lefts[k]))
+	for k2 in rights:
+		best = maxi(best, int(rights[k2]))
+	return float(best) / float(rows)
+
 func check(ok: bool, message: String) -> void:
 	if not ok:
 		failures.append(message)
@@ -488,9 +519,17 @@ func _ready() -> void:
 		GameState.notice.disconnect(cb2)
 	GameState.boss_rush = false
 
+	# ---------------- #239再7: レイスのドット絵に背景の白いもやが無いこと ----------------
+	for suf2 in ["", "_front", "_back"]:
+		var wp := "res://assets/images/pixel/lord_wraith%s.png" % suf2
+		check(ResourceLoader.exists(wp), "レイスのドット絵が無い: " + wp)
+		var wimg := Image.load_from_file(wp)
+		var ratio := _straight_edge_ratio(wimg)
+		check(ratio < 0.6, "レイスのドット絵の下半身に背景の板(白いもや)が残っている(縁の%.0f%%が直線): %s" % [ratio * 100.0, wp])
+
 	port.free()
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art")
+		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)

@@ -24,7 +24,9 @@ LONG_OVERRIDE = {"lord_leviathan.png": 200, "lord_leviathan_front.png": 200, "lo
                  "lord_undine.png": 180, "lord_undine_front.png": 180, "lord_undine_back.png": 180,
                  "lord_siren.png": 180, "lord_siren_front.png": 180, "lord_siren_back.png": 180,
                  # #239再6: オクトパス(触腕が細かいので高精細。48pxだと足が潰れて塊に見える)
-                 "lord_kraken_lord.png": 180, "lord_kraken_lord_front.png": 180, "lord_kraken_lord_back.png": 180}
+                 "lord_kraken_lord.png": 180, "lord_kraken_lord_front.png": 180, "lord_kraken_lord_back.png": 180,
+                 # #239再7: レイス(ぼろ布のほつれが細かい)
+                 "lord_wraith.png": 180, "lord_wraith_front.png": 180, "lord_wraith_back.png": 180}
 # #81: レヴィアタンは色数も増やしてより詳細に。#173: ケツァルも増色。#81再: ヒュドラ増色・ケツァル64色
 COLORS_OVERRIDE = {"lord_leviathan.png": 64, "lord_leviathan_front.png": 64, "lord_leviathan_back.png": 64, "lord_hydra.png": 64, "lord_hydra_front.png": 64, "lord_hydra_back.png": 64, "lord_quetzal.png": 64, "lord_quetzal_front.png": 64, "lord_quetzal_back.png": 64,
                    # #187: 幽霊船
@@ -36,7 +38,9 @@ COLORS_OVERRIDE = {"lord_leviathan.png": 64, "lord_leviathan_front.png": 64, "lo
                    "lord_undine.png": 64, "lord_undine_front.png": 64, "lord_undine_back.png": 64,
                    "lord_siren.png": 64, "lord_siren_front.png": 64, "lord_siren_back.png": 64,
                    # #239再6: オクトパス
-                   "lord_kraken_lord.png": 64, "lord_kraken_lord_front.png": 64, "lord_kraken_lord_back.png": 64}
+                   "lord_kraken_lord.png": 64, "lord_kraken_lord_front.png": 64, "lord_kraken_lord_back.png": 64,
+                   # #239再7: レイス
+                   "lord_wraith.png": 64, "lord_wraith_front.png": 64, "lord_wraith_back.png": 64}
 
 for f in sorted(os.listdir(SRC)):
     if not f.lower().endswith(".png"):
