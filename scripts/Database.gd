@@ -310,10 +310,10 @@ var pirates := {
 	# #179再: 大/海賊王は元画像が左向き→face_leftで反転。小/中は元から正しい向きなので付けない
 	"raider":   {"name": "海賊(小)", "hp": 220, "dmg": 11,  "bounty": 200,  "fame": 1, "ranged": true, "wpn": "gatling", "color": Color(0.4,0.3,0.2)},
 	"corsair":  {"name": "海賊(中)", "hp": 450, "dmg": 16, "bounty": 500, "fame": 2, "ranged": true, "volley": ["gatling", "cannon"],  "color": Color(0.35,0.25,0.15)},
-	"dread":    {"name": "海賊(大)", "hp": 900, "dmg": 24, "bounty": 1200, "fame": 4, "ranged": true, "volley": ["gatling", "torpedo"], "face_left": true, "color": Color(0.25,0.18,0.1)},
+	"dread":    {"name": "海賊(大)", "hp": 900, "dmg": 22, "bounty": 1200, "fame": 4, "ranged": true, "volley": ["gatling", "torpedo"], "face_left": true, "color": Color(0.25,0.18,0.1)},
 	# #73: レアスポーンの強敵。かつてFisherman's Horizonを目指し、心折れて海賊に落ちた男。
 	# hp/dmgは出現海域(island)に応じてEnemy2Dで強化。
-	"king":     {"name": "海賊王",   "hp": 2200, "dmg": 28, "bounty": 4000, "fame": 30, "ranged": true, "wpn": "all", "volley_pool": ["cannon", "gatling", "torpedo"], "volley_pick": 2, "speed": 12.0, "atk_cd": 0.6, "shoot_moving": true, "range_mult": 1.45, "always_aggro": true, "face_left": true, "color": Color(0.1,0.08,0.1)},
+	"king":     {"name": "海賊王",   "hp": 2200, "dmg": 26, "bounty": 4000, "fame": 30, "ranged": true, "wpn": "all", "volley_pool": ["cannon", "gatling", "torpedo"], "volley_pick": 2, "speed": 12.0, "atk_cd": 0.6, "shoot_moving": true, "range_mult": 1.45, "always_aggro": true, "face_left": true, "color": Color(0.1,0.08,0.1)},
 }
 
 # #177: 討伐記録(図鑑)。戦闘能力があるモブ及び海賊のみ(近海の主は酒場で別掲)。

@@ -5,6 +5,12 @@ extends Node
 var _sfx_pool: Array[AudioStreamPlayer] = []
 var _bgm: AudioStreamPlayer
 var _current_bgm: String = ""
+# #253: 波の音。ゲーム中は常時ループ。オープニング/エンディング/ポーズ中は止める
+var _ambient: AudioStreamPlayer
+const AMBIENT_FILE := "res://assets/audio/波の音.mp3"
+# 航海中・寄港中だけ true。オープニング/エンディングでは false。
+# ポーズ中の判定はここで一括して見る(呼び出し側に散らさない)
+var ambient_enabled: bool = false
 var _cache: Dictionary = {}
 var _bgm_volume: float = 1.0
 var _sfx_volume: float = 1.0
@@ -32,6 +38,17 @@ func _ready() -> void:
 	_bgm.finished.connect(func():
 		if _bgm.stream:
 			_bgm.play())   # ループ
+	# #253: 波の音。ポーズ中も鳴り続けないよう process_mode は既定(継承)のまま
+	_ambient = AudioStreamPlayer.new()
+	add_child(_ambient)
+	if ResourceLoader.exists(AMBIENT_FILE):
+		var amb := load(AMBIENT_FILE)
+		if amb is AudioStreamMP3:
+			amb.loop = true
+		_ambient.stream = amb
+	_apply_ambient_volume()
+	# ポーズ中でも止める判断ができるよう、Audio自身は常に動かす
+	process_mode = Node.PROCESS_MODE_ALWAYS
 
 # #226: 共有者提供の効果音(mp3)を優先使用。無ければ従来の合成wav。
 const SFX_FILES := {
@@ -110,6 +127,26 @@ func stop_bgm() -> void:
 	_current_bgm = ""
 	_bgm.stop()
 
+func _process(_d: float) -> void:
+	# #253: ゲーム中は常時。オープニング・エンディング・ポーズ中は鳴らさない
+	var want: bool = ambient_enabled and not get_tree().paused
+	if want:
+		play_ambient()
+	else:
+		stop_ambient()
+
+# #253: 波の音の開始/停止。BGMの音量設定に連動させる
+func play_ambient() -> void:
+	if _ambient and _ambient.stream and not _ambient.playing:
+		_ambient.play()
+
+func stop_ambient() -> void:
+	if _ambient:
+		_ambient.stop()
+
+func ambient_playing() -> bool:
+	return _ambient != null and _ambient.playing
+
 func bgm_volume() -> float:
 	return _bgm_volume
 
@@ -131,6 +168,11 @@ func _volume_db(value: float) -> float:
 func _apply_bgm_volume() -> void:
 	if _bgm:
 		_bgm.volume_db = -10.0 + _volume_db(_bgm_volume)
+	_apply_ambient_volume()
+
+func _apply_ambient_volume() -> void:
+	if _ambient:
+		_ambient.volume_db = -16.0 + _volume_db(_bgm_volume)   # #253: BGMより控えめに敷く
 
 func _load_settings() -> void:
 	var cfg := ConfigFile.new()

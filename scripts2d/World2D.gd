@@ -338,6 +338,7 @@ func _enter_dock(island_id: int, do_reset := true) -> void:
 	if hud:
 		hud.visible = false
 	Audio.play_bgm("bgm_port")
+	Audio.ambient_enabled = true   # #253: 寄港中も波の音は鳴らす
 	_boss_bgm_on = ""
 	GameState.docking_locked = false   # 寄港完了でロック解除(次の航海はset_sailでも解除)
 	# #93: 航海から寄港(強制帰還/大破含む)するたびオートセーブ。勝利時は保存しない
@@ -393,6 +394,7 @@ func _on_set_sail() -> void:
 	if not _boss_rush and hud and hud.has_method("show_departure_hint"):
 		hud.show_departure_hint(GameState.next_departure_hint())
 	Audio.play_bgm("bgm_sea")
+	Audio.ambient_enabled = true   # #253: 波の音
 	_boss_bgm_on = ""
 	_return_hold = 0.0
 	_dock_grace = 2.0
@@ -542,6 +544,7 @@ func _check_victory() -> void:
 		port_ui.close()
 		_clear_sea_actors()
 		Audio.play_bgm("bgm_ending")   # #80: 厳かなエンディングBGM
+		Audio.ambient_enabled = false   # #253: エンディングでは鳴らさない
 		GameState.mark_cleared()       # #209: ボスラッシュを解放
 		title.show_victory()
 
@@ -1007,6 +1010,7 @@ func _on_boss_rush() -> void:
 	hud.update_bars()
 	hud.set_location("Boss Rush")
 	Audio.play_bgm("bgm_boss")
+	Audio.ambient_enabled = true   # #253: ボスラッシュも海の上
 	_boss_bgm_on = "bgm_boss"
 	Audio.play("sfx_lord_roar", -2.0)   # #79再: ボスラッシュ開始時も主のBGMなので鳴らす
 	slot_cooldowns = [0.0, 0.0, 0.0, 0.0]
@@ -1107,6 +1111,7 @@ func _br_finish() -> void:
 	if hud: hud.visible = false
 	_clear_sea_actors()
 	Audio.play_bgm("bgm_ending")
+	Audio.ambient_enabled = false   # #253: エンディングでは鳴らさない
 	GameState.mark_boss_rush_cleared()   # #209再2: タイトルに王冠を出す
 	title.show_victory(true)   # #209: 夜の背景+専用メッセージ
 
@@ -1125,6 +1130,7 @@ func _br_fail() -> void:
 	if hud: hud.visible = false
 	_clear_sea_actors()
 	Audio.play_bgm("bgm_port")
+	Audio.ambient_enabled = false   # #253: タイトルへ戻るので止める
 	title.show_title()
 
 # ---------------- 船団(#196) ----------------

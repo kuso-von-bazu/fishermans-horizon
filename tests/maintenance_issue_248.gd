@@ -949,9 +949,40 @@ func _ready() -> void:
 		"発射側と実処理側の両方でロックの有無を確認していない")
 	w6.free()
 
+	# ---------------- #254/#73再2: 海賊の攻撃力 ----------------
+	check(int(Database.pirates["dread"].dmg) == 22, "海賊(大)の攻撃力が22でない(%d)" % int(Database.pirates["dread"].dmg))
+	check(int(Database.pirates["king"].dmg) == 26, "海賊王の攻撃力が26でない(%d)" % int(Database.pirates["king"].dmg))
+
+	# ---------------- #253: 波の音 ----------------
+	check(ResourceLoader.exists(Audio.AMBIENT_FILE), "波の音の音源が無い: " + Audio.AMBIENT_FILE)
+	check(Audio._ambient != null and Audio._ambient.stream != null, "波の音が読み込まれていない")
+	if Audio._ambient and Audio._ambient.stream is AudioStreamMP3:
+		check((Audio._ambient.stream as AudioStreamMP3).loop, "波の音がループしない")
+	check(Audio.process_mode == Node.PROCESS_MODE_ALWAYS, "ポーズ中に波の音を止められない(Audioが動かない)")
+	# 状態ごとの鳴り分け
+	var was_paused := get_tree().paused
+	Audio.ambient_enabled = true
+	get_tree().paused = false
+	await get_tree().process_frame
+	check(Audio.ambient_playing(), "ゲーム中に波の音が鳴らない")
+	get_tree().paused = true
+	await get_tree().process_frame
+	check(not Audio.ambient_playing(), "ポーズ中に波の音が止まらない")
+	get_tree().paused = false
+	await get_tree().process_frame
+	check(Audio.ambient_playing(), "ポーズ解除後に波の音が戻らない")
+	Audio.ambient_enabled = false
+	await get_tree().process_frame
+	check(not Audio.ambient_playing(), "オープニング・エンディングで波の音が止まらない")
+	get_tree().paused = was_paused
+	# タイトルへ戻る経路で必ず止めていること
+	var wsrc := FileAccess.get_file_as_string("res://scripts2d/World2D.gd")
+	check(wsrc.count("Audio.ambient_enabled = false") >= 3,
+		"タイトル・エンディングへ戻る経路の一部で波の音を止めていない")
+
 	port.free()
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze/sunny_sea/facing/killer_shell/south_isle/streams/all_islands/bullet_shapes/cluster_range/torpedo_lock")
+		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze/sunny_sea/facing/killer_shell/south_isle/streams/all_islands/bullet_shapes/cluster_range/torpedo_lock/pirate_dmg/ambient")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)
