@@ -443,6 +443,34 @@ func islands_in_order() -> Array:
 			out.append(isle)
 	return out
 
+# #247: 島ごとに「その島では売らない」船・武器を指定する。
+# tier だけでは「先の島ほど品揃えが増える」一方通行しか表現できないため、
+# 先の島で下位の品を店頭から下げるにはこの除外リストが要る。
+# キーは islands の id。
+const SHOP_EXCLUDE := {
+	3: {   # 嵐越えの島
+		"ships": ["raft", "skiff", "cutter", "hauler"],
+		"weapons": ["cannon2", "torpedo2"],
+	},
+	7: {   # 海嘯の島
+		"ships": ["raft", "skiff", "cutter", "hunter_h"],
+		"weapons": ["gatling2", "harpoon2"],
+	},
+	4: {   # 果ての島
+		"ships": ["raft", "skiff", "cutter"],
+		"weapons": ["gatling", "cannon", "harpoon", "torpedo"],
+	},
+}
+
+# #247: その島でその船/武器を売っているか
+func shop_has_ship(island_id: int, ship_id: String) -> bool:
+	var ex: Dictionary = SHOP_EXCLUDE.get(island_id, {})
+	return not (ex.get("ships", []) as Array).has(ship_id)
+
+func shop_has_weapon(island_id: int, weapon_id: String) -> bool:
+	var ex: Dictionary = SHOP_EXCLUDE.get(island_id, {})
+	return not (ex.get("weapons", []) as Array).has(weapon_id)
+
 func tier_of(idx: int) -> int:
 	return int(island(idx).get("tier", clampi(idx, 0, 4)))
 

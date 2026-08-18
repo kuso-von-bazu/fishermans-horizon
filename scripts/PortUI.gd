@@ -467,6 +467,8 @@ func show_shipyard() -> void:
 		var s: Dictionary = Database.ships[sid]
 		if int(s.range) > tier:
 			continue  # 先の島でしか売らない
+		if not Database.shop_has_ship(GameState.current_island, sid):
+			continue  # #247: この島では扱わない船
 		var cost := GameState.ship_buy_cost(sid)   # #196: 下取り無し・購入した船はストックへ
 		var line := "%s  燃料%d 魚倉%d 装甲%d 武器枠%d 速%.0f" % [s.name, s.food, s.hold, s.armor, s.slots, s.speed]
 		var row := HBoxContainer.new()
@@ -517,6 +519,8 @@ func show_shipyard() -> void:
 			var w: Dictionary = Database.weapons[weapon_id]
 			if int(w.get("tier", 0)) > tier:
 				continue
+			if not Database.shop_has_weapon(GameState.current_island, weapon_id):
+				continue   # #247: この島では扱わない武器
 			var cost := int(w.price) - trade_in
 			var switch_cost := cost
 			var line := HBoxContainer.new()
