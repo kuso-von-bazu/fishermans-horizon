@@ -144,32 +144,35 @@ func _build_visual() -> void:
 		spray.color_ramp = spr_ramp
 		add_child(spray)
 		_sprays.append(spray)
-	# #224再: 突撃中だけ舷側へ大きく跳ね上がるしぶき(旗艦と同じ演出)
+	# #224再9: 旗艦と同じく、船首近くから舷側に沿って船尾まで続くしぶきにする
 	_charge_sprays = []
+	var seg := 5
 	for side2 in [-1.0, 1.0]:
-		var cs := CPUParticles2D.new()
-		cs.emitting = false
-		cs.amount = 90
-		cs.lifetime = 0.5
-		# 船に張り付く座標系にして、舷側で大きく割れる波として見せる
-		cs.local_coords = true
-		cs.position = Vector2(side2 * _half_w * 0.9, 2 * sc)
-		cs.direction = Vector2(side2 * 0.7, 1.0).normalized()   # #224再7: さらに斜め後ろへ
-		cs.spread = 34.0
-		cs.gravity = Vector2.ZERO
-		cs.initial_velocity_min = 55.0
-		cs.initial_velocity_max = 135.0
-		cs.damping_min = 90.0
-		cs.damping_max = 150.0
-		cs.scale_amount_min = 10.0
-		cs.scale_amount_max = 22.0
-		var cramp := Gradient.new()
-		cramp.set_color(0, Color(1.0, 1.0, 1.0, 0.9))
-		cramp.set_color(1, Color(0.70, 0.90, 1.0, 0.0))
-		cs.color_ramp = cramp
-		cs.z_index = 1   # #224再7: 船(z=2)より奥に描く
-		add_child(cs)
-		_charge_sprays.append(cs)
+		for k in seg:
+			var t: float = float(k) / float(maxi(seg - 1, 1))
+			var cs := CPUParticles2D.new()
+			cs.emitting = false
+			cs.amount = 34
+			cs.lifetime = 0.42 + 0.16 * t
+			cs.local_coords = true
+			cs.position = Vector2(side2 * _half_w * (0.95 - 0.12 * t),
+				lerpf(-_half_h * 0.75, _half_h * 0.95, t))
+			cs.direction = Vector2(side2 * (1.0 - 0.55 * t), 0.35 + 1.15 * t).normalized()
+			cs.spread = 16.0 + 14.0 * t
+			cs.gravity = Vector2.ZERO
+			cs.initial_velocity_min = 95.0 - 45.0 * t
+			cs.initial_velocity_max = 190.0 - 70.0 * t
+			cs.damping_min = 90.0
+			cs.damping_max = 150.0
+			cs.scale_amount_min = 7.0 + 5.0 * t
+			cs.scale_amount_max = 15.0 + 10.0 * t
+			var cramp := Gradient.new()
+			cramp.set_color(0, Color(1.0, 1.0, 1.0, 0.92))
+			cramp.set_color(1, Color(0.70, 0.90, 1.0, 0.0))
+			cs.color_ramp = cramp
+			cs.z_index = 1
+			add_child(cs)
+			_charge_sprays.append(cs)
 	# #215: 炎上アニメ(炎上中のみ噴く)
 	_flame = CPUParticles2D.new()
 	_flame.amount = 18

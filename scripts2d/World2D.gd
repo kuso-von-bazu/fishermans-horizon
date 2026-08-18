@@ -793,9 +793,13 @@ func _spawn_escorts(center: Vector2, lord_id: String = "", tier: int = -1) -> Ar
 		ids = ["zahhak", "tiamat", "dagon"]   # #119再: 3種を1匹ずつ
 	elif lord_id == "aspidochelone" or lord_id == "legion":
 		ids = ["starfish", "zaratan"]   # #190再: 月下の主の取り巻きはオニヒトデ1体+ザラタン1体
-	elif lord_id == "hydra" or lord_id == "quetzal":
-		# #141再2: カリュブディス1体+オニヒトデ1体
-		ids = ["charybdis", "starfish"]
+	elif lord_id == "hydra" or lord_id == "quetzal" or lord_id == "kraken_lord" or lord_id == "griffon":
+		# #141再3: その海域には出ない強敵を取り巻きにする(ザッハーク1体+ティアマット1体)
+		ids = ["zahhak", "tiamat"]
+	elif lord_id == "undine":
+		ids = ["mermaid", "mermaid"]   # #246: ウンディーネはマーメイド2体で固定
+	elif lord_id == "siren":
+		ids = ["lamia", "lamia"]       # #246: セイレーンはラミア2体で固定
 	else:
 		for i in 2:
 			var mid: String = Database.pick_mob(tier)

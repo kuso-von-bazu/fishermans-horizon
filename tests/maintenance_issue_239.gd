@@ -170,7 +170,7 @@ func _ready() -> void:
 	check(is_equal_approx(Database.HP_TIER_MULT[0], 1.0), "始まりの島のHP倍率が変わっている")
 	for t in range(1, 5):
 		# #202再3(+2%)と再4(+3%)の累計 = 1.02 * 1.03
-		var want: float = float(base_mult[t]) * 1.02 * 1.03
+		var want: float = float(base_mult[t]) * 1.02 * 1.03 * 1.03   # 再3+再4+再5
 		check(absf(float(Database.HP_TIER_MULT[t]) - want) < 0.0005,
 			"tier%d のHP倍率が累計引き上げ後の値でない(%.5f / 期待%.5f)" % [t, Database.HP_TIER_MULT[t], want])
 
@@ -251,8 +251,33 @@ func _ready() -> void:
 		var got_hp: int = Database.scaled_hp(float(Database.lords[lid3].hp), isl)
 		check(got_hp == want_hp, "%s の海域HPが %d でない(%d)" % [str(Database.lords[lid3].name), want_hp, got_hp])
 
+	# --- #239再6: 敵のIDと画像ファイル名が一致していること ---
+	# (食い違うと本体がプレースホルダの灰色ドットになる。オクトパスで実際に起きた)
+	for lid4 in Database.lords:
+		var lp := "res://assets/images/pixel/lord_%s.png" % str(lid4)
+		var lp2 := "res://assets/images/lord_%s.png" % str(lid4)
+		check(ResourceLoader.exists(lp) or ResourceLoader.exists(lp2),
+			"主 %s の画像が id と一致する名前で存在しない" % str(lid4))
+	for mid2 in Database.combat_mobs:
+		var mp := "res://assets/images/pixel/mob_%s.png" % str(mid2)
+		var mp2 := "res://assets/images/mob_%s.png" % str(mid2)
+		check(ResourceLoader.exists(mp) or ResourceLoader.exists(mp2),
+			"モブ %s の画像が id と一致する名前で存在しない" % str(mid2))
+	# ドット絵が中身のある画像であること(透過処理で消えていないか)
+	for nm in ["lord_kraken_lord", "mob_killer_shell"]:
+		var img := Image.load_from_file("res://assets/images/pixel/%s.png" % nm)
+		check(not img.is_empty() and img.get_used_rect().has_area(), "%s のドット絵が空" % nm)
+		var used := img.get_used_rect()
+		check(float(used.size.x * used.size.y) > float(img.get_width() * img.get_height()) * 0.10,
+			"%s のドット絵の中身が小さすぎる(壊れている可能性)" % nm)
+
+	# --- #245: 4体は島から少し遠くに出現する ---
+	for lid5 in ["hydra", "quetzal", "kraken_lord", "griffon"]:
+		check(float(Database.lords[lid5].get("spawn_dist_mult", 1.0)) > 1.0,
+			"%s の出現距離が延ばされていない" % lid5)
+
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK islands/tier/mobs/lords/fame/weather/behaviours/hp2pct/order/weapons/bossrush/split_alive/lord_hp")
+		print("MAINTENANCE_TEST_OK islands/tier/mobs/lords/fame/weather/behaviours/hp2pct/order/weapons/bossrush/split_alive/lord_hp/art_ids/spawn_dist")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)

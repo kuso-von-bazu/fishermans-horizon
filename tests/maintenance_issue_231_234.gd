@@ -127,7 +127,7 @@ func _ready() -> void:
 		help_text += node.text
 	check(help_text.contains("W / S") and help_text.contains("ガトリングガン") and help_text.contains("5　陣形スキル"), "早見表に操作と武器説明を掲載")
 
-	var names := ["lord_undine","lord_siren","lord_night_emperor","lord_night_bat_medium","lord_night_bat_small","lord_wraith","lord_octopus","lord_griffon","mob_mermaid","mob_lamia","mob_zombie_fish","mob_moon_jelly","mob_killer_shell","mob_carabos"]
+	var names := ["lord_undine","lord_siren","lord_night_emperor","lord_night_bat_medium","lord_night_bat_small","lord_wraith","lord_kraken_lord","lord_griffon","mob_mermaid","mob_lamia","mob_zombie_fish","mob_moon_jelly","mob_killer_shell","mob_carabos"]
 	for n in names:
 		for suffix in ["", "_front", "_back"]:
 			var base := "res://assets/images/pixel/%s%s.png" % [n,suffix]

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://djg6tqhxd2uwm"
-path="res://.godot/imported/lord_octopus.png-1fef6cc3374aea6927687f1012973323.ctex"
+uid="uid://bv0xii2dxmiji"
+path="res://.godot/imported/lord_kraken_lord.png-7cbf0891399e46319f09c1ed9fa4bfd1.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/images/pixel/lord_octopus.png"
-dest_files=["res://.godot/imported/lord_octopus.png-1fef6cc3374aea6927687f1012973323.ctex"]
+source_file="res://assets/images/pixel/lord_kraken_lord.png"
+dest_files=["res://.godot/imported/lord_kraken_lord.png-7cbf0891399e46319f09c1ed9fa4bfd1.ctex"]
 
 [params]
 
