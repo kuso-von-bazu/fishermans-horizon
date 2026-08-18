@@ -891,9 +891,67 @@ func _ready() -> void:
 				"障害物(%s)の輪郭が描画できない" % kind2)
 			ob.free()
 
+	# ---------------- #248再2/#252: 魚雷まわり ----------------
+	# クラスター魚雷の距離別のふるまい(レビュアー指定の①②③)
+	var cl2: Dictionary = Database.weapons["cluster"]
+	check(float(cl2.dmg) > float(Database.weapons["torpedo2"].dmg),
+		"分裂前に当てたときの威力が追尾魚雷改を超えない")
+	var cl_cases := [[80.0, 3], [300.0, 1], [900.0, 3]]
+	for cse in cl_cases:
+		var dist: float = float(cse[0])
+		var want_hits: int = int(cse[1])
+		var got_hits := 0
+		var trials := 4
+		for tr in trials:
+			var tgt := CharacterBody2D.new()
+			tgt.set_script(Enemy)
+			tgt.setup("mob", "narwhal")
+			add_child(tgt)
+			await get_tree().process_frame
+			tgt.global_position = Vector2(dist, 0.0)
+			tgt.speed = 0.0
+			tgt.is_escort = true
+			tgt.hp = 99999.0
+			# 物理サーバへ位置が反映される前に撃つと、離れていても当たってしまう
+			for pw in 2:
+				await get_tree().physics_frame
+			var hp0: float = tgt.hp
+			var cp := Area2D.new()
+			cp.set_script(Proj)
+			add_child(cp)
+			cp.from_player = true
+			cp.global_position = Vector2.ZERO
+			cp.setup(Vector2.RIGHT, Database.weapons["cluster"].duplicate(), tgt)
+			for f10 in 460:
+				await get_tree().physics_frame
+				if not is_instance_valid(tgt):
+					break
+				if hp0 - tgt.hp >= float(cl2.dmg) - 0.01:
+					break
+			var dealt: float = (hp0 - tgt.hp) if is_instance_valid(tgt) else 0.0
+			got_hits += int(round(dealt / (float(cl2.dmg) / 3.0)))
+			if is_instance_valid(tgt):
+				tgt.free()
+			for c10 in get_children():
+				if c10 is Area2D:
+					c10.free()
+		var avg: float = float(got_hits) / float(trials)
+		check(absf(avg - float(want_hits)) < 0.6,
+			"クラスター魚雷 距離%.0f の命中が %d 発ぶんでない(実測%.1f)" % [dist, want_hits, avg])
+
+	# #252: ロックオンしていないと魚雷系は撃てず、弾も減らない
+	var w6 := Node2D.new()
+	w6.set_script(World2)
+	var src6 := FileAccess.get_file_as_string("res://scripts2d/World2D.gd")
+	check(src6.contains("if lock_target == null or not is_instance_valid(lock_target):"),
+		"ロックオンしていないときに魚雷系を撃てないようにしていない")
+	check(src6.count("if lock_target == null or not is_instance_valid(lock_target):") >= 2,
+		"発射側と実処理側の両方でロックの有無を確認していない")
+	w6.free()
+
 	port.free()
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze/sunny_sea/facing/killer_shell/south_isle/streams/all_islands/bullet_shapes")
+		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze/sunny_sea/facing/killer_shell/south_isle/streams/all_islands/bullet_shapes/cluster_range/torpedo_lock")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)

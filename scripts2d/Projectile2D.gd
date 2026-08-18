@@ -39,6 +39,11 @@ var wave_amp: float = 0.0
 var wave_freq: float = 0.0
 var _wave_ph: float = 0.0
 var stream: float = 0.0   # #251: 放射系。この距離を飛ぶと消える(短いリーチ)
+# #248再2: クラスター魚雷の子。広く分かれてから収束し、一度外したら引き返さない
+var no_uturn: bool = false
+var turn_min: float = 0.4
+var turn_max: float = 9.0
+var home_delay: float = 0.0   # #248再2: この秒数は追尾せず直進(広がってから追い始める)
 
 func setup(p_dir: Vector2, w: Dictionary, p_target: Node2D = null) -> void:
 	# #149再3/#196: レイヤー1(自機/島/障害物)+2(敵)+4(僚艦) をすべて見る
@@ -65,6 +70,10 @@ func setup(p_dir: Vector2, w: Dictionary, p_target: Node2D = null) -> void:
 	spread_homing = bool(w.get("spread_homing", false))
 	pierce = bool(w.get("pierce", false))
 	stream = float(w.get("stream", 0.0))
+	no_uturn = bool(w.get("no_uturn", false))
+	turn_min = float(w.get("turn_min", 0.4))
+	turn_max = float(w.get("turn_max", 9.0))
+	home_delay = float(w.get("home_delay", 0.0))
 	upright = bool(w.get("upright", false))
 	wave_amp = float(w.get("wave_amp", 0.0))
 	wave_freq = float(w.get("wave_freq", 0.0))
@@ -150,6 +159,13 @@ func _build_visual() -> void:
 			poly.append(Vector2(cos(a) * 3.3, sin(a) * 5.3))
 		mcol = Color(0.62, 0.78, 0.86)
 		r = 4.0
+	elif shape == "lance_spear":
+		# #248再2: 槍砲。鋭く尖った細長い槍。他の弾より大きめ
+		poly = PackedVector2Array([
+			Vector2(0, -22.0), Vector2(3.4, -11.0), Vector2(2.4, 6.0), Vector2(1.4, 16.0),
+			Vector2(-1.4, 16.0), Vector2(-2.4, 6.0), Vector2(-3.4, -11.0)])
+		mcol = Color(0.78, 0.80, 0.86)
+		r = 7.0
 	elif shape == "flame_jet":
 		# #251: 火炎放射器。先が太く後ろが細い炎の粒。飛ぶほど広がるので少し大きめ
 		poly = PackedVector2Array([
@@ -253,6 +269,9 @@ func _build_visual() -> void:
 		trail.color = Color(0.8, 0.95, 1.0, 0.6)
 		add_child(trail)
 		life = 4.0
+		# #248再2: クラスター魚雷の子は広がってから収束するぶん飛行距離が長い
+		if home_delay > 0.0:
+			life = 7.0
 
 func _scaled(poly: PackedVector2Array, s: float) -> PackedVector2Array:
 	var out := PackedVector2Array()
@@ -283,13 +302,17 @@ func _physics_process(delta: float) -> void:
 	elif homing:
 		# #30再: 発射直後から急加速して直進し、敵に近づくほど弧を描いて追尾(蛇行なし)
 		var accel_speed: float = speed * lerpf(0.45, 1.9, minf(_t / 0.5, 1.0))
-		if is_instance_valid(target):
+		if is_instance_valid(target) and _t >= home_delay:
 			var to_t: Vector2 = target.global_position - global_position
 			var d: float = to_t.length()
-			# 遠いうちはほぼ直進、近づくほど旋回力を上げて弧を描く
-			var near: float = clampf(1.0 - d / (130.0 * K), 0.0, 1.0)
-			var steer: float = lerpf(0.4, 9.0, near)
-			dir = dir.lerp(to_t.normalized(), steer * delta).normalized()
+			# #248再2: 一度大きく外した弾は引き返さない(目標を捨てて直進する)
+			if no_uturn and dir.dot(to_t.normalized()) < -0.17:
+				target = null
+			else:
+				# 遠いうちはほぼ直進、近づくほど旋回力を上げて弧を描く
+				var near: float = clampf(1.0 - d / (130.0 * K), 0.0, 1.0)
+				var steer: float = lerpf(turn_min, turn_max, near)
+				dir = dir.lerp(to_t.normalized(), steer * delta).normalized()
 		global_position += dir * accel_speed * delta
 		rotation = dir.angle() + PI / 2   # #78: 魚雷は進行方向を向く
 	else:
@@ -329,6 +352,11 @@ func _split_cluster() -> void:
 	if parent == null:
 		queue_free()
 		return
+	# #248再2: 子は「本体の威力を等分」し、より広い扇へ分かれてから収束する
+	var cdef := _cluster_def.duplicate()
+	cdef["dmg"] = float(_cluster_def.get("dmg", 0.0)) / float(maxi(n, 1))
+	cdef["no_uturn"] = true
+	cdef["home_delay"] = 0.72   # まず広がってから追い始める(近い敵には左右が届かない)
 	for i in n:
 		var t: float = (float(i) / float(maxi(n - 1, 1))) * 2.0 - 1.0 if n > 1 else 0.0
 		var child := Area2D.new()
@@ -336,7 +364,7 @@ func _split_cluster() -> void:
 		parent.add_child(child)
 		child.global_position = global_position
 		child.from_player = from_player
-		child.setup(dir.rotated(t * deg_to_rad(28.0)), _cluster_def, target)
+		child.setup(dir.rotated(t * deg_to_rad(55.0)), cdef, target)
 	queue_free()
 
 func _update_danger_outline() -> void:

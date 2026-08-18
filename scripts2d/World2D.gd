@@ -1359,6 +1359,10 @@ func _update_weapons(delta: float) -> void:
 				continue
 			var w: Dictionary = Database.weapons[wid]
 			if w.kind == "lock" and slot_cooldowns[i] <= 0:
+				# #252: 魚雷系はロックオンした敵がいないと撃てない(弾も減らさない)
+				if lock_target == null or not is_instance_valid(lock_target):
+					GameState.notice.emit("%s: 敵をロックオンしていない" % str(w.name))
+					continue
 				_fire_torpedo(w)
 				_consume_ammo(i, w)
 	# HUDに残弾を表示(#27)
@@ -1400,10 +1404,11 @@ func _fire_aim(w: Dictionary) -> void:
 	proj.setup(dir, _crewed(w))
 
 func _fire_torpedo(w: Dictionary) -> void:
+	# #252: ロック中の敵がいるときだけ呼ばれる(呼び出し側で確認済み)
+	if lock_target == null or not is_instance_valid(lock_target):
+		return
 	Audio.play("sfx_torpedo", -8.0)   # #47再: 攻撃音を少し小さく
-	var dir: Vector2 = player.forward()
-	if lock_target and is_instance_valid(lock_target):
-		dir = (lock_target.global_position - player.global_position).normalized()
+	var dir: Vector2 = (lock_target.global_position - player.global_position).normalized()
 	var proj := Area2D.new()
 	proj.set_script(ProjectileScript)
 	add_child(proj)
