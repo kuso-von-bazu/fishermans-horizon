@@ -66,6 +66,9 @@ var mob_weights := [
 	{"killer_shell": 0.24, "carabos": 0.26, "merman": 0.16, "charybdis": 0.14, "amphiptere": 0.12, "kraken": 0.08},  # 海嘯(tier3)
 	# #248: 外れの小島(tier4)。果ての島の出現表からティアマットとザッハークを除いて割合を按分
 	{"merman": 0.242, "charybdis": 0.242, "dagon": 0.323, "amphiptere": 0.193},
+	# #251: 南の孤島(tier2)。月下・星霜・常闇の3島の出現表を平均したもの
+	{"kraken": 0.200, "wyvern": 0.167, "starfish": 0.107, "zaratan": 0.093,
+		"mermaid": 0.113, "lamia": 0.100, "zombie_fish": 0.120, "moon_jelly": 0.100},
 ]
 
 func pick_mob(tier: int) -> String:
@@ -86,6 +89,9 @@ var harpoon_debuffs := {
 	"atk":   {"name": "衰弱(攻撃力減)", "desc": "与ダメージ22%減"},
 	"speed": {"name": "鈍化(移動速度減)", "desc": "移動28%減"},
 }
+# #251: 冷気放射器だけが与える複合デバフ(攻撃頻度と移動速度の両方が落ちる)。
+# 造船所で選ぶ銛の効果ではないので harpoon_debuffs には入れない。
+const CHILL_DEBUFF := "chill"
 
 # ---------------------------------------------------------------------------
 # 近海の主(ボス) 主は対応する島でしか売れない。bounty=賞金, cap=魚倉圧迫
@@ -184,6 +190,7 @@ var departure_hints := {
 			"２・３番艦が離脱するときもクルーを失うおそれがあるが、旗艦が大破する時よりも生還率は高い。",
 			"大砲は海賊船を高確率で炎上させる。",
 			"ダメージを受けたときに運が悪いと船が炎上してしまうぞ。時間が経てば鎮火する。",
+			"南の孤島では珍しい武器が売っているらしい。",   # #241再3: 南の孤島(#251)の追加に伴い(星霜・常闇もこの表を共有)
 		],
 	},
 	3: {
@@ -245,6 +252,13 @@ var departure_hints := {
 	# #241再2: 外れの小島。レビュアーの指定は見出しが「果ての島からの出港」だったが、
 	# 内容(主がいない・珍しい武器)は外れの小島(#248)そのものなので、この島のヒントとして実装
 	8: {
+		"random": [
+			"この島の近海に主はいないようだ。",
+			"この島では珍しい武器が売っている。",
+		],
+	},
+	# #241再3: 南の孤島。外れの小島と同じ2種
+	9: {
 		"random": [
 			"この島の近海に主はいないようだ。",
 			"この島では珍しい武器が売っている。",
@@ -358,6 +372,9 @@ var weapons := {
 	# #248: 外れの小島でしか買えない個性的な武器(only_island=販売する島を限定)
 	"spray":   {"name": "乱射砲",         "kind": "aim",  "speed_mult": 0.85, "dmg": 6,  "cooldown": 0.07, "reload": 1.2, "mag": 55, "range": 145, "price": 6000, "slip": false, "debuff": false, "homing": false, "falloff": true, "spray": 0.30, "tier": 4, "only_island": 8, "sfx": "sfx_gun",     "desc": "重ガトリング砲を超える単発威力。ただし狙った方向に散らばって飛ぶ"},
 	"lance":   {"name": "槍砲",           "kind": "aim",  "speed_mult": 0.6,  "dmg": 24, "cooldown": 0.85, "reload": 1.8, "mag": 5,  "range": 125, "price": 7000, "slip": false, "debuff": false, "homing": false, "pierce": true, "tier": 4, "only_island": 8, "sfx": "sfx_harpoon", "desc": "強化銛砲と同威力。デバフは付かないが敵を貫通する"},
+	# #251: 南の孤島でしか買えない放射系。押している間だけ短いリーチへ扇状に吹き続ける
+	"flamer":  {"name": "火炎放射器",     "kind": "aim",  "speed_mult": 0.55, "dmg": 5,  "cooldown": 0.05, "reload": 2.0, "mag": 60, "range": 80, "price": 2000, "slip": false, "debuff": false, "homing": false, "spray": 0.16, "stream": 480.0, "shape": "flame_jet", "pirate_burn": 1.0, "tier": 2, "only_island": 9, "sfx": "sfx_gun", "desc": "短いリーチへ火炎を吹き続ける。海賊船に必ず炎上"},
+	"chiller": {"name": "冷気放射器",     "kind": "aim",  "speed_mult": 0.55, "dmg": 5,  "cooldown": 0.05, "reload": 2.0, "mag": 60, "range": 80, "price": 2200, "slip": false, "debuff": true,  "debuff_kind": "chill", "homing": false, "spray": 0.16, "stream": 480.0, "shape": "frost_jet", "tier": 2, "only_island": 9, "sfx": "sfx_gun", "desc": "短いリーチへ冷気を吹き続ける。生物の攻撃頻度と移動速度が落ちる"},
 	"cluster": {"name": "クラスター魚雷", "kind": "lock", "speed_mult": 0.55, "dmg": 13, "cooldown": 0.8,  "reload": 2.2, "mag": 10, "range": 195, "price": 9000, "slip": false, "debuff": false, "homing": true,  "pirate_burn": 0.35, "cluster": 3, "tier": 4, "only_island": 8, "sfx": "sfx_torpedo", "desc": "発射後すぐ3発に分裂し、それぞれが敵を追尾。全弾命中すれば追尾魚雷改を超える"},
 }
 
@@ -416,6 +433,8 @@ var islands := [
 	{"id": 7, "name": "海嘯の島",     "tier": 3, "fame_req": 175, "price_mult": 4.8, "pos": Vector3(2600, 0, 1900), "spawn": ["octopus","squid","bonito"], "lords": ["kraken_lord","griffon"], "weather": "surge"},
 	# #248: 終盤の寄り道。果ての島の北にある小さな雪原の島。近海の主はいない(酒場の主の情報も出ない)
 	{"id": 8, "name": "外れの小島",   "tier": 4, "fame_req": 400, "price_mult": 10.8, "pos": Vector3(3600, 0, -600), "spawn": ["octopus","bonito"], "lords": [], "weather": "flurry"},
+	# #251: 中盤の寄り道。常闇の島の南にある小さな草原の島。近海の主はいない
+	{"id": 9, "name": "南の孤島",     "tier": 2, "fame_req": 70,  "price_mult": 3.0, "pos": Vector3(1700, 0, 2000), "spawn": ["squid","octopus","bonito"], "lords": [], "weather": "sunny"},
 ]
 
 # #202: 出現海域ごとの敵HP倍率(始まり=等倍 / 潮鳴り1.5 / 月下1.9 / 嵐越え2.7 / 果て3.3)。
@@ -448,7 +467,7 @@ func island(idx: int) -> Dictionary:
 # #239再: 航路メニューなどで見せる並び順(進行順)。
 # islands の並びは「index を動かさない」都合で追加順になっているため、
 # 表示は tier 順 → 同じ tier 内は本来の攻略順(月下→星霜→常闇 / 嵐越え→海嘯)にする。
-const ISLAND_ORDER := [0, 1, 2, 5, 6, 7, 3, 4, 8]   # #239再2: 海嘯 → 嵐越え の順。#248: 外れの小島は果ての次
+const ISLAND_ORDER := [0, 1, 2, 5, 6, 9, 7, 3, 4, 8]   # #239再2: 海嘯 → 嵐越え の順。#248/#251: 寄り道の島は同格の島の後ろ
 
 func islands_in_order() -> Array:
 	var out: Array = []
@@ -486,6 +505,8 @@ const SHOP_ONLY := {
 		"ships": ["corvette", "hunter_h", "hauler"],
 		"weapons": ["spray", "lance", "cluster"],
 	},
+	# #251: 南の孤島。船は同格の島と同じなので制限せず、武器だけ専用の2種に絞る
+	9: {"weapons": ["flamer", "chiller"]},
 }
 
 # #247: その島でその船/武器を売っているか

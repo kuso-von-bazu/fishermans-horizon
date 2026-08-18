@@ -9,7 +9,7 @@ uniform vec3 crest_color : source_color = vec3(0.80, 0.92, 0.97);
 uniform float wave_scale = 0.028;
 uniform float wave_speed = 0.9;
 // #135: 島の位置(ワールド座標)。島周りは淡い青にする
-uniform vec2 islands[9];   // #239: 島8つ → #248: 外れの小島で9つ
+uniform vec2 islands[10];   // #239: 島8つ → #248/#251: 寄り道の島2つで10
 uniform int island_count = 0;
 uniform float island_light_radius = 900.0;
 // #190/#191/#192: 近海の天候。night=夜(月下の島), rough=高波/荒波(嵐越え・果て)

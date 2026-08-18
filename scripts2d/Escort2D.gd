@@ -330,7 +330,8 @@ func _tick_volley(delta: float) -> void:
 			dmg *= 2.0
 			w2["crit"] = true
 		w2.dmg = dmg
-		w2["debuff_kind"] = str(GameState.fleet[fleet_index].get("harpoon", "slip"))
+		if not w.has("debuff_kind"):   # #251: 武器が自前のデバフ種別を持つなら優先
+			w2["debuff_kind"] = str(GameState.fleet[fleet_index].get("harpoon", "slip"))
 		Audio.play(str(w.get("sfx", "sfx_gun")), -14.0, randf_range(0.95, 1.05))
 		var proj := Area2D.new()
 		proj.set_script(ProjectileScript)
@@ -574,7 +575,8 @@ func _auto_fire(_delta: float) -> void:
 			dmg *= 2.0
 			w2["crit"] = true
 		w2.dmg = dmg
-		w2["debuff_kind"] = str(GameState.fleet[fleet_index].get("harpoon", "slip"))   # #196再: この艦の銛の効果
+		if not w.has("debuff_kind"):   # #251: 武器が自前のデバフ種別を持つなら優先
+			w2["debuff_kind"] = str(GameState.fleet[fleet_index].get("harpoon", "slip"))   # #196再: この艦の銛の効果
 		Audio.play(str(w.get("sfx", "sfx_gun")), -12.0, randf_range(0.95, 1.05))
 		var proj := Area2D.new()
 		proj.set_script(ProjectileScript)

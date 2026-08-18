@@ -116,10 +116,10 @@ func _build_ocean() -> void:
 	var ipos := PackedVector2Array()
 	for i in Database.islands.size():
 		ipos.append(island_pos(i))
-	while ipos.size() < 9:   # #248: シェーダ側の配列長(島9つ)に合わせる
+	while ipos.size() < 10:   # #248/#251: シェーダ側の配列長(島10)に合わせる
 		ipos.append(Vector2(1e9, 1e9))
 	ocean_mat.set_shader_parameter("islands", ipos)
-	ocean_mat.set_shader_parameter("island_count", mini(Database.islands.size(), 9))
+	ocean_mat.set_shader_parameter("island_count", mini(Database.islands.size(), 10))
 
 # #190/#191/#192: 天候オーバーレイ(夜/大雨/吹雪)。海の上・HUDの下に全画面で重ねる
 func _build_weather() -> void:
@@ -884,7 +884,7 @@ func _obstacle_kind() -> String:
 
 # 始まりの島の近海は岩礁を少なめに
 func _obstacle_max() -> int:
-	return [3, 8, 8, 9, 7, 8, 8, 9, 7][clampi(GameState.current_island, 0, 8)]   # #239: 島8つぶん。#248: 外れの小島で9つ
+	return [3, 8, 8, 9, 7, 8, 8, 9, 7, 8][clampi(GameState.current_island, 0, 9)]   # #239: 島8つぶん。#248/#251: 寄り道の島2つで10
 
 func _spawn_obstacle() -> void:
 	var pos := _ring_pos(85, 200)
@@ -1376,7 +1376,9 @@ func _update_weapons(delta: float) -> void:
 # クルー効果(#39)を武器威力に反映した複製を返す
 func _crewed(w: Dictionary) -> Dictionary:
 	var w2 := w.duplicate()
-	w2["debuff_kind"] = GameState.harpoon_debuff   # #196再: 旗艦の銛の効果
+	# #251: 武器が自前のデバフ種別を持つ場合(冷気放射器)は銛の設定で上書きしない
+	if not w.has("debuff_kind"):
+		w2["debuff_kind"] = GameState.harpoon_debuff   # #196再: 旗艦の銛の効果
 	var dmg: float = float(w.dmg) * GameState.attack_mult() * GameState.formation_passive("shot_dmg")   # #224再2: 鶴翼陣
 	if randf() < GameState.crit_chance():
 		dmg *= 2.0   # 水兵のクリティカル

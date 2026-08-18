@@ -535,8 +535,8 @@ func _physics_process(delta: float) -> void:
 			_charging = not _charging
 			_charge_t = randf_range(2.2, 3.4) if _charging else randf_range(1.4, 2.2)
 		eff_speed *= 1.35 if _charging else 0.35
-	if _debuff_kind == "speed":
-		eff_speed *= 1.0 - 0.55 * clampf(_debuff_power, 0.0, 1.0)   # #37再々: 鈍化を強化   # #91/#114 鈍化(重ねがけで増加/減衰)
+	if _debuff_kind == "speed" or _debuff_kind == "chill":
+		eff_speed *= 1.0 - 0.55 * clampf(_debuff_power, 0.0, 1.0)   # #37再々: 鈍化を強化   # #91/#114 鈍化(重ねがけで増加/減衰)   # #251: 冷気は鈍化+麻痺
 	var move_dir: Vector2
 	var face_dir := Vector2.ZERO   # #187再: 見た目の向きを別管理(引き撃ち中は常にプレイヤーの逆を向く)
 	if bool(def.get("stationary", false)):
@@ -657,8 +657,8 @@ func _attack(delta: float, dist: float) -> void:
 	if _atk_timer > 0:
 		return
 	_atk_timer = attack_cd
-	if _debuff_kind == "atkfreq":
-		_atk_timer *= 1.0 + 0.5 * _debuff_power   # #91/#114 麻痺: 攻撃間隔増(重ねがけで増加/減衰)
+	if _debuff_kind == "atkfreq" or _debuff_kind == "chill":
+		_atk_timer *= 1.0 + 0.5 * _debuff_power   # #91/#114 麻痺: 攻撃間隔増(重ねがけで増加/減衰)   # #251: 冷気は鈍化+麻痺
 	# #239再8: no_attack=自分からは仕掛けない(キラーシェルは撃たれたときだけ打ち返す)
 	if bool(def.get("no_attack", false)):
 		return

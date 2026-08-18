@@ -38,6 +38,7 @@ var upright: bool = false
 var wave_amp: float = 0.0
 var wave_freq: float = 0.0
 var _wave_ph: float = 0.0
+var stream: float = 0.0   # #251: 放射系。この距離を飛ぶと消える(短いリーチ)
 
 func setup(p_dir: Vector2, w: Dictionary, p_target: Node2D = null) -> void:
 	# #149再3/#196: レイヤー1(自機/島/障害物)+2(敵)+4(僚艦) をすべて見る
@@ -63,6 +64,7 @@ func setup(p_dir: Vector2, w: Dictionary, p_target: Node2D = null) -> void:
 	bcolor = w.get("bcolor", Color(0, 0, 0, 0))
 	spread_homing = bool(w.get("spread_homing", false))
 	pierce = bool(w.get("pierce", false))
+	stream = float(w.get("stream", 0.0))
 	upright = bool(w.get("upright", false))
 	wave_amp = float(w.get("wave_amp", 0.0))
 	wave_freq = float(w.get("wave_freq", 0.0))
@@ -148,6 +150,20 @@ func _build_visual() -> void:
 			poly.append(Vector2(cos(a) * 3.3, sin(a) * 5.3))
 		mcol = Color(0.62, 0.78, 0.86)
 		r = 4.0
+	elif shape == "flame_jet":
+		# #251: 火炎放射器。先が太く後ろが細い炎の粒。飛ぶほど広がるので少し大きめ
+		poly = PackedVector2Array([
+			Vector2(0, -7.5), Vector2(4.6, -2.6), Vector2(3.4, 3.0), Vector2(1.2, 8.2),
+			Vector2(-1.2, 8.2), Vector2(-3.4, 3.0), Vector2(-4.6, -2.6)])
+		mcol = Color(0.98, 0.55, 0.16)
+		r = 6.0
+	elif shape == "frost_jet":
+		# #251: 冷気放射器。角張った氷片
+		poly = PackedVector2Array([
+			Vector2(0, -7.0), Vector2(3.2, -3.4), Vector2(4.2, 2.2), Vector2(0, 7.6),
+			Vector2(-4.2, 2.2), Vector2(-3.2, -3.4)])
+		mcol = Color(0.72, 0.93, 1.0)
+		r = 5.6
 	elif shape == "needle":
 		# #239: ラミアの針状弾。細長く鋭い菱形で、進行方向へ向く
 		poly.append(Vector2(0, -11.0))
@@ -280,6 +296,9 @@ func _physics_process(delta: float) -> void:
 			_wave_ph += delta * wave_freq
 			global_position += dir.orthogonal() * cos(_wave_ph) * wave_amp * delta
 	_travel += speed * delta
+	if stream > 0.0 and _travel > stream:
+		queue_free()   # #251: 放射系はリーチ外で消える
+		return
 	_update_danger_outline()
 	life -= delta
 	# #154: 自機の弾は画面外に出てしばらくで消滅(離れすぎた敵に当てない)

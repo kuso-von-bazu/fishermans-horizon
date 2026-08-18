@@ -642,9 +642,159 @@ func _ready() -> void:
 	ks.free()
 	pl2.free()
 
+	# ---------------- #251: 南の孤島 ----------------
+	const SOUTH := 9
+	var si: Dictionary = Database.island(SOUTH)
+	check(str(si.name) == "南の孤島", "島9が南の孤島でない(%s)" % str(si.name))
+	check(Database.tier_of(SOUTH) == Database.tier_of(6), "南の孤島が常闇の島と同格でない")
+	check(int(si.fame_req) == int(Database.island(6).fame_req), "到達に必要な名声が常闇と違う")
+	check((si.get("lords", []) as Array).is_empty(), "南の孤島に主が設定されている")
+	check(si.pos.z > Database.island(6).pos.z, "南の孤島が常闇の島の南にない")
+	check(str(si.get("weather", "")) == str(Database.island(1).get("weather", "")),
+		"南の孤島の演出が潮鳴りの島と違う")
+	var spal: Dictionary = Isle.PALETTES[SOUTH]
+	check(float(spal.get("small", 1.0)) < 1.0, "南の孤島が小さく描かれない")
+	var sg: Color = spal.grass
+	check(sg.g > sg.r and sg.g > sg.b, "南の孤島の地面が草原(緑)でない")
+	# 近海のモブは月下・星霜・常闇に出るものだけ
+	var allowed := {}
+	for isle_i2 in [2, 5, 6]:
+		for mw_id in Database.mob_weights[isle_i2]:
+			allowed[mw_id] = true
+	var south_pool := {}
+	for i5 in 600:
+		south_pool[Database.pick_mob(SOUTH)] = true
+	for mid2 in south_pool:
+		check(allowed.has(mid2), "南の孤島に他の海域の敵(%s)が出る" % str(mid2))
+	for mid3 in allowed:
+		check(south_pool.has(mid3), "南の孤島に %s が出ない" % str(mid3))
+	# 造船所: 船は同格の島と同じ、武器は専用2種のみ
+	var got_s: Dictionary = await _listed(port, SOUTH)
+	var got_ref: Dictionary = await _listed(port, 6)
+	(got_s.ships as Array).sort()
+	(got_ref.ships as Array).sort()
+	check(got_s.ships == got_ref.ships, "南の孤島の船の品揃えが常闇と違う(%s / %s)" % [str(got_s.ships), str(got_ref.ships)])
+	var want_w2 := ["flamer", "chiller"]
+	for wid5 in Database.weapons:
+		var sold3: bool = (got_s.weapons as Array).has(wid5)
+		if want_w2.has(wid5):
+			check(sold3, "南の孤島で %s が買えない" % wid5)
+		else:
+			check(not sold3, "南の孤島で %s が売られている" % wid5)
+	for other2 in [0, 1, 2, 3, 4, 5, 6, 7, 8]:
+		for wid6 in want_w2:
+			check(not Database.shop_has_weapon(other2, wid6), "島%d で %s が売られている" % [other2, wid6])
+	# 酒場: 主がいないので主の情報タブが出ない
+	GameState.current_island = SOUTH
+	port._tavern_section = "lords"
+	port.show_tavern()
+	await get_tree().process_frame
+	var st_txt := ""
+	for n2 in port.content.find_children("*", "Button", true, false):
+		st_txt += n2.text + "
+"
+	check(not st_txt.contains("主の情報"), "南の孤島の酒場に「主の情報」が出ている")
+	# クルーの雇用条件は同格の島と同じ
+	var c_south := GameState.hire_cost("marine")
+	GameState.current_island = 6
+	check(c_south == GameState.hire_cost("marine"), "南の孤島のクルー雇用費が常闇と違う")
+
+	# ---------------- #251: 放射系の武器 ----------------
+	var gat: Dictionary = Database.weapons["gatling"]
+	for wid7 in ["flamer", "chiller"]:
+		var fw: Dictionary = Database.weapons[wid7]
+		check(float(fw.stream) > 0.0, "%s にリーチの上限が無い" % wid7)
+		check(float(fw.cooldown) < float(gat.cooldown), "%s が押しっぱなしで連続放射にならない" % wid7)
+		check(float(fw.spray) > 0.0, "%s が扇状に広がらない" % wid7)
+		check(absf(float(fw.dmg) / float(gat.dmg) - 1.5) < 0.35, "%s の威力がガトリングの1.5倍程度でない" % wid7)
+		check(absf(float(fw.mag) / float(gat.mag) - 1.5) < 0.35, "%s の弾数がガトリングの1.5倍程度でない" % wid7)
+		check(absf(float(fw.reload) - float(gat.reload) * 2.0) < 0.001, "%s のリロードがガトリングの2倍でない" % wid7)
+	check(float(Database.weapons["flamer"].pirate_burn) >= 1.0, "火炎放射器が海賊船を確実に炎上させない")
+	check(str(Database.weapons["chiller"].debuff_kind) == "chill", "冷気放射器のデバフが chill でない")
+	check(float(Database.weapons["chiller"].get("pirate_burn", 0.0)) == 0.0, "冷気放射器に炎上が付いている")
+	# 銛の効果設定で冷気のデバフ種別が上書きされないこと(旗艦・僚艦の両方)
+	GameState.harpoon_debuff = "slip"
+	var w_world := Node2D.new()
+	w_world.set_script(World2)
+	var crewed: Dictionary = w_world._crewed(Database.weapons["chiller"])
+	check(str(crewed.get("debuff_kind", "")) == "chill",
+		"冷気放射器のデバフが銛の設定で上書きされている(%s)" % str(crewed.get("debuff_kind", "")))
+	var crewed_h: Dictionary = w_world._crewed(Database.weapons["harpoon"])
+	check(str(crewed_h.get("debuff_kind", "")) == "slip", "銛のデバフ設定が効かなくなった")
+	w_world.free()
+	var esc_src := FileAccess.get_file_as_string("res://scripts2d/Escort2D.gd")
+	check(esc_src.count("if not w.has(\"debuff_kind\"):") == 2,
+		"僚艦の発射経路でデバフ種別の上書きを避けていない")
+	# リーチ外で消えること
+	var host2 := Node2D.new()
+	add_child(host2)
+	var fp := Area2D.new()
+	fp.set_script(Proj)
+	host2.add_child(fp)
+	fp.from_player = true
+	fp.setup(Vector2.RIGHT, Database.weapons["flamer"].duplicate())
+	var reach: float = float(Database.weapons["flamer"].stream)
+	var last_travel := 0.0
+	var gone := false
+	for f8 in 200:
+		if not is_instance_valid(fp) or fp.is_queued_for_deletion():
+			gone = true
+			break
+		last_travel = float(fp._travel)
+		await get_tree().physics_frame
+	# 寿命で消えたのではなく、指定のリーチで消えたことを距離で確かめる
+	check(gone, "火炎がリーチ外でも消えない")
+	check(last_travel > reach * 0.85 and last_travel < reach * 1.15,
+		"火炎が消える距離がリーチと違う(%.0f / 指定%.0f)" % [last_travel, reach])
+	host2.free()
+	# 冷気は鈍化と麻痺の両方を与える
+	# 攻撃間隔と移動速度の両方が実際に落ちること
+	var chill_pl := CharacterBody2D.new()
+	chill_pl.add_to_group("player")
+	add_child(chill_pl)
+	var atk_timers: Array = []
+	var moved: Array = []
+	for chilled in [false, true]:
+		var ce := CharacterBody2D.new()
+		ce.set_script(Enemy)
+		ce.setup("mob", "kraken")
+		add_child(ce)
+		await get_tree().process_frame
+		ce.player = chill_pl
+		ce._aggro = true
+		ce.global_position = Vector2.ZERO
+		chill_pl.global_position = Vector2(3000, 0)   # 遠くに置いて追いかけさせる
+		if chilled:
+			ce.take_hit(1.0, false, true, false, "chill")
+			check(ce._debuff_kind == "chill", "冷気のデバフが敵に入らない")
+		# 攻撃間隔
+		ce._atk_timer = 0.0
+		ce._attack(0.0, 10.0)
+		atk_timers.append(float(ce._atk_timer))
+		# 移動距離
+		ce.global_position = Vector2.ZERO
+		for f9 in 20:
+			await get_tree().physics_frame
+		moved.append(ce.global_position.length())
+		ce.free()
+	check(float(atk_timers[1]) > float(atk_timers[0]) * 1.05,
+		"冷気で攻撃頻度が落ちない(%.2f → %.2f)" % [float(atk_timers[0]), float(atk_timers[1])])
+	check(float(moved[1]) < float(moved[0]) * 0.95,
+		"冷気で移動速度が落ちない(%.1f → %.1f)" % [float(moved[0]), float(moved[1])])
+	chill_pl.free()
+
+	# ---------------- #241再3: 南の孤島のヒント ----------------
+	var r9: Array = Database.departure_hint_table(SOUTH).get("random", [])
+	check(r9.has("この島の近海に主はいないようだ。"), "南の孤島のヒント(主がいない)が無い")
+	check(r9.has("この島では珍しい武器が売っている。"), "南の孤島のヒント(珍しい武器)が無い")
+	for from_isle in [2, 5, 6]:
+		var rr: Array = Database.departure_hint_table(from_isle).get("random", [])
+		check(rr.has("南の孤島では珍しい武器が売っているらしい。"),
+			"島%d のヒントに南の孤島の案内が無い" % from_isle)
+
 	port.free()
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze/sunny_sea/facing/killer_shell")
+		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze/sunny_sea/facing/killer_shell/south_isle/streams")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)
