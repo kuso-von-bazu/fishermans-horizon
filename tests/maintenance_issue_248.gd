@@ -792,9 +792,62 @@ func _ready() -> void:
 		check(rr.has("南の孤島では珍しい武器が売っているらしい。"),
 			"島%d のヒントに南の孤島の案内が無い" % from_isle)
 
+	# ---------------- 全島の総ざらい(島を増やしたときの取りこぼし検出) ----------------
+	# 島に連動する配列・パレット・天候・ヒントに抜けがあると、その島に入った瞬間に
+	# 落ちたり無言で別の島の値を使ってしまうので、全島ぶんまとめて確かめる。
+	var w5 := Node2D.new()
+	w5.set_script(World2)
+	for isl in Database.islands.size():
+		var d5: Dictionary = Database.island(isl)
+		check(int(d5.id) == isl, "島%d の id が添字と食い違う(%d)" % [isl, int(d5.id)])
+		check(str(d5.name) != "", "島%d に名前が無い" % isl)
+		check(isl < Database.mob_weights.size(), "島%d ぶんの mob_weights が無い" % isl)
+		var wsum := 0.0
+		for k5 in Database.mob_weights[isl]:
+			wsum += float(Database.mob_weights[isl][k5])
+			check(Database.combat_mobs.has(k5), "島%d の出現表に未定義の敵(%s)" % [isl, str(k5)])
+		check(absf(wsum - 1.0) < 0.02, "島%d の出現割合の合計が1でない(%.3f)" % [isl, wsum])
+		check(isl < Isle.PALETTES.size(), "島%d ぶんの配色が無い" % isl)
+		# 天候名が実装済みのものであること(未実装名だと無言で素の海になる)
+		var wn := str(d5.get("weather", ""))
+		if wn != "":
+			var wp: Dictionary = w5._weather_params(wn)
+			var any := false
+			for k6 in wp:
+				if k6 == "tint":
+					any = any or (wp[k6] as Color).a > 0.001
+				elif k6 == "moon":
+					any = any or not is_equal_approx(float(wp[k6]), 1.0)
+				else:
+					any = any or absf(float(wp[k6])) > 0.001
+			check(any, "島%d の天候 %s が未実装(何も起きない)" % [isl, wn])
+		# 主がいる島は、その主の island がこの島を指していること
+		for lid5 in (d5.get("lords", []) as Array):
+			check(Database.lords.has(str(lid5)), "島%d に未定義の主(%s)" % [isl, str(lid5)])
+			check(int(Database.lords[str(lid5)].island) == isl,
+				"主 %s の所属島が %d でなく %d" % [str(lid5), isl, int(Database.lords[str(lid5)].island)])
+		# 出港ヒントは全島にあること
+		check(not (Database.departure_hint_table(isl).get("random", []) as Array).is_empty(),
+			"島%d に出港ヒントが無い" % isl)
+		# 造船所で最低1隻・1つは買えること(制限のかけ過ぎで空にならないように)
+		var any_ship := false
+		for sid5 in Database.ships:
+			if Database.shop_has_ship(isl, sid5):
+				any_ship = true
+				break
+		check(any_ship, "島%d の造船所に船が1隻も無い" % isl)
+	w5.free()
+	# 島の座標が重なっていないこと
+	for a5 in Database.islands.size():
+		for b5 in range(a5 + 1, Database.islands.size()):
+			var pa: Vector3 = Database.island(a5).pos
+			var pb: Vector3 = Database.island(b5).pos
+			check(Vector2(pa.x, pa.z).distance_to(Vector2(pb.x, pb.z)) > 400.0,
+				"島%d と島%d が近すぎる" % [a5, b5])
+
 	port.free()
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze/sunny_sea/facing/killer_shell/south_isle/streams")
+		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze/sunny_sea/facing/killer_shell/south_isle/streams/all_islands")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)
