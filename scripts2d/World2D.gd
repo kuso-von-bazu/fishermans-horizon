@@ -158,7 +158,10 @@ func _weather_params(w: String) -> Dictionary:
 	var rough := 0.0
 	var moon := 1.0    # #239: 海面に映る月(月下のみ)
 	var stars := 0.0   # #239: 海面に映る星(星霜のみ)
+	var sunlight := 0.0   # #250: 強い日射し(潮鳴りのみ)
 	match w:
+		"sunny":     # #250: 潮鳴りの島。始まりの島より明るく、海面に太陽の反射
+			sunlight = 1.0
 		"night":     # #190: 月下の島の近海は常に夜
 			tint = Color(0.05, 0.08, 0.22, 0.40)
 			night = 1.0
@@ -186,7 +189,7 @@ func _weather_params(w: String) -> Dictionary:
 		"surge":     # #239: 海嘯の島。嵐越えから雨を除いた荒波
 			tint = Color(0.10, 0.12, 0.18, 0.24)
 			rough = 1.0
-	return {"tint": tint, "rain": rain, "snow": snow, "night": night, "rough": rough, "moon": moon, "stars": stars}
+	return {"tint": tint, "rain": rain, "snow": snow, "night": night, "rough": rough, "moon": moon, "stars": stars, "sunlight": sunlight}
 
 # 目標値を設定(instant=trueで即反映。寄港/出港時のみ)
 func _apply_weather(w: String, instant := true) -> void:
@@ -210,6 +213,7 @@ func _push_weather() -> void:
 		ocean_mat.set_shader_parameter("rough", _weather_cur.rough)
 		ocean_mat.set_shader_parameter("moon", _weather_cur.moon)     # #239
 		ocean_mat.set_shader_parameter("stars", _weather_cur.stars)   # #239
+		ocean_mat.set_shader_parameter("sunlight", _weather_cur.sunlight)   # #250
 
 # 航行中は最寄りの海域の天候へ徐々に寄せる(海域をまたぐと自然に切り替わる)
 func _update_weather(delta: float) -> void:
@@ -222,7 +226,7 @@ func _update_weather(delta: float) -> void:
 		_weather_target = _weather_params(want)
 	var t: float = clampf(delta / 1.5, 0.0, 1.0)
 	_weather_cur.tint = (_weather_cur.tint as Color).lerp(_weather_target.tint, t)
-	for k in ["rain", "snow", "night", "rough", "moon", "stars"]:   # #239
+	for k in ["rain", "snow", "night", "rough", "moon", "stars", "sunlight"]:   # #239/#250
 		_weather_cur[k] = lerpf(float(_weather_cur[k]), float(_weather_target[k]), t)
 	_push_weather()
 

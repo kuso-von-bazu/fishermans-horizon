@@ -527,9 +527,50 @@ func _ready() -> void:
 		var ratio := _straight_edge_ratio(wimg)
 		check(ratio < 0.6, "レイスのドット絵の下半身に背景の板(白いもや)が残っている(縁の%.0f%%が直線): %s" % [ratio * 100.0, wp])
 
+	# ---------------- #250: 潮鳴りの島の強い日射し ----------------
+	check(str(Database.island(1).get("weather", "")) == "sunny", "潮鳴りの島の天候が sunny でない")
+	check(str(Database.island(0).get("weather", "")) == "", "始まりの島に天候が付いた(比較対象なので素のままであること)")
+	var w3 := Node2D.new()
+	w3.set_script(World2)
+	var p_sun: Dictionary = w3._weather_params("sunny")
+	var p_none: Dictionary = w3._weather_params("")
+	check(float(p_sun.get("sunlight", 0.0)) > 0.0, "sunny に日射しのパラメータが無い")
+	check(float(p_none.get("sunlight", 0.0)) == 0.0, "天候なしの海域に日射しが入っている")
+	check(float(p_sun.get("night", 0.0)) == 0.0 and float(p_sun.get("rough", 0.0)) == 0.0,
+		"sunny に夜・荒波が混ざっている")
+	# 天候の補間対象に sunlight が含まれていること(含まれないと海域をまたいでも切り替わらない)。
+	# 潮鳴りの島の真上に旗艦を置き、実際に _update_weather を回して確かめる。
+	var sea_player := CharacterBody2D.new()
+	add_child(w3)
+	await get_tree().process_frame
+	# _ready() で自前の海が組まれるので、旗艦の差し替えは初期化のあとに行う
+	w3.add_child(sea_player)
+	w3.player = sea_player
+	sea_player.global_position = w3.island_pos(1)
+	w3.phase = "sea"
+	w3._weather_name = ""
+	w3._weather_cur = w3._weather_params("")
+	for f4 in 8:
+		w3._update_weather(1.5)
+	check(float(w3._weather_cur.get("sunlight", 0.0)) > 0.5,
+		"潮鳴りの海域にいても日射しが反映されない(%.2f)" % float(w3._weather_cur.get("sunlight", 0.0)))
+	# 始まりの島へ移ると日射しが引いていくこと
+	sea_player.global_position = w3.island_pos(0)
+	for f5 in 12:
+		w3._update_weather(1.5)
+	check(float(w3._weather_cur.get("sunlight", 0.0)) < 0.2,
+		"始まりの島の海域でも日射しが残っている(%.2f)" % float(w3._weather_cur.get("sunlight", 0.0)))
+	w3.free()
+	# シェーダ側に uniform と反射の実装があること
+	var shader_src := FileAccess.get_file_as_string("res://shaders/ocean2d.gdshader")
+	check(shader_src.contains("uniform float sunlight"), "海面シェーダに sunlight の uniform が無い")
+	check(shader_src.contains("col += vec3(1.0, 0.94, 0.74) * (sun_disc * 0.62 + sun_path * sbroken * 0.62) * sunlight;"),
+		"海面シェーダで太陽の反射(光の道)が海面の色に加算されていない")
+	check(shader_src.contains("col *= 1.0 + sunlight * 0.16;"), "海面シェーダで日射しによる明るさの底上げが無い")
+
 	port.free()
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze")
+		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze/sunny_sea")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)
