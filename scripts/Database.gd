@@ -64,6 +64,8 @@ var mob_weights := [
 	{"mermaid": 0.34, "lamia": 0.30, "kraken": 0.20, "wyvern": 0.16},                                     # 星霜(tier2)
 	{"zombie_fish": 0.36, "moon_jelly": 0.30, "kraken": 0.18, "wyvern": 0.16},                            # 常闇(tier2)
 	{"killer_shell": 0.24, "carabos": 0.26, "merman": 0.16, "charybdis": 0.14, "amphiptere": 0.12, "kraken": 0.08},  # 海嘯(tier3)
+	# #248: 外れの小島(tier4)。果ての島の出現表からティアマットとザッハークを除いて割合を按分
+	{"merman": 0.242, "charybdis": 0.242, "dagon": 0.323, "amphiptere": 0.193},
 ]
 
 func pick_mob(tier: int) -> String:
@@ -100,7 +102,7 @@ var lords := {
 	# #190: legion=小魚の群れが大魚の陣形。被弾で陣形が縮み(shrink_hp)、複数箇所(multi_origin)から小型弾を大量発射
 	"legion":    {"name": "レギオン",                 "hp": 5500, "dmg": 30, "cap": 13, "price": 7000, "bounty": 20000,  "fame": 24, "island": 2, "ranged": true,  "aerial": false, "pair": false, "speed": 10.5, "atk_cd": 0.9, "multi_origin": 5, "way": 3, "aim_tight": true, "scatter": 10, "scatter_speeds": [0.55, 0.95, 1.5], "small_shot": true, "shot_dmg_mult": 0.32, "shot_speed_mult": 0.85, "shrink_hp": 0.45, "size_mult": 1.3, "face_left": true, "dir": 315, "color": Color(0.5,0.65,0.75), "lore": "縄張り争いに勝利するため、群知能を身に着けた小魚の群れ。"},
 	# #239: 星霜の島(island 5)。ウンディーネ=好戦的でない引き撃ち+密度が変わる米粒弾、セイレーン=蛇行する音符弾
-	"undine":    {"name": "ウンディーネ",             "hp": 4353, "dmg": 34, "cap": 12, "price": 4800, "bounty": 12000, "fame": 22, "island": 5, "ranged": true, "aerial": false, "pair": false, "speed": 11.5, "atk_cd": 0.55, "kite": true, "no_melee": true, "scatter_aim": true, "scatter": 14, "scatter_var": true, "scatter_speeds": [0.5, 0.9, 1.4], "small_shot": true, "way": 0, "shot_dmg_mult": 0.42, "shot_speed_mult": 0.8, "aim_color": Color(0.62,0.86,0.98), "dir": 0, "lore": "近海の守り神とされてきたが、現人類との不幸な行き違いから賞金首となった。あまり好戦的ではない。"},
+	"undine":    {"name": "ウンディーネ",             "hp": 4353, "dmg": 34, "cap": 12, "price": 4800, "bounty": 12000, "fame": 22, "island": 5, "ranged": true, "aerial": false, "pair": false, "speed": 11.5, "atk_cd": 0.55, "kite": true, "kite_always": true, "no_melee": true, "scatter_aim": true, "scatter": 14, "scatter_var": true, "scatter_speeds": [0.5, 0.9, 1.4], "small_shot": true, "way": 0, "shot_dmg_mult": 0.42, "shot_speed_mult": 0.8, "aim_color": Color(0.62,0.86,0.98), "dir": 0, "lore": "近海の守り神とされてきたが、現人類との不幸な行き違いから賞金首となった。あまり好戦的ではない。"},
 	"siren":     {"name": "セイレーン",               "hp": 3867, "dmg": 33, "cap": 11, "price": 4600, "bounty": 11500, "fame": 22, "island": 5, "ranged": true, "aerial": false, "pair": false, "speed": 12.5, "atk_cd": 0.65, "no_melee": true, "size_mult": 0.8, "way_choices": [3,4,5], "note_shot": true, "zigzag": true, "zigzag_amp": 9.0, "shot_dmg_mult": 0.6, "shot_speed_mult": 0.85, "aim_color": Color(0.95,0.8,0.95), "dir": 315, "lore": "美しい歌で船乗りを惑わす。"},
 	# #239: 常闇の島(island 6)。夜の帝王=被ダメで分裂(中→小)、レイス=撃つ→消える→別の場所へ
 	"night_emperor": {"name": "夜の帝王",             "hp": 3900, "dmg": 36, "cap": 13, "price": 5200, "bounty": 13500, "fame": 24, "island": 6, "ranged": true, "aerial": false, "pair": false, "speed": 10.0, "atk_cd": 0.9, "scatter_aim": true, "scatter": 11, "scatter_speeds": [0.55, 1.45], "small_shot": true, "way": 0, "shot_dmg_mult": 0.45, "aim_color": Color(0.72,0.6,0.95), "split": {"into": "night_bat_medium", "count": 2, "at_hp": 0.5}, "dir": 180, "lore": "コウモリの群れが集まるにつれ、この姿となっていったという目撃情報がある。"},
@@ -220,6 +222,7 @@ var departure_hints := {
 			"単横陣のスキル「一斉射撃」の瞬間火力はかなりのもの。",
 			"大砲は海賊船を高確率で炎上させる。",
 			"海賊王の目撃情報はこの辺りでよく聞かれる。",
+			"外れの小島では珍しい武器が売っているらしい。",   # #241再2: 外れの小島(#248)の追加に伴い
 		],
 	},
 	7: {
@@ -237,6 +240,14 @@ var departure_hints := {
 			"先の島ほど漁獲物を高値で売れる。",
 			"２〜４番艦が離脱するときもクルーを失うおそれがあるが、旗艦が大破する時よりも生還率は高い。",
 			"大砲は海賊船を高確率で炎上させる。",
+		],
+	},
+	# #241再2: 外れの小島。レビュアーの指定は見出しが「果ての島からの出港」だったが、
+	# 内容(主がいない・珍しい武器)は外れの小島(#248)そのものなので、この島のヒントとして実装
+	8: {
+		"random": [
+			"この島の近海に主はいないようだ。",
+			"この島では珍しい武器が売っている。",
 		],
 	},
 }
@@ -334,15 +345,20 @@ func enemy_def(kind: String, id: String) -> Dictionary:
 # kind: aim / lock
 # ---------------------------------------------------------------------------
 var weapons := {
-	"gatling": {"name": "ガトリングガン", "kind": "aim",  "speed_mult": 0.85, "dmg": 3,  "cooldown": 0.08, "reload": 1.0, "mag": 40, "range": 120, "price": 500,  "slip": false, "debuff": false, "homing": false, "falloff": true, "sfx": "sfx_gun",     "desc": "単発威力小・連射力大。遠距離では威力減衰"},
-	"cannon":  {"name": "大砲",           "kind": "aim",  "speed_mult": 0.7,  "dmg": 35, "cooldown": 1.4,  "reload": 1.6, "mag": 4,  "range": 140, "price": 1200, "slip": true,  "debuff": false, "homing": false, "pirate_burn": 0.7, "sfx": "sfx_cannon",  "desc": "単発威力大・連射小。海賊船に高確率で炎上(スリップ)"},
+	"gatling": {"name": "ガトリングガン", "kind": "aim",  "speed_mult": 0.85, "dmg": 3,  "cooldown": 0.08, "reload": 1, "mag": 40, "range": 120, "price": 500,  "slip": false, "debuff": false, "homing": false, "falloff": true, "sfx": "sfx_gun",     "desc": "単発威力小・連射力大。遠距離では威力減衰"},
+	"cannon":  {"name": "大砲",           "kind": "aim",  "speed_mult": 0.7,  "dmg": 35, "cooldown": 1.4,  "reload": 1.1, "mag": 4,  "range": 140, "price": 1200, "slip": true,  "debuff": false, "homing": false, "pirate_burn": 0.7, "sfx": "sfx_cannon",  "desc": "単発威力大・連射小。海賊船に高確率で炎上(スリップ)"},
 	"harpoon": {"name": "銛",             "kind": "aim",  "speed_mult": 0.6,  "dmg": 18, "cooldown": 1.0,  "reload": 1.2, "mag": 6,  "range": 100, "price": 900,  "slip": false, "debuff": true,  "homing": false, "sfx": "sfx_harpoon", "desc": "中威力。生物にデバフ付与"},
-	"torpedo": {"name": "魚雷",           "kind": "lock", "speed_mult": 0.8,  "dmg": 22, "cooldown": 0.9,  "reload": 2.0, "mag": 8,  "range": 160, "price": 1500, "slip": false, "debuff": false, "homing": true,  "pirate_burn": 0.35, "sfx": "sfx_torpedo", "desc": "ロックオンで追尾。空中の敵には不可。海賊船に確率で炎上"},
+	"torpedo": {"name": "魚雷",           "kind": "lock", "speed_mult": 0.8,  "dmg": 22, "cooldown": 0.9,  "reload": 1.3, "mag": 8,  "range": 160, "price": 1500, "slip": false, "debuff": false, "homing": true,  "pirate_burn": 0.35, "sfx": "sfx_torpedo", "desc": "ロックオンで追尾。空中の敵には不可。海賊船に確率で炎上"},
+	# #249: リロード時間はガトリングガン(1.0秒)基準の倍率で統一
 	# #102: 嵐越え(tier>=3)以降で買える上位互換。#190: 月下の島の追加で嵐越えがindex3へ。新種は増やさず各武器の強化版
-	"gatling2":{"name": "重ガトリング砲", "kind": "aim",  "speed_mult": 0.85, "dmg": 4,  "cooldown": 0.07, "reload": 0.9, "mag": 55, "range": 145, "price": 5000, "slip": false, "debuff": false, "homing": false, "falloff": true, "tier": 3, "sfx": "sfx_gun",     "desc": "ガトリングの上位。連射・射程・弾数を強化"},
-	"cannon2": {"name": "大口径カノン砲", "kind": "aim",  "speed_mult": 0.7,  "dmg": 46, "cooldown": 1.25, "reload": 1.4, "mag": 5,  "range": 165, "price": 6500, "slip": true,  "debuff": false, "homing": false, "pirate_burn": 0.7, "tier": 3, "sfx": "sfx_cannon",  "desc": "大砲の上位。単発威力・射程を強化"},
-	"harpoon2":{"name": "強化銛砲",       "kind": "aim",  "speed_mult": 0.6,  "dmg": 24, "cooldown": 0.85, "reload": 1.0, "mag": 9,  "range": 125, "price": 5500, "slip": false, "debuff": true,  "homing": false, "tier": 3, "sfx": "sfx_harpoon", "desc": "銛の上位。連射・デバフ効率を強化"},
-	"torpedo2":{"name": "追尾魚雷改",     "kind": "lock", "speed_mult": 0.8,  "dmg": 30, "cooldown": 0.8,  "reload": 1.7, "mag": 10, "range": 195, "price": 8000, "slip": false, "debuff": false, "homing": true,  "pirate_burn": 0.35, "tier": 3, "sfx": "sfx_torpedo", "desc": "魚雷の上位。追尾・射程・弾数を強化"},
+	"gatling2":{"name": "重ガトリング砲", "kind": "aim",  "speed_mult": 0.85, "dmg": 4,  "cooldown": 0.07, "reload": 1.2, "mag": 55, "range": 145, "price": 5000, "slip": false, "debuff": false, "homing": false, "falloff": true, "tier": 3, "sfx": "sfx_gun",     "desc": "ガトリングの上位。連射・射程・弾数を強化"},
+	"cannon2": {"name": "大口径カノン砲", "kind": "aim",  "speed_mult": 0.7,  "dmg": 46, "cooldown": 1.25, "reload": 1.2, "mag": 5,  "range": 165, "price": 6500, "slip": true,  "debuff": false, "homing": false, "pirate_burn": 0.7, "tier": 3, "sfx": "sfx_cannon",  "desc": "大砲の上位。単発威力・射程を強化"},
+	"harpoon2":{"name": "強化銛砲",       "kind": "aim",  "speed_mult": 0.6,  "dmg": 24, "cooldown": 0.85, "reload": 1.4, "mag": 9,  "range": 125, "price": 5500, "slip": false, "debuff": true,  "homing": false, "tier": 3, "sfx": "sfx_harpoon", "desc": "銛の上位。連射・デバフ効率を強化"},
+	"torpedo2":{"name": "追尾魚雷改",     "kind": "lock", "speed_mult": 0.8,  "dmg": 30, "cooldown": 0.8,  "reload": 1.6, "mag": 10, "range": 195, "price": 8000, "slip": false, "debuff": false, "homing": true,  "pirate_burn": 0.35, "tier": 3, "sfx": "sfx_torpedo", "desc": "魚雷の上位。追尾・射程・弾数を強化"},
+	# #248: 外れの小島でしか買えない個性的な武器(only_island=販売する島を限定)
+	"spray":   {"name": "乱射砲",         "kind": "aim",  "speed_mult": 0.85, "dmg": 6,  "cooldown": 0.07, "reload": 1.2, "mag": 55, "range": 145, "price": 6000, "slip": false, "debuff": false, "homing": false, "falloff": true, "spray": 0.30, "tier": 4, "only_island": 8, "sfx": "sfx_gun",     "desc": "重ガトリング砲を超える単発威力。ただし狙った方向に散らばって飛ぶ"},
+	"lance":   {"name": "槍砲",           "kind": "aim",  "speed_mult": 0.6,  "dmg": 24, "cooldown": 0.85, "reload": 1.2, "mag": 5,  "range": 125, "price": 7000, "slip": false, "debuff": false, "homing": false, "pierce": true, "tier": 4, "only_island": 8, "sfx": "sfx_harpoon", "desc": "強化銛砲と同威力。デバフは付かないが敵を貫通する"},
+	"cluster": {"name": "クラスター魚雷", "kind": "lock", "speed_mult": 0.55, "dmg": 13, "cooldown": 0.8,  "reload": 1.6, "mag": 10, "range": 195, "price": 9000, "slip": false, "debuff": false, "homing": true,  "pirate_burn": 0.35, "cluster": 3, "tier": 4, "only_island": 8, "sfx": "sfx_torpedo", "desc": "発射後すぐ3発に分裂し、それぞれが敵を追尾。全弾命中すれば追尾魚雷改を超える"},
 }
 
 var rams := {
@@ -398,6 +414,8 @@ var islands := [
 	{"id": 6, "name": "常闇の島",     "tier": 2, "fame_req": 70,  "price_mult": 3.0, "pos": Vector3(1700, 0, 1100), "spawn": ["squid","octopus","bonito"], "lords": ["night_emperor","wraith"], "weather": "dark"},
 	# #239: 嵐越えの島と同格(tier 3)。海嘯=嵐越えの南
 	{"id": 7, "name": "海嘯の島",     "tier": 3, "fame_req": 175, "price_mult": 4.8, "pos": Vector3(2600, 0, 1900), "spawn": ["octopus","squid","bonito"], "lords": ["kraken_lord","griffon"], "weather": "surge"},
+	# #248: 終盤の寄り道。果ての島の北にある小さな雪原の島。近海の主はいない(酒場の主の情報も出ない)
+	{"id": 8, "name": "外れの小島",   "tier": 4, "fame_req": 400, "price_mult": 10.8, "pos": Vector3(3600, 0, -600), "spawn": ["octopus","bonito"], "lords": [], "weather": "flurry"},
 ]
 
 # #202: 出現海域ごとの敵HP倍率(始まり=等倍 / 潮鳴り1.5 / 月下1.9 / 嵐越え2.7 / 果て3.3)。
@@ -430,7 +448,7 @@ func island(idx: int) -> Dictionary:
 # #239再: 航路メニューなどで見せる並び順(進行順)。
 # islands の並びは「index を動かさない」都合で追加順になっているため、
 # 表示は tier 順 → 同じ tier 内は本来の攻略順(月下→星霜→常闇 / 嵐越え→海嘯)にする。
-const ISLAND_ORDER := [0, 1, 2, 5, 6, 7, 3, 4]   # #239再2: 海嘯 → 嵐越え の順
+const ISLAND_ORDER := [0, 1, 2, 5, 6, 7, 3, 4, 8]   # #239再2: 海嘯 → 嵐越え の順。#248: 外れの小島は果ての次
 
 func islands_in_order() -> Array:
 	var out: Array = []
@@ -462,12 +480,30 @@ const SHOP_EXCLUDE := {
 	},
 }
 
+# #248: 逆に「これしか売らない」島。載っていないものは並べない
+const SHOP_ONLY := {
+	8: {   # 外れの小島
+		"ships": ["corvette", "hunter_h", "hauler"],
+		"weapons": ["spray", "lance", "cluster"],
+	},
+}
+
 # #247: その島でその船/武器を売っているか
 func shop_has_ship(island_id: int, ship_id: String) -> bool:
+	var only: Dictionary = SHOP_ONLY.get(island_id, {})
+	if only.has("ships") and not (only["ships"] as Array).has(ship_id):
+		return false
 	var ex: Dictionary = SHOP_EXCLUDE.get(island_id, {})
 	return not (ex.get("ships", []) as Array).has(ship_id)
 
 func shop_has_weapon(island_id: int, weapon_id: String) -> bool:
+	# #248: only_island を持つ武器はその島でしか売らない
+	var w: Dictionary = weapons.get(weapon_id, {})
+	if w.has("only_island") and int(w["only_island"]) != island_id:
+		return false
+	var only: Dictionary = SHOP_ONLY.get(island_id, {})
+	if only.has("weapons") and not (only["weapons"] as Array).has(weapon_id):
+		return false
 	var ex: Dictionary = SHOP_EXCLUDE.get(island_id, {})
 	return not (ex.get("weapons", []) as Array).has(weapon_id)
 

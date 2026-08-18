@@ -28,6 +28,11 @@ var _t: float = 0.0
 var _travel: float = 0.0
 var _offscreen_t: float = 0.0   # #154: 画面外にいる時間
 var _dangerous_to_player: bool = false   # #233: 現在軌道が旗艦へ向かう敵弾
+var pierce: bool = false          # #248: 槍砲。命中しても消えず敵を貫通する
+var _pierced: Array = []          # 同じ敵に多重ヒットしないよう記録
+var cluster: int = 0              # #248: クラスター魚雷。発射後すぐこの数へ分裂する
+var _cluster_def: Dictionary = {}
+var _cluster_t: float = 0.0
 
 func setup(p_dir: Vector2, w: Dictionary, p_target: Node2D = null) -> void:
 	# #149再3/#196: レイヤー1(自機/島/障害物)+2(敵)+4(僚艦) をすべて見る
@@ -52,6 +57,15 @@ func setup(p_dir: Vector2, w: Dictionary, p_target: Node2D = null) -> void:
 	shape = str(w.get("shape", ""))
 	bcolor = w.get("bcolor", Color(0, 0, 0, 0))
 	spread_homing = bool(w.get("spread_homing", false))
+	pierce = bool(w.get("pierce", false))
+	cluster = int(w.get("cluster", 0))
+	if cluster > 0:
+		_cluster_def = w.duplicate()      # 分裂後の子はこの定義から作る(分裂はしない)
+		_cluster_def.erase("cluster")
+	# #248: 乱射砲はエイム方向から少しずれて飛ぶ
+	var spray := float(w.get("spray", 0.0))
+	if spray > 0.0:
+		p_dir = p_dir.rotated(randf_range(-spray, spray))
 	poison_only = bool(w.get("poison_only", false))
 	flame_color = w.get("flame_color", Color(0, 0, 0, 0))
 	target = p_target
@@ -219,6 +233,11 @@ func _scaled(poly: PackedVector2Array, s: float) -> PackedVector2Array:
 
 func _physics_process(delta: float) -> void:
 	_t += delta
+	if cluster > 0:
+		_cluster_t += delta
+		if _cluster_t >= 0.28:
+			_split_cluster()
+			return
 	if shape == "star":
 		rotation += delta * 5.0   # #190: 星形弾はくるくる回りながら飛ぶ
 	if homing and spread_homing:
@@ -265,6 +284,24 @@ func _physics_process(delta: float) -> void:
 				_offscreen_t = 0.0
 	if life <= 0:
 		queue_free()
+
+# #248: クラスター魚雷。右斜め前・正面・左斜め前へ分かれてから、それぞれが敵を追う
+func _split_cluster() -> void:
+	var n := cluster
+	cluster = 0
+	var parent := get_parent()
+	if parent == null:
+		queue_free()
+		return
+	for i in n:
+		var t: float = (float(i) / float(maxi(n - 1, 1))) * 2.0 - 1.0 if n > 1 else 0.0
+		var child := Area2D.new()
+		child.set_script(get_script())
+		parent.add_child(child)
+		child.global_position = global_position
+		child.from_player = from_player
+		child.setup(dir.rotated(t * deg_to_rad(28.0)), _cluster_def, target)
+	queue_free()
 
 func _update_danger_outline() -> void:
 	var was := _dangerous_to_player
@@ -318,7 +355,11 @@ func _on_hit(body: Node) -> void:
 		# #106: 魚雷(homing)は空中の敵をすり抜ける(他の敵への射線上でも当てない)
 		if homing and body.get("aerial") == true:
 			return
+		if pierce and _pierced.has(body.get_instance_id()):
+			return   # #248: 貫通弾は同じ敵に二重に当てない
 		if body.has_method("take_hit"):
+			if pierce:
+				_pierced.append(body.get_instance_id())
 			var res: int = body.take_hit(_eff_dmg(), slip, debuff, homing, debuff_kind)   # #71: 魚雷(homing)は必中(no_dodge)
 			if res == 2:
 				return   # #111: 回避(弾は後方へそのまま通過)
@@ -339,6 +380,8 @@ func _on_hit(body: Node) -> void:
 				# #116再: 血しぶきは主・モブにとどめを刺したときのみ(大きめ)
 				if killed and (ekind == "lord" or ekind == "mob"):
 					_spawn_effect("blood_big", body.global_position)
+		if pierce:
+			return   # #248: 槍砲は敵を貫通して飛び続ける
 		queue_free()
 	elif not from_player and body.is_in_group("player"):
 		# #237: 寄港確定後はダメージだけでなく音・演出も出さない

@@ -218,7 +218,8 @@ func _ready() -> void:
 	for isle in Database.islands_in_order():
 		order.append(str(isle.name))
 	# #239再2: 海嘯 → 嵐越え の順(レビュアー指定で入れ替え)
-	var want := ["始まりの島", "潮鳴りの島", "月下の島", "星霜の島", "常闇の島", "海嘯の島", "嵐越えの島", "果ての島"]
+	# #248: 外れの小島は果ての島の次
+	var want := ["始まりの島", "潮鳴りの島", "月下の島", "星霜の島", "常闇の島", "海嘯の島", "嵐越えの島", "果ての島", "外れの小島"]
 	check(order == want, "航路の並び順が指定と違う: %s" % str(order))
 	check(order.size() == Database.islands.size(), "並び順に載っていない島がある")
 

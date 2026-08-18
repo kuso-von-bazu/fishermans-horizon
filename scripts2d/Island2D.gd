@@ -20,7 +20,8 @@ func _ready() -> void:
 	# 衝突(陸地)
 	var col := CollisionShape2D.new()
 	var sh := CircleShape2D.new()
-	sh.radius = 100.0
+	# #248: 小さい島は陸地の当たり判定も見た目に合わせて縮める(見えない壁を作らない)
+	sh.radius = 100.0 * float(PALETTES[clampi(island_id, 0, PALETTES.size() - 1)].get("small", 1.0))
 	col.shape = sh
 	add_child(col)
 	# 名前
@@ -68,31 +69,34 @@ const PALETTES := [
 	{"shallow": Color(0.50,0.74,0.86,0.45), "sand": Color(0.86,0.82,0.64), "grass": Color(0.46,0.66,0.40), "grass2": Color(0.34,0.54,0.33), "mtn": Color(0.50,0.50,0.48), "peak": Color(0.74,0.74,0.72), "tree": Color(0.26,0.52,0.28), "trunk": Color(0.44,0.32,0.20), "trees": 4, "wob": 0.17},
 	{"shallow": Color(0.38,0.58,0.70,0.45), "sand": Color(0.62,0.62,0.55), "grass": Color(0.28,0.42,0.30), "grass2": Color(0.18,0.30,0.23), "mtn": Color(0.36,0.38,0.38), "peak": Color(0.56,0.58,0.58), "tree": Color(0.14,0.34,0.22), "trunk": Color(0.28,0.22,0.16), "trees": 11, "wob": 0.22},
 	{"shallow": Color(0.48,0.78,0.82,0.45), "sand": Color(0.90,0.86,0.68), "grass": Color(0.42,0.62,0.38), "grass2": Color(0.30,0.50,0.31), "mtn": Color(0.54,0.52,0.46), "peak": Color(0.78,0.76,0.70), "tree": Color(0.24,0.50,0.28), "trunk": Color(0.42,0.32,0.20), "trees": 3, "wob": 0.19},
+	# #248: 外れの小島。果ての島と同じ寒色だが地面はすべて雪原(緑地なし)で、島そのものが小さい
+	{"shallow": Color(0.62,0.76,0.86,0.45), "sand": Color(0.90,0.92,0.95), "grass": Color(0.84,0.88,0.93), "grass2": Color(0.74,0.80,0.87), "mtn": Color(0.58,0.62,0.68), "peak": Color(0.96,0.98,1.00), "tree": Color(0.22,0.38,0.30), "trunk": Color(0.32,0.25,0.17), "trees": 2, "wob": 0.16, "conifer": true, "small": 0.66},
 ]
 
 func _draw() -> void:
 	var p: Dictionary = PALETTES[clampi(island_id, 0, PALETTES.size() - 1)]
 	var wob: float = p.wob
+	var sc: float = float(p.get("small", 1.0))   # #248: 外れの小島は一回り小さく描く
 	# 浅瀬(にじみ)→砂浜→緑地→深緑→山 …すべて不規則な海岸線(#41)。#172: 島ごとに配色・輪郭のゆらぎを変える
-	draw_colored_polygon(_coast(132, wob, 1), p.shallow)
-	draw_colored_polygon(_coast(112, wob * 0.9, 1), p.sand)
-	draw_colored_polygon(_coast(86, wob, 3), p.grass)
+	draw_colored_polygon(_coast(132 * sc, wob, 1), p.shallow)
+	draw_colored_polygon(_coast(112 * sc, wob * 0.9, 1), p.sand)
+	draw_colored_polygon(_coast(86 * sc, wob, 3), p.grass)
 	if bool(p.get("oasis", false)):
 		# #190: 砂漠の島は緑地がわずか。中央の泉(オアシス)まわりだけ小さく緑を置く
 		draw_colored_polygon(_coast(26, wob * 1.4, 5), p.grass2)
 		draw_circle(Vector2(6, 10), 10, Color(0.35, 0.62, 0.72, 0.9))
 	else:
-		draw_colored_polygon(_coast(52, wob * 1.3, 5), p.grass2)
+		draw_colored_polygon(_coast(52 * sc, wob * 1.3, 5), p.grass2)
 	# 山(頂と影)
-	draw_circle(Vector2(-12, -12), 22, p.mtn)
-	draw_circle(Vector2(-16, -16), 10, p.peak)
+	draw_circle(Vector2(-12, -12) * sc, 22 * sc, p.mtn)
+	draw_circle(Vector2(-16, -16) * sc, 10 * sc, p.peak)
 	# 樹木(海岸ぞいに数本。島ごとに本数・色が異なる)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = island_id * 31 + 7
 	var conifer := bool(p.get("conifer", false))
 	for t in int(p.trees):
 		var a := rng.randf() * TAU
-		var pt := Vector2(cos(a), sin(a)) * rng.randf_range(58.0, 88.0)
+		var pt := Vector2(cos(a), sin(a)) * rng.randf_range(58.0, 88.0) * sc
 		if conifer:
 			# #172再: 果ての島は針葉樹(モミの木)。細い幹＋積み重ねた三角の樹冠
 			draw_line(pt, pt + Vector2(0, -8), p.trunk, 2.0)
@@ -112,9 +116,9 @@ func _draw() -> void:
 				var fa := TAU * f / 5.0 + rng.randf() * 0.5
 				draw_line(pt + Vector2(2, -9), pt + Vector2(2, -9) + Vector2(cos(fa), sin(fa) * 0.6) * 9.0, p.tree, 2.0)
 	# 港町(桟橋+家々)
-	draw_rect(Rect2(78, -8, 52, 16), Color(0.5, 0.36, 0.22))
+	draw_rect(Rect2(78 * sc, -8, 52 * sc, 16), Color(0.5, 0.36, 0.22))
 	for h in 3:
-		var hx := 46 + h * 16
+		var hx := (46 + h * 16) * sc
 		draw_rect(Rect2(hx, -24, 12, 12), Color(0.78, 0.42, 0.32))
 		draw_rect(Rect2(hx + 1, -28, 10, 5), Color(0.55, 0.30, 0.22))
 	# 入港圏の破線円

@@ -237,7 +237,7 @@ func _update_fuel_estimate() -> void:
 		target_weather = str(Database.island(int(ld.island)).get("weather", ""))
 	var speed := maxf(float(GameState.ship().speed), 1.0)
 	var needed := from.distance_to(dest) / speed * 1.5 * GameState.food_drain_mult()
-	if target_weather == "blizzard":
+	if target_weather in ["blizzard", "flurry"]:   # #248: 外れの小島の雪も燃料消費+20%
 		needed *= 1.2
 	var pct := int(ceil(needed / maxf(GameState.max_food(), 1.0) * 100.0))
 	_fuel_estimate.text = "目的地までの推定消費: 約%d%%%s" % [pct, "  【燃料不足】" if pct > 100 else ""]
@@ -283,7 +283,14 @@ func show_tavern() -> void:
 	content.add_child(_h("酒場", 22))
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 8)
-	for spec in [["bounty", "賞金・換金"], ["crew", "クルー"], ["lords", "主の情報"]]:
+	# #248: 近海に主がいない島では「主の情報」タブごと出さない
+	var has_lords: bool = not (Database.island(GameState.current_island).get("lords", []) as Array).is_empty()
+	if not has_lords and _tavern_section == "lords":
+		_tavern_section = "bounty"
+	var tab_specs: Array = [["bounty", "賞金・換金"], ["crew", "クルー"]]
+	if has_lords:
+		tab_specs.append(["lords", "主の情報"])
+	for spec in tab_specs:
 		var section_id: String = spec[0]
 		var b := _btn(str(spec[1]), func():
 			_tavern_section = section_id

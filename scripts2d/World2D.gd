@@ -53,6 +53,7 @@ var _boss_bgm_on: String = ""    # #79: 主接近中の緊迫BGM("" / "bgm_boss"
 var _return_hold: float = 0.0    # #68: 帰還キー長押しの累積秒
 # #209: ボスラッシュ
 var _boss_rush: bool = false
+var _br_split_root: String = ""   # #209再10: 分裂する主のID(分裂体が残る間は未撃破)
 var _br_index: int = 0
 var _br_boss: Node = null
 var _br_active: bool = false   # ボスが出現中(解放済み参照は null 比較で真になるため別途フラグで持つ)
@@ -115,10 +116,10 @@ func _build_ocean() -> void:
 	var ipos := PackedVector2Array()
 	for i in Database.islands.size():
 		ipos.append(island_pos(i))
-	while ipos.size() < 8:   # #239: 島8つぶん
+	while ipos.size() < 9:   # #248: シェーダ側の配列長(島9つ)に合わせる
 		ipos.append(Vector2(1e9, 1e9))
 	ocean_mat.set_shader_parameter("islands", ipos)
-	ocean_mat.set_shader_parameter("island_count", mini(Database.islands.size(), 8))   # #239: 島8つ
+	ocean_mat.set_shader_parameter("island_count", mini(Database.islands.size(), 9))
 
 # #190/#191/#192: 天候オーバーレイ(夜/大雨/吹雪)。海の上・HUDの下に全画面で重ねる
 func _build_weather() -> void:
@@ -168,6 +169,10 @@ func _weather_params(w: String) -> Dictionary:
 		"blizzard":  # #192: 果ての島の近海は吹雪と荒波
 			tint = Color(0.72, 0.80, 0.90, 0.18)
 			snow = 1.0
+			rough = 0.85
+		"flurry":    # #248: 外れの小島。吹雪を弱めた雪(天候効果そのものは吹雪と同じ)
+			tint = Color(0.72, 0.80, 0.90, 0.10)
+			snow = 0.40
 			rough = 0.85
 		"starry":    # #239: 星霜の島。月下から月の反射を除き、星の反射を敷き詰める
 			tint = Color(0.05, 0.08, 0.22, 0.40)
@@ -479,7 +484,7 @@ func _physics_process(delta: float) -> void:
 		return
 	if _dock_grace > 0.0:
 		_dock_grace -= delta
-	GameState.run_food = maxf(GameState.run_food - delta * 1.5 * GameState.food_drain_mult() * (1.2 if GameState.active_weather == "blizzard" and not GameState.boss_rush else 1.0), 0.0)   # #232: 吹雪は燃料消費+20%
+	GameState.run_food = maxf(GameState.run_food - delta * 1.5 * GameState.food_drain_mult() * (1.2 if GameState.active_weather in ["blizzard", "flurry"] and not GameState.boss_rush else 1.0), 0.0)   # #232: 吹雪は燃料消費+20%
 	# #68: Rキーを5秒長押しで直近の島へ帰還。長押し中に装甲0なら大破(後段の装甲チェックで処理)
 	if Input.is_action_pressed("fast_return") and not _returning and not _food_dialog_open:
 		_return_hold += delta
@@ -677,7 +682,7 @@ func _spawn_enemy() -> void:
 	if roll < 0.12:
 		kind = "pirate"
 		# #190: 島が5つになったので island index → 海賊の格 を明示表で対応させる
-		id = ["raider", "corsair", "dread", "dread", "dread"][clampi(isle, 0, 4)]
+		id = _sea_pirate_top(isle)
 		# #197: 先の島ほど、海賊が2〜3隻の船団を組んで現れる(単独のこともある)
 		var pos_p := _ring_pos(70, 150)
 		for pid in _pirate_group(id, isle):
@@ -689,9 +694,9 @@ func _spawn_enemy() -> void:
 		id = Database.pick_mob(isle)   # #38: 島tierごとの出現割合
 	elif roll < 0.50:
 		# #73再: 海賊王。島の周り以外の全海域で出現。先の島ほど出やすい(始0.02/潮0.04/嵐0.08/果0.12)。同時1体
-		var king_rate: float = [0.02, 0.04, 0.06, 0.08, 0.12][clampi(isle, 0, 4)]   # #190: 月下の島ぶんを追加
+		var king_rate: float = [0.02, 0.04, 0.06, 0.08, 0.12][Database.tier_of(isle)]   # #190: 月下の島ぶんを追加。#248: indexではなくtierで引く
 		if not near_island and not _king_alive() and randf() < king_rate:
-			# #197: 海賊王は自身を含めて2〜4隻の船団を組むことがある(単独のことも)
+			# #197再3: 海賊王は必ず随伴艦1〜3隻を伴って現れる
 			var kpos := _ring_pos(70, 150)
 			var king := _make_enemy("pirate", "king", kpos)
 			var escort_ids := _king_group(isle)
@@ -699,7 +704,7 @@ func _spawn_enemy() -> void:
 				var e := _make_enemy("pirate", str(escort_ids[i]), kpos + Vector2.RIGHT.rotated(randf() * TAU) * randf_range(200.0, 360.0))
 				e.is_escort = true   # 海賊王と一緒に行動させる(上限・デスポーン免除)
 				king.escorts.append(e)
-			GameState.notice.emit("海賊王の旗艦が現れた!" if escort_ids.is_empty() else "海賊王の船団が現れた!")
+			GameState.notice.emit("海賊王の船団が現れた!")
 			return
 	if id == "":
 		return
@@ -713,27 +718,31 @@ func _spawn_enemy() -> void:
 # 少なくとも1隻はその海域の海賊。残りはその海域の海賊か、より弱い海賊からランダム。
 const PIRATE_RANKS := ["raider", "corsair", "dread"]
 
+# #248: その海域(島tier)に出る海賊の格。indexで引くと島5〜8がずれる
+func _sea_pirate_top(isle: int) -> String:
+	return ["raider", "corsair", "dread", "dread", "dread"][Database.tier_of(isle)]
+
 func _pirate_group(top_id: String, isle: int) -> Array:
 	var out: Array = [top_id]
 	# #197再: 単独出現の確率を上げ、船団を組む確率を下げる
-	var fleet_rate: float = [0.0, 0.12, 0.18, 0.24, 0.30][clampi(isle, 0, 4)]
+	var fleet_rate: float = [0.0, 0.12, 0.18, 0.24, 0.30][Database.tier_of(isle)]
 	if randf() >= fleet_rate:
 		return out                      # 単独で現れる
-	var extra := 1 if randf() < (0.65 - 0.1 * float(isle)) else 2   # 先の島ほど3隻になりやすい
+	var tier := Database.tier_of(isle)
+	var extra := 1 if randf() < (0.65 - 0.1 * float(tier)) else 2   # 先の海域ほど3隻になりやすい
 	var top := PIRATE_RANKS.find(top_id)
 	for i in extra:
 		out.append(str(PIRATE_RANKS[randi() % (maxi(top, 0) + 1)]))
 	return out
 
-# 海賊王の船団(海賊王を除く随伴艦)。2〜4隻=随伴0〜3隻
+# #197再3: 海賊王の随伴艦。必ず1〜3隻を伴い、うち1隻は必ずその海域の海賊。
+# 残りはその海域の海賊か、より格下の海賊からランダム。
 func _king_group(isle: int) -> Array:
-	if randf() < 0.70:
-		return []                       # #197再: 単独の海賊王の確率を上げる
-	var top := PIRATE_RANKS.find(["raider", "corsair", "dread", "dread", "dread"][clampi(isle, 0, 4)])
-	var n := randi_range(1, 3)
-	var out: Array = []
-	for i in n:
-		out.append(str(PIRATE_RANKS[randi() % (maxi(top, 0) + 1)]))
+	var top_id := _sea_pirate_top(isle)
+	var top := maxi(PIRATE_RANKS.find(top_id), 0)
+	var out: Array = [top_id]           # 1隻目は必ずその海域の格
+	for i in randi_range(0, 2):
+		out.append(str(PIRATE_RANKS[randi() % (top + 1)]))
 	return out
 
 # #67再: 未討伐の主は全て、それぞれの定位置の沖に同時出現させる
@@ -871,7 +880,7 @@ func _obstacle_kind() -> String:
 
 # 始まりの島の近海は岩礁を少なめに
 func _obstacle_max() -> int:
-	return [3, 8, 8, 9, 7, 8, 8, 9][clampi(GameState.current_island, 0, 7)]   # #239: 島8つぶん
+	return [3, 8, 8, 9, 7, 8, 8, 9, 7][clampi(GameState.current_island, 0, 8)]   # #239: 島8つぶん。#248: 外れの小島で9つ
 
 func _spawn_obstacle() -> void:
 	var pos := _ring_pos(85, 200)
@@ -928,7 +937,7 @@ func _spawn_relic() -> void:
 	var r := Area2D.new()
 	r.set_script(RelicScript)
 	# #207: 島ごとの価値を引き上げ(潮鳴り1.2 月下1.4 嵐越え1.7 果て2.0倍)。ランダムのぶれは維持
-	var relic_mult: float = [1.0, 1.2, 1.4, 1.7, 2.0][clampi(GameState.current_island, 0, 4)]
+	var relic_mult: float = [1.0, 1.2, 1.4, 1.7, 2.0][Database.tier_of(GameState.current_island)]   # #248: indexではなくtierで引く
 	r.setup(int(round(float(randi_range(200, 500) * (Database.tier_of(GameState.current_island) + 1)) * relic_mult)))   # #239
 	add_child(r)
 	r.global_position = pos
@@ -949,7 +958,7 @@ const BOSS_RUSH_ORDER := [
 	{"kind": "lord", "id": "legion"},          # ⑧
 	{"kind": "lord", "id": "siren"},           # ⑨
 	{"kind": "lord", "id": "wraith"},          # ⑩
-	{"kind": "pirate", "id": "king", "escorts": ["dread", "corsair"]},   # ⑪
+	{"kind": "pirate", "id": "king", "escorts": ["dread", "dread", "corsair"]},   # ⑪ #209再10: 大×2・中×1
 	{"kind": "lord", "id": "kraken_lord"},     # ⑫
 	{"kind": "lord", "id": "hydra"},           # ⑬
 	{"kind": "lord", "id": "griffon"},         # ⑭
@@ -977,7 +986,7 @@ func _on_boss_rush() -> void:
 	# 討伐済みの記録は持ち込まない(勝利判定が即座に走らないように)
 	GameState.defeated_lords.clear()
 	GameState.claimed_lords.clear()
-	GameState.current_island = Database.islands.size() - 1   # 果ての島相当の強さ・天候
+	GameState.current_island = 4   # #248: 果ての島そのものを指す(島の追加で末尾がずれないように)
 	title.visible = false
 	port_ui.close()
 	phase = "sea"
@@ -1039,11 +1048,22 @@ func _br_spawn_next() -> void:
 		if _br_pair and is_instance_valid(_br_boss2):
 			_br_boss2.escorts = boss.escorts   # 取り巻きは番いで共有
 	_br_boss = boss
+	# #209再10: 分裂する主(夜の帝王)は、本体が消えても分裂体が残っている間は未撃破
+	_br_split_root = str(spec.id) if Database.lords.get(str(spec.id), {}).has("split") else ""
 	_br_active = true
 	var nm: String = Database.lords[str(spec.id)].name if str(spec.kind) == "lord" else Database.pirates[str(spec.id)].name
 	if _br_pair:
 		nm += "(つがい2体)"
 	hud.show_big_message("%d / %d  %s" % [_br_index + 1, BOSS_RUSH_ORDER.size(), nm], 2.0)
+
+# #209再10: 分裂した本体の生き残り(分裂体)がまだ海上にいるか
+func _br_split_alive() -> bool:
+	if _br_split_root == "":
+		return false
+	for e in enemies:
+		if is_instance_valid(e) and str(e.get("split_root")) == _br_split_root:
+			return true
+	return false
 
 # ボス撃破の監視(取り巻きは倒さなくてもボスを倒せば消える)
 func _br_update(delta: float) -> void:
@@ -1054,13 +1074,14 @@ func _br_update(delta: float) -> void:
 		return
 	# 解放済みのNode参照は `!= null` が偽になるため、_br_active で「出現中」を管理する
 	# #209再4: 番いの場合は2体とも倒れるまで撃破としない
-	var boss_gone: bool = not is_instance_valid(_br_boss)
+	var boss_gone: bool = not is_instance_valid(_br_boss) and not _br_split_alive()
 	var mate_gone: bool = not _br_pair or not is_instance_valid(_br_boss2)
 	if _br_active and boss_gone and mate_gone:
 		_br_active = false
 		_br_pair = false
 		_br_boss = null
 		_br_boss2 = null
+		_br_split_root = ""
 		for e in enemies.duplicate():     # 残った取り巻きを消す
 			if is_instance_valid(e):
 				e.queue_free()
@@ -1824,6 +1845,7 @@ func _maybe_screenshot() -> void:
 					port_ui._tavern_section = "crew"
 			port_ui.show_tavern()
 		if want_yard:
+			port_ui._shipyard_weapon_slot = 0   # #248: 武器一覧も写るようスロット1を開いておく
 			port_ui.show_shipyard()
 		if want_fleet:   # #224再2: 編成タブ(陣形の効果一覧)を撮影
 			GameState.visited_islands = [0, 1]

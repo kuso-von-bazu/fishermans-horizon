@@ -14,7 +14,7 @@ func _ready() -> void:
 	GameState.reset_all()
 
 	# --- 島の定義 ---
-	check(Database.islands.size() == 8, "島が8つでない(%d)" % Database.islands.size())
+	check(Database.islands.size() == 9, "島が9つでない(%d)" % Database.islands.size())   # #248: 外れの小島
 	var want_tier := {0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 2, 6: 2, 7: 3}
 	for idx in want_tier:
 		check(Database.tier_of(int(idx)) == int(want_tier[idx]),
@@ -27,10 +27,10 @@ func _ready() -> void:
 	check(str(Database.island(6).name) == "常闇の島", "6番が常闇の島でない")
 	check(str(Database.island(7).name) == "海嘯の島", "7番が海嘯の島でない")
 
-	# 島数に連動する配列が8つぶんあること(足りないと先の島でクラッシュ/誤動作)
-	check(Database.mob_weights.size() == 8, "mob_weights が8つでない(%d)" % Database.mob_weights.size())
+	# 島数に連動する配列が島の数だけあること(足りないと先の島でクラッシュ/誤動作)
+	check(Database.mob_weights.size() == 9, "mob_weights が9つでない(%d)" % Database.mob_weights.size())
 	var Isle = preload("res://scripts2d/Island2D.gd")
-	check(Isle.PALETTES.size() == 8, "島の配色が8つでない(%d)" % Isle.PALETTES.size())
+	check(Isle.PALETTES.size() == 9, "島の配色が9つでない(%d)" % Isle.PALETTES.size())
 	# 出現重みの合計がほぼ1(偏っていると特定の敵しか出ない)
 	for i in Database.mob_weights.size():
 		var sum := 0.0
@@ -178,7 +178,7 @@ func _ready() -> void:
 	var order2: Array = []
 	for isle3 in Database.islands_in_order():
 		order2.append(str(isle3.name))
-	check(order2 == ["始まりの島", "潮鳴りの島", "月下の島", "星霜の島", "常闇の島", "海嘯の島", "嵐越えの島", "果ての島"],
+	check(order2 == ["始まりの島", "潮鳴りの島", "月下の島", "星霜の島", "常闇の島", "海嘯の島", "嵐越えの島", "果ての島", "外れの小島"],
 		"航路の並びが指定と違う: %s" % str(order2))
 
 	# --- #242: 武器の説明文 ---
@@ -195,11 +195,11 @@ func _ready() -> void:
 		got_order.append(str(spec.id))
 	check(got_order == want_order, "ボスラッシュの出現順が指定と違う: %s" % str(got_order))
 	check(World2.BOSS_RUSH_ORDER.size() == 17, "ボスラッシュのボス数が17でない(%d)" % World2.BOSS_RUSH_ORDER.size())
-	# 海賊王の取り巻きは 大×1・中×1 で固定
+	# #209再10: 海賊王の取り巻きは 大×2・中×1 で固定
 	for spec2 in World2.BOSS_RUSH_ORDER:
 		if str(spec2.id) == "king":
-			check((spec2.get("escorts", []) as Array) == ["dread", "corsair"],
-				"海賊王の取り巻きが 大×1・中×1 でない")
+			check((spec2.get("escorts", []) as Array) == ["dread", "dread", "corsair"],
+				"海賊王の取り巻きが 大×2・中×1 でない")
 	# ⑩まで5%、⑪から10%
 	check(World2.BR_HEAL_BIG_FROM == 10, "回復量が10%%に切り替わる位置が⑪でない(index %d)" % World2.BR_HEAL_BIG_FROM)
 	# 登場する主・海賊がすべて定義済みであること(タイプミスで出現しなくなる)
