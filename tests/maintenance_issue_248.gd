@@ -188,10 +188,11 @@ func _ready() -> void:
 
 	# ---------------- #249: リロード速度 ----------------
 	var base: float = float(Database.weapons["gatling"].reload)
+	# #249再: レビュアー再指定の倍率
 	var want_reload := {
-		"gatling": 1.0, "cannon": 1.1, "harpoon": 1.2, "torpedo": 1.3,
-		"gatling2": 1.2, "cannon2": 1.2, "harpoon2": 1.4, "torpedo2": 1.6,
-		"spray": 1.2, "lance": 1.2, "cluster": 1.6,
+		"gatling": 1.0, "cannon": 1.6, "harpoon": 1.8, "torpedo": 2.0,
+		"gatling2": 1.2, "cannon2": 1.8, "harpoon2": 2.0, "torpedo2": 2.2,
+		"spray": 1.2, "lance": 1.8, "cluster": 2.2,
 	}
 	for wid3 in want_reload:
 		var got_r: float = float(Database.weapons[wid3].reload)
@@ -445,6 +446,47 @@ func _ready() -> void:
 	check(tex_path.contains("lord_kraken_lord"),
 		"航海中のオクトパスがドット絵を読めずプレースホルダになっている(%s)" % tex_path)
 	oct.free()
+
+	# ---------------- #209再11: ボスラッシュ中は名声の通知を出さない ----------------
+	var notices: Array = []
+	var cb := func(t: String): notices.append(t)
+	GameState.notice.connect(cb)
+	GameState.reset_all()
+	GameState.boss_rush = true
+	GameState.add_fame(9999)
+	check(notices.is_empty(), "ボスラッシュ中に名声の通知が出た: %s" % str(notices))
+	GameState.reset_all()
+	GameState.boss_rush = false
+	GameState.add_fame(9999)
+	var fame_notices: Array = notices.filter(func(t): return str(t).contains("名声が轟いた"))
+	check(not fame_notices.is_empty(), "通常時に名声の通知が出なくなった")
+	# 討伐メッセージにも名声・賞金の文言が出ないこと(分裂する主の分岐を含む)
+	GameState.notice.disconnect(cb)
+	for br in [true, false]:
+		GameState.reset_all()
+		GameState.boss_rush = br
+		var msgs: Array = []
+		var cb2 := func(t: String): msgs.append(t)
+		GameState.notice.connect(cb2)
+		# 夜の帝王の分裂体を1体だけ置き、それを倒して「元の主の討伐」を発生させる
+		var bat := CharacterBody2D.new()
+		bat.set_script(Enemy)
+		bat.setup("lord", "night_bat_small")
+		bat.split_root = "night_emperor"
+		add_child(bat)
+		bat.add_to_group("enemy")
+		await get_tree().process_frame
+		bat._die()
+		await get_tree().process_frame
+		var joined := "".join(msgs)
+		if br:
+			check(not joined.contains("名声"), "ボスラッシュの討伐メッセージに名声が出た: %s" % str(msgs))
+			check(not joined.contains("賞金"), "ボスラッシュの討伐メッセージに賞金が出た: %s" % str(msgs))
+			check(joined.contains("討伐"), "ボスラッシュで討伐メッセージ自体が出ない: %s" % str(msgs))
+		else:
+			check(joined.contains("名声"), "通常時に名声の文言が消えた: %s" % str(msgs))
+		GameState.notice.disconnect(cb2)
+	GameState.boss_rush = false
 
 	port.free()
 	if failures.is_empty():

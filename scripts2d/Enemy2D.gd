@@ -1149,7 +1149,11 @@ func _die() -> void:
 				var rf := int(rd.get("fame", 0))
 				if rf > 0:
 					GameState.add_fame(rf)
-				GameState.notice.emit("近海の主 %s を討伐! 名声+%d 賞金は酒場で受領" % [str(rd.get("name", "?")), rf])
+				# #209再11: ボスラッシュでは名声・賞金の案内を出さない(分裂する主の分岐が漏れていた)
+				if GameState.boss_rush:
+					GameState.notice.emit("近海の主 %s を討伐!" % str(rd.get("name", "?")))
+				else:
+					GameState.notice.emit("近海の主 %s を討伐! 名声+%d 賞金は酒場で受領" % [str(rd.get("name", "?")), rf])
 				queue_free()
 				return
 			var is_pair: bool = bool(def.get("pair", false))

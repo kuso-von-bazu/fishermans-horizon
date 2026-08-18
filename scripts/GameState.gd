@@ -770,7 +770,9 @@ func add_fame(amount: int) -> void:
 	for isle in Database.islands:
 		if fame >= isle.fame_req and not unlocked_islands.has(isle.id):
 			unlocked_islands.append(isle.id)
-			notice.emit("名声が轟いた: %s への航路が開けた" % isle.name)
+			# #209再11: ボスラッシュは島を巡らないので、航路解放の通知は出さない
+			if not boss_rush:
+				notice.emit("名声が轟いた: %s への航路が開けた" % isle.name)
 
 # 魚市場で全積荷を売却
 func sell_all() -> int:
