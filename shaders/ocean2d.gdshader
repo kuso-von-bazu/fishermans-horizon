@@ -89,8 +89,8 @@ void fragment() {
 	// #250: 潮鳴りの島の近海は日射しが強い。海面全体を明るくし、
 	// 右上の太陽から縦に伸びる反射(海面に砕けた光の道)を落とす。
 	if (sunlight > 0.001) {
-		col *= 1.0 + sunlight * 0.16;
-		col += vec3(1.0, 0.95, 0.78) * sparkle * 0.55 * sunlight;   // 波間のきらめきも強める
+		col *= 1.0 + sunlight * 0.26;
+		col += vec3(1.0, 0.95, 0.78) * sparkle * 0.95 * sunlight;   // 波間のきらめきも強める
 		vec2 sun_uv = SCREEN_UV - vec2(0.70, 0.26);
 		sun_uv.x += sin(SCREEN_UV.y * 88.0 + t * 2.0) * 0.008;
 		float sun_disc = 1.0 - smoothstep(0.030, 0.044, length(vec2(sun_uv.x, sun_uv.y * 0.72)));
@@ -98,7 +98,7 @@ void fragment() {
 		float sun_path = exp(-pow(abs(SCREEN_UV.x - 0.70) / spath_w, 2.0));
 		sun_path *= smoothstep(0.22, 0.32, SCREEN_UV.y) * (1.0 - smoothstep(0.32, 0.98, SCREEN_UV.y));
 		float sbroken = pow(max(sin(SCREEN_UV.y * 190.0 + h * 3.2 + t * 2.1), 0.0), 5.0);
-		col += vec3(1.0, 0.94, 0.74) * (sun_disc * 0.62 + sun_path * sbroken * 0.62) * sunlight;
+		col += vec3(1.0, 0.94, 0.74) * (sun_disc * 0.85 + sun_path * sbroken * 0.85) * sunlight;
 	}
 
 	// #190: 月下の島の近海は常に夜。全体を暗い藍へ沈め、左上からの月光を落とす

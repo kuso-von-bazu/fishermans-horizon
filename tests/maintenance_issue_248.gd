@@ -564,13 +564,87 @@ func _ready() -> void:
 	# シェーダ側に uniform と反射の実装があること
 	var shader_src := FileAccess.get_file_as_string("res://shaders/ocean2d.gdshader")
 	check(shader_src.contains("uniform float sunlight"), "海面シェーダに sunlight の uniform が無い")
-	check(shader_src.contains("col += vec3(1.0, 0.94, 0.74) * (sun_disc * 0.62 + sun_path * sbroken * 0.62) * sunlight;"),
+	check(shader_src.contains("col += vec3(1.0, 0.94, 0.74) * (sun_disc * 0.85 + sun_path * sbroken * 0.85) * sunlight;"),
 		"海面シェーダで太陽の反射(光の道)が海面の色に加算されていない")
-	check(shader_src.contains("col *= 1.0 + sunlight * 0.16;"), "海面シェーダで日射しによる明るさの底上げが無い")
+	check(shader_src.contains("col *= 1.0 + sunlight * 0.26;"), "海面シェーダで日射しによる明るさの底上げが無い")
+
+	# ---------------- #239再8: ドット絵の左右の向き ----------------
+	# 絵がどちら向きに描かれているかは face_left で宣言する。
+	# 触腕/翼などが伸びている側が進行方向。左右を取り違えると航海中に後ろ向きに泳ぐ。
+	check(bool(Database.lords["kraken_lord"].get("face_left", false)),
+		"オクトパスの絵は左向き(触腕が左)なので face_left が要る")
+	check(not bool(Database.combat_mobs["carabos"].get("face_left", false)),
+		"カーラボスの絵は右向き(頭が右)なので face_left は付けない")
+	# 実際に左右へ動かしたとき、反転が絵の向きと噛み合うこと
+	var pl2 := CharacterBody2D.new()
+	pl2.add_to_group("player")
+	add_child(pl2)
+	for spec3 in [["lord", "kraken_lord", true], ["mob", "carabos", false]]:
+		var e3 := CharacterBody2D.new()
+		e3.set_script(Enemy)
+		e3.setup(str(spec3[0]), str(spec3[1]))
+		add_child(e3)
+		await get_tree().process_frame
+		e3._facing = "side"
+		e3._facing_cd = 0.0
+		e3._update_facing(Vector2.LEFT)
+		var flip_left: bool = e3.sprite.flip_h
+		# 左へ進むとき: 右向きの絵は反転する / 左向きの絵は反転しない
+		check(flip_left == (not bool(spec3[2])),
+			"%s が左へ進むときの反転が絵の向きと合っていない" % str(spec3[1]))
+		e3.free()
+
+	# ---------------- #239再8: キラーシェルは打ち返しのみ ----------------
+	var ks := CharacterBody2D.new()
+	ks.set_script(Enemy)
+	ks.setup("mob", "killer_shell")
+	add_child(ks)
+	await get_tree().process_frame
+	ks.player = pl2
+	# 近接圏の外・射程の内(遠隔で撃つはずの距離)に置く
+	var ks_far: float = float(ks._radius) + 400.0
+	check(ks.attack_range > ks_far, "テストの距離取りが射程外(range=%.0f)" % ks.attack_range)
+	pl2.global_position = ks.global_position + Vector2(ks_far, 0.0)
+	var before := 0
+	for c5 in get_children():
+		if c5 is Area2D:
+			before += 1
+	for f6 in 20:
+		ks._attack(0.2, ks_far)
+	await get_tree().process_frame
+	var after := 0
+	for c6 in get_children():
+		if c6 is Area2D:
+			after += 1
+	check(after == before, "キラーシェルが自分から遠隔攻撃している(弾%d発)" % (after - before))
+	# 近接圏に入られても自分からは殴らない
+	var hp_before := GameState.run_armor
+	for f7 in 10:
+		ks._attack(0.2, float(ks._radius) + 10.0)
+	check(is_equal_approx(GameState.run_armor, hp_before), "キラーシェルが自分から近接攻撃している")
+	# 撃たれたら打ち返す
+	ks.take_hit(10.0, false, false)
+	await get_tree().process_frame
+	var after2 := 0
+	for c7 in get_children():
+		if c7 is Area2D:
+			after2 += 1
+	check(after2 > after, "キラーシェルが撃たれても打ち返さない")
+	# 連射で撃たれても打ち返しは間隔を置く
+	var mid := after2
+	ks.take_hit(10.0, false, false)
+	await get_tree().process_frame
+	var after3 := 0
+	for c8 in get_children():
+		if c8 is Area2D:
+			after3 += 1
+	check(after3 == mid, "打ち返し弾にクールダウンが効いていない")
+	ks.free()
+	pl2.free()
 
 	port.free()
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze/sunny_sea")
+		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze/sunny_sea/facing/killer_shell")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)

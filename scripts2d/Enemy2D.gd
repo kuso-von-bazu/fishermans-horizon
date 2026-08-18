@@ -355,6 +355,7 @@ func _placeholder(c: Color) -> Texture2D:
 # 戻り値: 0=命中, 1=回避(弾は消える), 2=回避(弾は後方へ通過)
 # #224再2: 包囲射撃(鶴翼陣)の間だけ、この敵の回避を無効にする
 var _no_dodge_t: float = 0.0
+var _counter_t: float = 0.0   # #239再8: 打ち返し弾のクールダウン
 
 func suppress_dodge(secs: float) -> void:
 	_no_dodge_t = maxf(_no_dodge_t, secs)
@@ -425,6 +426,11 @@ func take_hit(amount: float, slip: bool, debuff: bool, no_dodge: bool = false, d
 	# #188: 番い(ギガントセイウチ)は片方が攻撃されると、もう片方も気づいて襲ってくる
 	if is_instance_valid(pair_partner):
 		pair_partner._aggro = true
+	# #239再8: counter_shot=撃たれたときだけ撃ち返す(秒数=打ち返しの最短間隔)
+	var ccd := float(def.get("counter_shot", 0.0))
+	if ccd > 0.0 and _counter_t <= 0.0 and not _dead:
+		_counter_t = ccd
+		_ranged_attack(bool(def.get("fire", false)))
 	var mult := 1.25 if _debuff_t > 0.0 else 1.0
 	hp -= amount * mult
 	if hp > 0.0 and _try_split():
@@ -456,6 +462,8 @@ func take_hit(amount: float, slip: bool, debuff: bool, no_dodge: bool = false, d
 func _physics_process(delta: float) -> void:
 	if _no_dodge_t > 0.0:
 		_no_dodge_t = maxf(_no_dodge_t - delta, 0.0)   # #224再2: 包囲射撃の回避無効
+	if _counter_t > 0.0:
+		_counter_t = maxf(_counter_t - delta, 0.0)   # #239再8: 打ち返し弾のクールダウン
 	_tick_blink(delta)   # #239: レイスのテレポート
 	if _slip > 0.0:
 		var tick: float = minf(_slip, 8.0 * delta)
@@ -651,6 +659,9 @@ func _attack(delta: float, dist: float) -> void:
 	_atk_timer = attack_cd
 	if _debuff_kind == "atkfreq":
 		_atk_timer *= 1.0 + 0.5 * _debuff_power   # #91/#114 麻痺: 攻撃間隔増(重ねがけで増加/減衰)
+	# #239再8: no_attack=自分からは仕掛けない(キラーシェルは撃たれたときだけ打ち返す)
+	if bool(def.get("no_attack", false)):
+		return
 	var eff_dmg := dmg
 	if _debuff_kind == "atk":
 		eff_dmg *= 1.0 - 0.35 * clampf(_debuff_power, 0.0, 1.0)  # #91/#114 衰弱: 与ダメ減
