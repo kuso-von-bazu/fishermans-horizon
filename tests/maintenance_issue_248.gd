@@ -276,9 +276,92 @@ func _ready() -> void:
 	king.free()
 	dread.free()
 
+	# ---------------- #239再6: セイレーンの弾 ----------------
+	var pl := CharacterBody2D.new()
+	pl.add_to_group("player")
+	add_child(pl)
+	pl.global_position = Vector2(400, 0)
+	var siren := CharacterBody2D.new()
+	siren.set_script(Enemy)
+	siren.setup("lord", "siren")
+	add_child(siren)
+	await get_tree().process_frame
+	siren.player = pl
+	var ways := {}
+	var shapes := {}
+	var upright_ok := true
+	var wave_ok := true
+	var dirs_seen := {}
+	for t3 in 12:
+		for c3 in get_children():
+			if c3 is Area2D:
+				c3.free()
+		await get_tree().process_frame
+		siren._ranged_attack(false)
+		await get_tree().process_frame
+		var n3 := 0
+		for c4 in get_children():
+			if not (c4 is Area2D):
+				continue
+			n3 += 1
+			shapes[str(c4.get("shape"))] = true
+			if not bool(c4.get("upright")):
+				upright_ok = false
+			if float(c4.get("wave_amp")) <= 0.0:
+				wave_ok = false
+			dirs_seen[snappedf(c4.get("dir").angle(), 0.001)] = true
+		ways[n3] = true
+	check(shapes.size() == 1 and shapes.has("note"), "セイレーンの弾が音符型でない(%s)" % str(shapes.keys()))
+	check(upright_ok, "音符弾が進行方向へ回転してしまい音符に見えない")
+	check(wave_ok, "音符弾が蛇行しない")
+	var max_way := 0
+	for k3 in ways:
+		max_way = maxi(max_way, int(k3))
+	check(max_way >= 3, "セイレーンの弾が3way以上にならない(最大%d)" % max_way)
+	check(dirs_seen.size() >= 3, "セイレーンの弾がすべて同じ向きに飛んでいる")
+	# 蛇行が実際に軌道を曲げるか(直進弾との横方向のずれで見る)
+	var straight := Area2D.new()
+	straight.set_script(Proj)
+	add_child(straight)
+	straight.from_player = false
+	straight.setup(Vector2.RIGHT, {"dmg": 1.0, "shape": "note"})
+	var wavy := Area2D.new()
+	wavy.set_script(Proj)
+	add_child(wavy)
+	wavy.from_player = false
+	wavy.setup(Vector2.RIGHT, {"dmg": 1.0, "shape": "note", "upright": true, "wave_amp": 170.0, "wave_freq": 7.5})
+	for f3 in 12:
+		await get_tree().physics_frame
+	check(absf(wavy.global_position.y - straight.global_position.y) > 1.0,
+		"蛇行弾が直進弾と同じ軌道(%.2f)" % absf(wavy.global_position.y - straight.global_position.y))
+	check(absf(straight.rotation) > 0.0001 and absf(wavy.rotation) < 0.0001, "upright の有無で弾の向きが変わらない")
+	straight.free()
+	wavy.free()
+	siren.free()
+
+	# ---------------- #239再6: レイスの瞬間移動でロックが外れる ----------------
+	var w2 := Node2D.new()
+	w2.set_script(World2)
+	add_child(w2)
+	var wr := CharacterBody2D.new()
+	wr.set_script(Enemy)
+	wr.setup("lord", "wraith")
+	w2.add_child(wr)
+	await get_tree().process_frame
+	wr.player = pl
+	wr._aggro = true
+	w2._set_lock(wr)
+	check(w2.lock_target == wr and wr.locked, "レイスをロックできない")
+	wr._blink_t = 0.0
+	wr._tick_blink(0.016)
+	check(w2.lock_target == null, "レイスが瞬間移動してもロックが外れない")
+	check(not wr.locked, "ロック解除後もロック表示が残る")
+	w2.free()
+	pl.free()
+
 	port.free()
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range")
+		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)

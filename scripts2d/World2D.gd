@@ -1454,6 +1454,12 @@ func _set_lock(t: Node2D) -> void:
 	if lock_target and is_instance_valid(lock_target):
 		lock_target.locked = true
 
+# #239再6: レイスの瞬間移動など、敵側の都合でロックを外す
+func release_lock_on(e: Node2D) -> void:
+	if lock_target != null and lock_target == e:
+		_set_lock(null)
+		GameState.notice.emit("ロックオンが外れた!")
+
 # #16: マウスホイールでロック対象を切替
 func _cycle_lock(dir: int) -> void:
 	var lockable := _lockable_enemies()

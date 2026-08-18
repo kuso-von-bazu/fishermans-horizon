@@ -33,6 +33,11 @@ var _pierced: Array = []          # 同じ敵に多重ヒットしないよう�
 var cluster: int = 0              # #248: クラスター魚雷。発射後すぐこの数へ分裂する
 var _cluster_def: Dictionary = {}
 var _cluster_t: float = 0.0
+# #239再6: 音符弾。進行方向へ回さず立てたまま、左右に蛇行しながら飛ぶ
+var upright: bool = false
+var wave_amp: float = 0.0
+var wave_freq: float = 0.0
+var _wave_ph: float = 0.0
 
 func setup(p_dir: Vector2, w: Dictionary, p_target: Node2D = null) -> void:
 	# #149再3/#196: レイヤー1(自機/島/障害物)+2(敵)+4(僚艦) をすべて見る
@@ -58,6 +63,10 @@ func setup(p_dir: Vector2, w: Dictionary, p_target: Node2D = null) -> void:
 	bcolor = w.get("bcolor", Color(0, 0, 0, 0))
 	spread_homing = bool(w.get("spread_homing", false))
 	pierce = bool(w.get("pierce", false))
+	upright = bool(w.get("upright", false))
+	wave_amp = float(w.get("wave_amp", 0.0))
+	wave_freq = float(w.get("wave_freq", 0.0))
+	_wave_ph = randf() * TAU
 	cluster = int(w.get("cluster", 0))
 	if cluster > 0:
 		_cluster_def = w.duplicate()      # 分裂後の子はこの定義から作る(分裂はしない)
@@ -205,7 +214,8 @@ func _build_visual() -> void:
 	mesh.polygon = poly
 	mesh.color = mcol
 	add_child(mesh)
-	rotation = dir.angle() + PI / 2
+	if not upright:
+		rotation = dir.angle() + PI / 2
 	var col := CollisionShape2D.new()
 	var sh := CircleShape2D.new()
 	sh.radius = r + 2.0
@@ -265,6 +275,10 @@ func _physics_process(delta: float) -> void:
 		rotation = dir.angle() + PI / 2   # #78: 魚雷は進行方向を向く
 	else:
 		global_position += dir * speed * delta
+		# #239再6: 蛇行(進行方向に対して左右へ振れながら進む)
+		if wave_amp > 0.0:
+			_wave_ph += delta * wave_freq
+			global_position += dir.orthogonal() * cos(_wave_ph) * wave_amp * delta
 	_travel += speed * delta
 	_update_danger_outline()
 	life -= delta

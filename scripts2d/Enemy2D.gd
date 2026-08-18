@@ -393,6 +393,10 @@ func _tick_blink(delta: float) -> void:
 	var dr: Array = bl.get("dist", [420.0, 900.0])
 	var ang := randf() * TAU
 	var dest: Vector2 = player.global_position + Vector2(cos(ang), sin(ang)) * randf_range(float(dr[0]), float(dr[1]))
+	# #239再6: 瞬間移動するとロックオンが外れる(消える瞬間に解除する)
+	var w := get_parent()
+	if w and w.has_method("release_lock_on"):
+		w.release_lock_on(self)
 	# #239再4: 瞬間移動の直前に急速に透明化してから飛ぶ(消えて現れる演出)
 	if sprite:
 		var tw := create_tween()
@@ -807,7 +811,7 @@ func _fire_weapon(wpn: String, eff_dmg: float, base_dir: Vector2, is_fire: bool,
 			var way_pool: Array = def.get("way_choices", [])
 			if not way_pool.is_empty():
 				way = int(way_pool[randi() % way_pool.size()])
-			var spread_step: float = 0.10 if bool(def.get("aim_tight", false)) else 0.20
+			var spread_step: float = float(def.get("aim_spread", 0.10 if bool(def.get("aim_tight", false)) else 0.20))
 			var aim_shape := str(def.get("aim_shape", ""))
 			var aim_color = def.get("aim_color", null)
 			# #190: multi_origin=陣形の複数箇所から同時発射(レギオン)。既定は本体1箇所のみ
@@ -828,6 +832,10 @@ func _fire_weapon(wpn: String, eff_dmg: float, base_dir: Vector2, is_fire: bool,
 						w["shape"] = "needle"   # #239: ラミア
 					elif bool(def.get("note_shot", false)):
 						w["shape"] = "note"     # #239: セイレーン
+						# #239再6: 音符は立てたまま、左右に蛇行させる
+						w["upright"] = true
+						w["wave_amp"] = float(def.get("shot_wave_amp", 150.0))
+						w["wave_freq"] = float(def.get("shot_wave_freq", 7.0))
 					_shoot(base_dir.rotated(off), w, is_fire, null, org)
 			# #190: scatter=無作為な方向へばら撒く弾(オニヒトデ/アスピドケロン/レギオン)
 			var scatter := int(def.get("scatter", 0))
