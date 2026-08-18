@@ -845,9 +845,30 @@ func _ready() -> void:
 			check(Vector2(pa.x, pa.z).distance_to(Vector2(pb.x, pb.z)) > 400.0,
 				"島%d と島%d が近すぎる" % [a5, b5])
 
+	# ---------------- #239再9: 弾の形が実際に描画できること ----------------
+	# 自己交差した多角形は Polygon2D が三角形分割に失敗し、無言で「何も描かれない」。
+	# 音符弾が実際にそうなっていたので、全形状ぶん機械的に確かめる。
+	var shapes_all := ["", "note", "flame_jet", "frost_jet", "small", "needle", "star",
+		"grain", "ellipse", "ellipse_s"]
+	for shp in shapes_all:
+		var sp := Area2D.new()
+		sp.set_script(Proj)
+		add_child(sp)
+		sp.from_player = false
+		sp.setup(Vector2.UP, {"dmg": 10.0, "shape": shp})
+		await get_tree().process_frame
+		var drawn := false
+		for c9 in sp.get_children():
+			if c9 is Polygon2D:
+				var tri := Geometry2D.triangulate_polygon(c9.polygon)
+				drawn = tri.size() > 0
+				break
+		check(drawn, "弾の形 \"%s\" が描画されない(多角形の三角形分割に失敗)" % shp)
+		sp.free()
+
 	port.free()
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze/sunny_sea/facing/killer_shell/south_isle/streams/all_islands")
+		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze/sunny_sea/facing/killer_shell/south_isle/streams/all_islands/bullet_shapes")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)

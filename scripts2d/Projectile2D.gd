@@ -174,13 +174,16 @@ func _build_visual() -> void:
 		r = 4.0
 	elif shape == "note":
 		# #239: セイレーンの音符弾。丸い符頭と縦の符幹(蛇行しながら飛ぶ)
-		for i in 12:
-			var a := TAU * i / 12.0
-			poly.append(Vector2(cos(a) * 5.2 - 1.6, sin(a) * 4.2 + 3.4))
-		poly.append(Vector2(3.0, 3.4))
-		poly.append(Vector2(3.0, -8.6))
-		poly.append(Vector2(1.4, -8.6))
-		poly.append(Vector2(1.4, 3.4))
+		# #239再9: 符頭の円と符幹を1つの多角形として並べると自己交差して
+		# 三角形分割に失敗し、弾が一切描画されなかった。図形の和で単純な輪郭を作る。
+		var head := PackedVector2Array()
+		for i in 14:
+			var a := TAU * i / 14.0
+			head.append(Vector2(cos(a) * 5.2 - 1.6, sin(a) * 4.2 + 3.4))
+		var stem := PackedVector2Array([
+			Vector2(1.4, -8.6), Vector2(3.0, -8.6), Vector2(3.0, 3.4), Vector2(1.4, 3.4)])
+		var merged := Geometry2D.merge_polygons(head, stem)
+		poly = merged[0] if merged.size() > 0 else head
 		mcol = Color(0.96, 0.82, 0.98)
 		r = 5.0
 	elif shape == "ellipse":
