@@ -866,6 +866,31 @@ func _ready() -> void:
 		check(drawn, "弾の形 \"%s\" が描画されない(多角形の三角形分割に失敗)" % shp)
 		sp.free()
 
+	# 島の海岸線と障害物の輪郭も、ランダム生成なので退化していないこと
+	var IsleS = preload("res://scripts2d/Island2D.gd")
+	for isl2 in Database.islands.size():
+		var iv := StaticBody2D.new()
+		iv.set_script(IsleS)
+		iv.setup(isl2)
+		add_child(iv)
+		await get_tree().process_frame
+		for base_r in [132.0, 112.0, 86.0, 52.0]:
+			var coast: PackedVector2Array = iv._coast(base_r, float(IsleS.PALETTES[isl2].wob), 1)
+			check(Geometry2D.triangulate_polygon(coast).size() > 0,
+				"島%d の海岸線(半径%.0f)が描画できない" % [isl2, base_r])
+		iv.free()
+	var ObsS = preload("res://scripts2d/Obstacle2D.gd")
+	for kind2 in ["reef", "ice"]:
+		for t5 in 30:
+			var ob := StaticBody2D.new()
+			ob.set_script(ObsS)
+			ob.setup(kind2)
+			add_child(ob)
+			await get_tree().process_frame
+			check(Geometry2D.triangulate_polygon(ob._shape).size() > 0,
+				"障害物(%s)の輪郭が描画できない" % kind2)
+			ob.free()
+
 	port.free()
 	if failures.is_empty():
 		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze/sunny_sea/facing/killer_shell/south_isle/streams/all_islands/bullet_shapes")
