@@ -10,6 +10,58 @@ const OUTER := 8   # 外れの小島の island index
 
 var failures: Array[String] = []
 
+# 画像の四辺のうち、最も不透明画素で埋まっている辺の割合(1.0=その辺で完全に切れている)
+func _edge_fill(img: Image) -> float:
+	var w := img.get_width()
+	var h := img.get_height()
+	var top := 0
+	var bottom := 0
+	for x in w:
+		if img.get_pixel(x, 0).a > 0.06:
+			top += 1
+		if img.get_pixel(x, h - 1).a > 0.06:
+			bottom += 1
+	var left := 0
+	var right := 0
+	for y in h:
+		if img.get_pixel(0, y).a > 0.06:
+			left += 1
+		if img.get_pixel(w - 1, y).a > 0.06:
+			right += 1
+	return maxf(maxf(float(top) / float(w), float(bottom) / float(w)),
+		maxf(float(left) / float(h), float(right) / float(h)))
+
+# 不透明画素のかたまりが何個あるか(体から離れた断片の検出)。8近傍で数える
+func _blob_count(img: Image) -> int:
+	var w := img.get_width()
+	var h := img.get_height()
+	var seen := {}
+	var blobs := 0
+	for y in h:
+		for x in w:
+			var key := y * w + x
+			if img.get_pixel(x, y).a <= 0.06 or seen.has(key):
+				continue
+			blobs += 1
+			var stack: Array = [key]
+			seen[key] = true
+			while not stack.is_empty():
+				var k: int = stack.pop_back()
+				var cy: int = k / w
+				var cx: int = k % w
+				for dy in [-1, 0, 1]:
+					for dx in [-1, 0, 1]:
+						var ny: int = cy + dy
+						var nx: int = cx + dx
+						if ny < 0 or nx < 0 or ny >= h or nx >= w:
+							continue
+						var nk := ny * w + nx
+						if seen.has(nk) or img.get_pixel(nx, ny).a <= 0.06:
+							continue
+						seen[nk] = true
+						stack.append(nk)
+	return blobs
+
 func check(ok: bool, message: String) -> void:
 	if not ok:
 		failures.append(message)
@@ -359,9 +411,44 @@ func _ready() -> void:
 	w2.free()
 	pl.free()
 
+	# ---------------- #239再6: オクトパスの画像 ----------------
+	for suf in ["", "_front", "_back"]:
+		var ip := "res://assets/images/pixel/lord_kraken_lord%s.png" % suf
+		check(ResourceLoader.exists(ip), "オクトパスのドット絵が無い: " + ip)
+		var img := Image.load_from_file(ip)
+		check(not img.is_empty() and img.get_used_rect().has_area(), "オクトパスのドット絵が空: " + ip)
+		# 画面端で切れていないこと(外周1pxに不透明画素が無い)
+		var rect := img.get_used_rect()
+		check(rect.position.x > 0 and rect.position.y > 0
+			and rect.end.x < img.get_width() and rect.end.y < img.get_height(),
+			"オクトパスのドット絵が端で切れている: " + ip)
+		# 体から離れた断片が無いこと(不透明画素の連結成分が1つ)
+		check(_blob_count(img) == 1, "オクトパスのドット絵に体から離れた部分がある: " + ip)
+		var src := "res://assets/images/lord_kraken_lord%s.png" % suf
+		check(ResourceLoader.exists(src), "オクトパスの挿絵が無い: " + src)
+		var simg := Image.load_from_file(src)
+		# 挿絵は透過処理で外接矩形にトリミングされるため、端に接すること自体は正常。
+		# 「生成時に切れた」場合は辺に沿って不透明画素がずらりと並ぶので、その割合で見る。
+		check(_edge_fill(simg) < 0.5,
+			"オクトパスの挿絵が端で切り落とされている(辺の%.0f%%が不透明): %s" % [_edge_fill(simg) * 100.0, src])
+
+	# 航海中の描画で、灰色のプレースホルダではなく実際のドット絵が使われること
+	var oct := CharacterBody2D.new()
+	oct.set_script(Enemy)
+	oct.setup("lord", "kraken_lord")
+	add_child(oct)
+	await get_tree().process_frame
+	check(oct.sprite != null and oct.sprite.texture != null, "オクトパスにスプライトが無い")
+	var tex_path := ""
+	if oct.sprite and oct.sprite.texture:
+		tex_path = str(oct.sprite.texture.resource_path)
+	check(tex_path.contains("lord_kraken_lord"),
+		"航海中のオクトパスがドット絵を読めずプレースホルダになっている(%s)" % tex_path)
+	oct.free()
+
 	port.free()
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock")
+		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)
