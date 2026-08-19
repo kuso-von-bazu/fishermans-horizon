@@ -980,9 +980,72 @@ func _ready() -> void:
 	check(wsrc.count("Audio.ambient_enabled = false") >= 3,
 		"タイトル・エンディングへ戻る経路の一部で波の音を止めていない")
 
+	# ---------------- #241再4/#177再/#248再3/#255/#212再2/#243再 ----------------
+	# #241再4: ヒントの文言
+	for isl3 in [4]:
+		var r_fin: Array = Database.departure_hint_table(isl3).get("random", [])
+		check(r_fin.has("レヴィアタンの追尾弾は強力だ。銛のデバフ効果を活用しよう。"), "果ての島のヒント(追尾弾)が修正されていない")
+		check(r_fin.has("レヴィアタンの遠隔攻撃は激しい。銛のデバフ効果を活用しよう。"), "果ての島のヒント(遠隔攻撃)が修正されていない")
+		for bad in r_fin:
+			check(not str(bad).contains("銛の麻痺効果"), "「銛の麻痺効果」の表記が残っている: %s" % str(bad))
+	var r_storm: Array = Database.departure_hint_table(3).get("random", [])
+	for bad2 in r_storm:
+		check(not str(bad2).begins_with("カリュブディス"), "嵐越えのカリュブディスのヒントが残っている: %s" % str(bad2))
+
+	# #177再: 討伐記録の並び(マーマン〜ティアマットはカーラボスと海賊(小)の間)
+	var order_b: Array = []
+	for e_b in Database.bestiary:
+		order_b.append(str(e_b.id))
+	var i_cara: int = order_b.find("carabos")
+	var i_raider: int = order_b.find("raider")
+	check(i_cara >= 0 and i_raider > i_cara, "討伐記録にカーラボス/海賊(小)が無い")
+	var want_mid := ["merman", "charybdis", "amphiptere", "dagon", "zahhak", "tiamat"]
+	check(order_b.slice(i_cara + 1, i_raider) == want_mid,
+		"討伐記録の並びが指定と違う: %s" % str(order_b.slice(i_cara + 1, i_raider)))
+
+	# #248再3: クラスター魚雷は分裂前後とも少し遅い
+	check(float(Database.weapons["cluster"].speed_mult) < 0.55, "クラスター魚雷の速度が下がっていない")
+	check(float(Database.weapons["cluster"].speed_mult) < float(Database.weapons["torpedo2"].speed_mult),
+		"クラスター魚雷が追尾魚雷改より遅くない")
+
+	# #255: 巨大戦艦は一回り小さい
+	var PlayerS = preload("res://scripts2d/Player2D.gd")
+	var psrc := FileAccess.get_file_as_string("res://scripts2d/Player2D.gd")
+	check(psrc.contains("if GameState.ship_id == \"dread\":"), "旗艦の巨大戦艦が小さくなっていない")
+	var esrc2 := FileAccess.get_file_as_string("res://scripts2d/Escort2D.gd")
+	check(esrc2.contains("if ship_id == \"dread\":"), "僚艦の巨大戦艦が小さくなっていない")
+
+	# #212再2: 旗艦ラベルの赤囲み
+	check(psrc.contains("lbl.add_theme_stylebox_override(\"normal\", lbl_box)"), "旗艦ラベルに枠が付いていない")
+	check(psrc.contains("lbl_box.border_color = Color(1.0, 0.25, 0.20, 0.95)"), "旗艦ラベルの枠が赤でない")
+
+	# #243再: タイトル背景が進捗で変わる
+	var TitleS = preload("res://scripts/TitleScreen.gd")
+	var ttl := CanvasLayer.new()
+	ttl.set_script(TitleS)
+	add_child(ttl)
+	await get_tree().process_frame
+	var had_c := GameState.has_cleared()
+	var had_br := GameState.has_cleared_boss_rush()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://cleared.dat"))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://boss_rush_cleared.dat"))
+	check(ttl.title_bg_stage() == 0, "討伐前のタイトル背景が初期段階でない")
+	GameState.mark_cleared()
+	check(ttl.title_bg_stage() == 1, "レヴィアタン討伐後にタイトル背景が変わらない")
+	GameState.mark_boss_rush_cleared()
+	check(ttl.title_bg_stage() == 2, "ボスラッシュ制覇後にタイトル背景が変わらない")
+	ttl.show_title()
+	await get_tree().process_frame
+	check(ttl._night_sky != null and ttl._night_sky.visible, "制覇後のタイトルに星空が出ない")
+	if not had_br:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path("user://boss_rush_cleared.dat"))
+	if not had_c:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path("user://cleared.dat"))
+	ttl.free()
+
 	port.free()
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze/sunny_sea/facing/killer_shell/south_isle/streams/all_islands/bullet_shapes/cluster_range/torpedo_lock/pirate_dmg/ambient")
+		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze/sunny_sea/facing/killer_shell/south_isle/streams/all_islands/bullet_shapes/cluster_range/torpedo_lock/pirate_dmg/ambient/hints2/bestiary/title_bg/flagship_label")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)

@@ -332,14 +332,56 @@ func _fit_logo() -> void:
 	var aspect := 1672.0 / 941.0   # 生成ロゴの縦横比
 	_logo.custom_minimum_size = Vector2(h * aspect, h)
 
+# #243再: タイトル背景は進捗で切り替える。
+#   0 = レヴィアタン討伐まで(現行の明るい海)
+#   1 = 討伐後〜ボスラッシュ制覇まで(通常エンディングと同じ金色に沈んだ海)
+#   2 = ボスラッシュ制覇後(制覇エンディングと同じ星空と三日月)
+func title_bg_stage() -> int:
+	if GameState.has_cleared_boss_rush():
+		return 2
+	if GameState.has_cleared():
+		return 1
+	return 0
+
+func _apply_title_bg() -> void:
+	var stage := title_bg_stage()
+	# いったん前の段階の絵を伏せてから、その段階のものだけ出す
+	if _night_sky:
+		_night_sky.visible = false
+	if _art_br:
+		_art_br.visible = false
+	if _art:
+		_art.visible = true
+	match stage:
+		2:
+			if _bg:
+				_bg.color = Color(0.010, 0.014, 0.040, 1.0)
+			if _art:
+				_art.visible = false
+			_build_night_sky()
+			if _night_sky:
+				_night_sky.visible = true
+			_build_br_art()
+			if _art_br:
+				_art_br.visible = true
+			_title.add_theme_color_override("font_color", Color(0.82, 0.90, 1.0))
+		1:
+			if _bg:
+				_bg.color = Color(0.015, 0.02, 0.045, 1.0)
+			if _art:
+				_art.modulate = Color(0.85, 0.7, 0.45, 0.25)
+			_title.add_theme_color_override("font_color", Color(0.95, 0.85, 0.55))
+		_:
+			if _bg:
+				_bg.color = Color(0.03, 0.07, 0.12, 1.0)
+			if _art:
+				_art.modulate = Color(1, 1, 1, 0.45)
+			_title.add_theme_color_override("font_color", Color(0.9, 0.95, 1.0))
+
 func show_title() -> void:
 	_title.text = "Fisherman's Horizon"
 	_button.text = "初めから"
-	if _bg:
-		_bg.color = Color(0.03, 0.07, 0.12, 1.0)
-	if _art:
-		_art.modulate = Color(1, 1, 1, 0.45)
-	_title.add_theme_color_override("font_color", Color(0.9, 0.95, 1.0))
+	_apply_title_bg()   # #243再: 進捗に応じた背景へ
 	# #175: ロゴがあれば紋章を表示し文字タイトルは隠す
 	if _logo:
 		_logo.visible = true

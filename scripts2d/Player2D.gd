@@ -560,9 +560,20 @@ func _build_visual() -> void:
 	lbl.add_theme_color_override("font_color", Color(1.0, 0.92, 0.72))
 	lbl.add_theme_constant_override("outline_size", 5)
 	lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
-	lbl.custom_minimum_size = Vector2(120, 0)
+	# #212再2: 赤枠を文字幅に合わせるため、幅を広げず位置で中央に寄せる
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl.z_index = 4
+	# #212再2: 乱戦で旗艦を見失わないよう、ラベルを赤枠で囲む
+	var lbl_box := StyleBoxFlat.new()
+	lbl_box.bg_color = Color(0.10, 0.02, 0.02, 0.55)
+	lbl_box.border_color = Color(1.0, 0.25, 0.20, 0.95)
+	lbl_box.set_border_width_all(2)
+	lbl_box.set_corner_radius_all(3)
+	lbl_box.content_margin_left = 6.0
+	lbl_box.content_margin_right = 6.0
+	lbl_box.content_margin_top = 1.0
+	lbl_box.content_margin_bottom = 1.0
+	lbl.add_theme_stylebox_override("normal", lbl_box)
 	add_child(lbl)
 	_label = lbl
 	# #178: 損傷時の黒煙(装甲1/4未満で小さな黒煙・大破で大きな黒煙)。船の複数個所から噴く。
@@ -625,6 +636,9 @@ func _build_visual() -> void:
 func _ship_scale() -> float:
 	# #151再: 巡洋戦艦は見た目・当たり判定を一回り大きく
 	var extra: float = 1.15 if GameState.ship_id == "cruiser" else 1.0
+	# #255: 巨大戦艦は一回り小さく
+	if GameState.ship_id == "dread":
+		extra = 0.87
 	return clampf(0.9 + float(GameState.ship().armor) / 1500.0, 0.9, 1.8) * extra
 
 func rebuild_visual() -> void:
@@ -654,7 +668,7 @@ func _physics_process(delta: float) -> void:
 		queue_redraw()
 		if _label:
 			_label.rotation = -rotation
-			_label.position = Vector2(-60, -_half_h - 34).rotated(-rotation)
+			_label.position = Vector2(-_label.size.x * 0.5, -_half_h - 34).rotated(-rotation)
 		return
 	var throttle := 0.0
 	var steer := 0.0
@@ -704,7 +718,7 @@ func _physics_process(delta: float) -> void:
 	if _label:
 		# ラベルは船と一緒に回ると裏返るので、常に画面上向き・船の真上に置く
 		_label.rotation = -rotation
-		_label.position = Vector2(-60, -_half_h - 34).rotated(-rotation)
+		_label.position = Vector2(-_label.size.x * 0.5, -_half_h - 34).rotated(-rotation)
 	if _flame:
 		_flame.emitting = GameState.burn_t > 0.0   # #136: 炎上中だけ炎
 	# #178: 損傷黒煙。装甲1/4未満で小さな黒煙、大破(装甲0)で大きな黒煙を複数個所から。

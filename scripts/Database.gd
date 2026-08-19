@@ -203,8 +203,6 @@ var departure_hints := {
 			"嵐の中では弾速が下がる。",
 			"僚艦も射線を遮られるとガトリングや大砲、銛を発射しない。魚雷は発射してくれるぞ。",
 			"空を飛ぶ敵には魚雷は発射できず、衝角での突撃もできない。",
-			"カリュブディスはしばしば攻撃を回避する。",
-			"カリュブディスは死に際に弾をばら撒いてくる。",
 			"陣形ごとに異なるスキルを発動できるぞ。",
 			"陣形ごとに異なるパッシブスキルが常に発動する。",
 			"スキルごとにクールダウン時間は異なる。",
@@ -220,8 +218,8 @@ var departure_hints := {
 		"random": [
 			"吹雪の中では普段より余計に燃料を消費する。",
 			"レヴィアタンの近接攻撃を受けると、確実にスリップダメージが入る。",
-			"レヴィアタンの追尾弾は強力だ。銛の麻痺効果を活用しよう。",
-			"レヴィアタンの遠隔攻撃は激しい。銛の麻痺効果を活用しよう。",
+			"レヴィアタンの追尾弾は強力だ。銛のデバフ効果を活用しよう。",
+			"レヴィアタンの遠隔攻撃は激しい。銛のデバフ効果を活用しよう。",
 			"２〜５番艦が離脱するときもクルーを失うおそれがあるが、旗艦が大破する時よりも生還率は高い。",
 			"空を飛ぶ敵には魚雷は発射できず、衝角での突撃もできない。",
 			"輪形陣は射線が遮られ攻撃しにくいが、魚雷は発射できる。",
@@ -328,12 +326,6 @@ var bestiary := [
 	# #190: 月下の島の強モブ
 	{"kind": "mob", "id": "starfish",       "desc": "繁殖時には大量のクローンを生み出すが、その繁殖行為が近くを通る船の脅威になる。"},
 	{"kind": "mob", "id": "zaratan",        "desc": "特に味噌が美味。"},
-	{"kind": "mob", "id": "merman",         "desc": "人類が海に適応しようとしてバイオテクノロジーに頼った成れの果ての姿。"},
-	{"kind": "mob", "id": "charybdis",      "desc": "本体は海中に身を潜め、海面からは巨大な渦潮しか見えないが、本体は蛇のような姿をしている。"},
-	{"kind": "mob", "id": "amphiptere",     "desc": "翼はあるが足がなく、上半身は竜、下半身は蛇のような見た目をしている。"},
-	{"kind": "mob", "id": "dagon",          "desc": "旧人類の異端派が何らかの方法で創造した神だと考えられている。"},
-	{"kind": "mob", "id": "zahhak",         "desc": "見た目は銀色の神々しいドラゴンだが、実態は人類を見境なく襲う獣。"},
-	{"kind": "mob", "id": "tiamat",         "desc": "他の竜族は旧人類が創造しその後暴走したものだが、ティアマットは由来が不明。"},
 	# #239: 星霜/常闇/海嘯の島の新モブ(説明文はレビュアー指定)
 	{"kind": "mob", "id": "mermaid",        "desc": "下半身のみを食し、上半身を食べることは禁忌とされている。特に不老不死の効能があるわけではない。"},
 	{"kind": "mob", "id": "lamia",          "desc": "下半身のみを食し、上半身を食べることは禁忌とされている。"},
@@ -341,6 +333,13 @@ var bestiary := [
 	{"kind": "mob", "id": "moon_jelly",     "desc": "毒針を取り除けば独特な触感が特徴の食材となる。"},
 	{"kind": "mob", "id": "killer_shell",   "desc": "危険な貝だが、巨大な真珠を狙う船乗りが後を絶たない。"},
 	{"kind": "mob", "id": "carabos",        "desc": "巨大で長い触角をもつエビ。"},
+	# #177再: マーマン〜ティアマットはカーラボスと海賊(小)の間へ(レビュアー指定)
+	{"kind": "mob", "id": "merman",         "desc": "人類が海に適応しようとしてバイオテクノロジーに頼った成れの果ての姿。"},
+	{"kind": "mob", "id": "charybdis",      "desc": "本体は海中に身を潜め、海面からは巨大な渦潮しか見えないが、本体は蛇のような姿をしている。"},
+	{"kind": "mob", "id": "amphiptere",     "desc": "翼はあるが足がなく、上半身は竜、下半身は蛇のような見た目をしている。"},
+	{"kind": "mob", "id": "dagon",          "desc": "旧人類の異端派が何らかの方法で創造した神だと考えられている。"},
+	{"kind": "mob", "id": "zahhak",         "desc": "見た目は銀色の神々しいドラゴンだが、実態は人類を見境なく襲う獣。"},
+	{"kind": "mob", "id": "tiamat",         "desc": "他の竜族は旧人類が創造しその後暴走したものだが、ティアマットは由来が不明。"},
 	{"kind": "pirate", "id": "raider",      "desc": "近海を荒らす小物の海賊。"},
 	{"kind": "pirate", "id": "corsair",     "desc": "近海を荒らす海賊。"},
 	{"kind": "pirate", "id": "dread",       "desc": "近海を荒らす名の通った海賊。"},
@@ -375,7 +374,7 @@ var weapons := {
 	# #251: 南の孤島でしか買えない放射系。押している間だけ短いリーチへ扇状に吹き続ける
 	"flamer":  {"name": "火炎放射器",     "kind": "aim",  "speed_mult": 0.55, "dmg": 5,  "cooldown": 0.05, "reload": 2.0, "mag": 60, "range": 80, "price": 2000, "slip": false, "debuff": false, "homing": false, "spray": 0.16, "stream": 480.0, "shape": "flame_jet", "pirate_burn": 1.0, "tier": 2, "only_island": 9, "sfx": "sfx_gun", "desc": "短いリーチへ火炎を吹き続ける。海賊船に必ず炎上"},
 	"chiller": {"name": "冷気放射器",     "kind": "aim",  "speed_mult": 0.55, "dmg": 5,  "cooldown": 0.05, "reload": 2.0, "mag": 60, "range": 80, "price": 2200, "slip": false, "debuff": true,  "debuff_kind": "chill", "homing": false, "spray": 0.16, "stream": 480.0, "shape": "frost_jet", "tier": 2, "only_island": 9, "sfx": "sfx_gun", "desc": "短いリーチへ冷気を吹き続ける。生物の攻撃頻度と移動速度が落ちる"},
-	"cluster": {"name": "クラスター魚雷", "kind": "lock", "speed_mult": 0.55, "dmg": 39, "cooldown": 0.8,  "reload": 2.2, "mag": 10, "range": 195, "price": 9000, "slip": false, "debuff": false, "homing": true,  "pirate_burn": 0.35, "cluster": 3, "tier": 4, "only_island": 8, "sfx": "sfx_torpedo", "desc": "発射後すぐ3発に分裂し、それぞれが敵を追尾する。"},
+	"cluster": {"name": "クラスター魚雷", "kind": "lock", "speed_mult": 0.45, "dmg": 39, "cooldown": 0.8,  "reload": 2.2, "mag": 10, "range": 195, "price": 9000, "slip": false, "debuff": false, "homing": true,  "pirate_burn": 0.35, "cluster": 3, "tier": 4, "only_island": 8, "sfx": "sfx_torpedo", "desc": "発射後すぐ3発に分裂し、それぞれが敵を追尾する。"},
 }
 
 var rams := {
