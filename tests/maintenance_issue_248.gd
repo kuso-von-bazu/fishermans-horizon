@@ -1,12 +1,12 @@
 extends Node
-## #248 外れの小島 / #249 リロード速度 / #241再2 ヒント / #239再5 ウンディーネ引き撃ち
+## #248 北の孤島 / #249 リロード速度 / #241再2 ヒント / #239再5 ウンディーネ引き撃ち
 ## #209再10 ボスラッシュ(分裂・海賊王の取り巻き) / #197再3 海賊王の随伴艦
 
 const Isle = preload("res://scripts2d/Island2D.gd")
 const World2 = preload("res://scripts2d/World2D.gd")
 const Proj = preload("res://scripts2d/Projectile2D.gd")
 
-const OUTER := 8   # 外れの小島の island index
+const OUTER := 8   # 北の孤島の island index
 
 var failures: Array[String] = []
 
@@ -118,8 +118,7 @@ func _listed(port: CanvasLayer, isle: int) -> Dictionary:
 	var weapons: Array = []
 	for wid in Database.weapons:
 		var head := "%s  価格:" % str(Database.weapons[wid].name)
-		for line in txt.split("
-"):
+		for line in txt.split(char(10)):
 			if line.strip_edges().begins_with(head):
 				weapons.append(wid)
 				break
@@ -134,19 +133,19 @@ func _ready() -> void:
 
 	# ---------------- #248: 島そのもの ----------------
 	var isle: Dictionary = Database.island(OUTER)
-	check(str(isle.name) == "外れの小島", "島8が外れの小島でない(%s)" % str(isle.name))
+	check(str(isle.name) == "北の孤島", "島8が北の孤島でない(%s)" % str(isle.name))
 	check(int(isle.fame_req) == 400, "到達に必要な名声が400でない(%d)" % int(isle.fame_req))
-	check(Database.tier_of(OUTER) == 4, "外れの小島のtierが果ての島と同格でない")
-	check((isle.get("lords", []) as Array).is_empty(), "外れの小島に主が設定されている")
+	check(Database.tier_of(OUTER) == 4, "北の孤島のtierが果ての島と同格でない")
+	check((isle.get("lords", []) as Array).is_empty(), "北の孤島に主が設定されている")
 	# 果ての島の北 = z が小さい側
 	var fin: Vector3 = Database.island(4).pos
-	check(isle.pos.z < fin.z, "外れの小島が果ての島の北にない")
-	check(str(isle.get("weather", "")) == "flurry", "外れの小島の天候が flurry でない")
+	check(isle.pos.z < fin.z, "北の孤島が果ての島の北にない")
+	check(str(isle.get("weather", "")) == "flurry", "北の孤島の天候が flurry でない")
 	# 見た目: 雪原(緑が無い)かつ小さい
 	var pal: Dictionary = Isle.PALETTES[OUTER]
-	check(float(pal.get("small", 1.0)) < 1.0, "外れの小島が小さく描かれない")
+	check(float(pal.get("small", 1.0)) < 1.0, "北の孤島が小さく描かれない")
 	var g: Color = pal.grass
-	check(g.r > 0.7 and g.g > 0.7 and g.b > 0.7, "外れの小島の地面が雪原(白)でない")
+	check(g.r > 0.7 and g.g > 0.7 and g.b > 0.7, "北の孤島の地面が雪原(白)でない")
 
 	# 天候効果は果ての島と同じ(=燃料消費+20%)だが、雪の見た目は弱い
 	var world := Node2D.new()
@@ -160,10 +159,10 @@ func _ready() -> void:
 	var pool := {}
 	for i in 400:
 		pool[Database.pick_mob(OUTER)] = true
-	check(not pool.has("tiamat"), "外れの小島にティアマットが出る")
-	check(not pool.has("zahhak"), "外れの小島にザッハークが出る")
+	check(not pool.has("tiamat"), "北の孤島にティアマットが出る")
+	check(not pool.has("zahhak"), "北の孤島にザッハークが出る")
 	for want_mob in ["merman", "charybdis", "dagon", "amphiptere"]:
-		check(pool.has(want_mob), "外れの小島に %s が出ない" % want_mob)
+		check(pool.has(want_mob), "北の孤島に %s が出ない" % want_mob)
 
 	# ---------------- #248: 造船所 ----------------
 	var Port = preload("res://scripts/PortUI.gd")
@@ -177,16 +176,16 @@ func _ready() -> void:
 	for sid in Database.ships:
 		var sold: bool = (got.ships as Array).has(sid)
 		if want_ships.has(sid):
-			check(sold, "外れの小島で %s が買えない" % sid)
+			check(sold, "北の孤島で %s が買えない" % sid)
 		else:
-			check(not sold, "外れの小島で %s が売られている" % sid)
+			check(not sold, "北の孤島で %s が売られている" % sid)
 	var want_weapons := ["spray", "lance", "cluster"]
 	for wid in Database.weapons:
 		var sold2: bool = (got.weapons as Array).has(wid)
 		if want_weapons.has(wid):
-			check(sold2, "外れの小島で %s が買えない" % wid)
+			check(sold2, "北の孤島で %s が買えない" % wid)
 		else:
-			check(not sold2, "外れの小島で %s が売られている" % wid)
+			check(not sold2, "北の孤島で %s が売られている" % wid)
 	# 専用武器は他の島では買えない
 	for other in [0, 1, 2, 3, 4, 5, 6, 7]:
 		for wid2 in want_weapons:
@@ -201,8 +200,8 @@ func _ready() -> void:
 	var tavern_txt := ""
 	for n in port.content.find_children("*", "Button", true, false):
 		tavern_txt += n.text + "\n"
-	check(not tavern_txt.contains("主の情報"), "外れの小島の酒場に「主の情報」が出ている")
-	check(tavern_txt.contains("クルー"), "外れの小島の酒場にクルータブが無い")
+	check(not tavern_txt.contains("主の情報"), "北の孤島の酒場に「主の情報」が出ている")
+	check(tavern_txt.contains("クルー"), "北の孤島の酒場にクルータブが無い")
 	# 主がいる島では従来どおり出る
 	GameState.current_island = 4
 	port.show_tavern()
@@ -215,7 +214,7 @@ func _ready() -> void:
 	GameState.current_island = OUTER
 	var c_outer := GameState.hire_cost("marine")
 	GameState.current_island = 4
-	check(c_outer == GameState.hire_cost("marine"), "外れの小島のクルー雇用費が果ての島と違う")
+	check(c_outer == GameState.hire_cost("marine"), "北の孤島のクルー雇用費が果ての島と違う")
 
 	# ---------------- #249: リロード速度 ----------------
 	var base: float = float(Database.weapons["gatling"].reload)
@@ -273,17 +272,17 @@ func _ready() -> void:
 	# ---------------- #241再2: ヒント ----------------
 	var t8: Dictionary = Database.departure_hint_table(OUTER)
 	var r8: Array = t8.get("random", [])
-	check(r8.has("この島の近海に主はいないようだ。"), "外れの小島のヒント(主がいない)が無い")
-	check(r8.has("この島では珍しい武器が売っている。"), "外れの小島のヒント(珍しい武器)が無い")
+	check(r8.has("この島の近海に主はいないようだ。"), "北の孤島のヒント(主がいない)が無い")
+	check(r8.has("この島では珍しい武器が売っている。"), "北の孤島のヒント(珍しい武器)が無い")
 	var r4: Array = Database.departure_hint_table(4).get("random", [])
-	check(r4.has("外れの小島では珍しい武器が売っているらしい。"), "果ての島のヒントに外れの小島の案内が無い")
+	check(r4.has("北の孤島では珍しい武器が売っているらしい。"), "果ての島のヒントに北の孤島の案内が無い")
 	# 果ての島の3回目の出港ではランダム枠が使われる(=上のヒントが出うる)
 	var seen3 := {}
 	for i3 in 300:
 		seen3[str(Database.pick_departure_hint(4, 3, 999, true).get("text", ""))] = true
 	for got3 in seen3:
 		check(r4.has(str(got3)), "果ての島の3回目にランダム枠以外が出た(%s)" % str(got3))
-	check(seen3.has("外れの小島では珍しい武器が売っているらしい。"), "果ての島の3回目に外れの小島の案内が出ない")
+	check(seen3.has("北の孤島では珍しい武器が売っているらしい。"), "果ての島の3回目に北の孤島の案内が出ない")
 
 	# ---------------- #239再5: ウンディーネの引き撃ち ----------------
 	var un: Dictionary = Database.lords["undine"]
@@ -322,7 +321,7 @@ func _ready() -> void:
 	check(world._sea_pirate_top(5) == world._sea_pirate_top(2), "星霜の海賊の格が月下と違う")
 	check(world._sea_pirate_top(6) == world._sea_pirate_top(2), "常闇の海賊の格が月下と違う")
 	check(world._sea_pirate_top(7) == world._sea_pirate_top(3), "海嘯の海賊の格が嵐越えと違う")
-	check(world._sea_pirate_top(8) == world._sea_pirate_top(4), "外れの小島の海賊の格が果てと違う")
+	check(world._sea_pirate_top(8) == world._sea_pirate_top(4), "北の孤島の海賊の格が果てと違う")
 	world.free()
 
 	# ---------------- #190再: レギオンは縮むと当たり判定も縮む ----------------
@@ -1043,9 +1042,124 @@ func _ready() -> void:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path("user://cleared.dat"))
 	ttl.free()
 
+	# ---------------- #248再4/#256/#257/#258/#259/#106再/#251再/#229 ----------------
+	# #248再4: 島名の変更
+	check(str(Database.island(8).name) == "北の孤島", "島8が北の孤島でない(%s)" % str(Database.island(8).name))
+	var wsrc2 := FileAccess.get_file_as_string("res://scripts/Database.gd")
+	check(not wsrc2.contains("外れの小島"), "旧名「外れの小島」が残っている")
+
+	# #257: 舷側発射 — 中心が塞がっていても左右の舷から撃てる
+	var w7 := Node2D.new()
+	w7.set_script(World2)
+	add_child(w7)
+	await get_tree().process_frame
+	var fp7 := CharacterBody2D.new()
+	w7.add_child(fp7)
+	w7.player = fp7
+	fp7.global_position = Vector2.ZERO
+	# 僚艦を「射線のすぐ脇」に置く(中心からは塞がるが、舷へずらせば通る)
+	var esc7 := CharacterBody2D.new()
+	w7.add_child(esc7)
+	esc7.global_position = Vector2(95.0, 40.0)
+	w7.escorts = [esc7]
+	check(w7._line_blocker_from(Vector2.ZERO, Vector2.RIGHT, 800.0) == esc7, "中心からの射線が塞がっていない")
+	var mz = w7._clear_muzzle(Vector2.RIGHT, 800.0)
+	check(mz != null, "舷へずらせば通る場面で撃てない(舷側発射が効いていない)")
+	if mz != null:
+		check(absf((mz as Vector2).y) > 1.0, "発射原点が中心のまま(舷へずれていない)")
+	# 僚艦が射線上に正対しているときは、どの舷からも撃てない(盾としての遮断は残す)
+	esc7.global_position = Vector2(95.0, 0.0)
+	check(w7._clear_muzzle(Vector2.RIGHT, 800.0) == null, "僚艦が正面に重なっているのに撃ててしまう")
+	check(w7.BROADSIDE_OFFSET > 0.0, "舷側のオフセットが設定されていない")
+
+	# #256: 撃てないことを伝える(トーストのクールダウンとオーバーレイ)
+	var seen_msgs: Array = []
+	var cb7 := func(t: String): seen_msgs.append(t)
+	GameState.notice.connect(cb7)
+	w7._los_toast_t = 0.0
+	w7._notify_los_blocked("大砲")
+	w7._notify_los_blocked("大砲")   # 連打しても2回目は出ない
+	check(seen_msgs.size() == 1, "射線ブロックのトーストがクールダウンしていない(%d件)" % seen_msgs.size())
+	check(str(seen_msgs[0]).contains("射線"), "トーストの文言が射線ブロックを示していない: %s" % str(seen_msgs[0]))
+	GameState.notice.disconnect(cb7)
+	var LosS = preload("res://scripts2d/LosOverlay2D.gd")
+	var los := Node2D.new()
+	los.set_script(LosS)
+	add_child(los)
+	los.set_state(esc7, Vector2.ZERO, Vector2(200, 0))
+	check(los.blocker == esc7, "オーバーレイに遮っている僚艦が渡っていない")
+	los.free()
+	w7.free()
+
+	# #258: 燃料は距離基準(止まっていれば減らない)
+	var wsrc3 := FileAccess.get_file_as_string("res://scripts2d/World2D.gd")
+	check(wsrc3.contains("(_moved / _solo_px)"), "燃料消費が距離基準になっていない")
+	check(not wsrc3.contains("run_food - delta * 1.5"), "時間基準の燃料消費が残っている")
+
+	# #259: 律速艦の名前
+	GameState.reset_all()
+	check(str(GameState.slowest_ship_name()) == str(GameState.ship().name), "単艦のとき律速艦が旗艦でない")
+	check(wsrc3.contains("が律速"), "出港時に船団速度を知らせていない")
+
+	# #106再: 魚雷が空中の敵をすり抜けたときの案内
+	var psrc2 := FileAccess.get_file_as_string("res://scripts2d/Projectile2D.gd")
+	check(psrc2.contains("魚雷は空中の敵には当たらない!"), "空中の敵をすり抜けた案内が無い")
+	check(psrc2.contains("_aerial_told"), "案内が弾ごとに1回だけになっていない")
+
+	# #251再: 放射系の絵と持続音
+	for fx in ["res://assets/images/pixel/fx_flame.png", "res://assets/images/pixel/fx_frost.png"]:
+		check(ResourceLoader.exists(fx), "放射系の弾の絵が無い: " + fx)
+	check(str(Database.weapons["flamer"].art).contains("fx_flame"), "火炎放射器に専用の絵が割り当たっていない")
+	check(str(Database.weapons["chiller"].art).contains("fx_frost"), "冷気放射器に専用の絵が割り当たっていない")
+	check(str(Database.weapons["flamer"].loop_sfx) == "sfx_flamer", "火炎放射器の持続音が設定されていない")
+	check(str(Database.weapons["chiller"].loop_sfx) == "sfx_chiller", "冷気放射器の持続音が設定されていない")
+	for lk in ["sfx_flamer", "sfx_chiller"]:
+		check(Audio.LOOP_FILES.has(lk), "持続音の音源が登録されていない: " + lk)
+		check(ResourceLoader.exists(str(Audio.LOOP_FILES[lk])), "持続音の音源が無い: " + str(Audio.LOOP_FILES[lk]))
+	# 当たり判定は絵ではなく従来の図形のまま
+	var fxp := Area2D.new()
+	fxp.set_script(Proj)
+	add_child(fxp)
+	fxp.from_player = true
+	fxp.setup(Vector2.RIGHT, Database.weapons["flamer"].duplicate())
+	await get_tree().process_frame
+	var has_shape := false
+	for c11 in fxp.get_children():
+		if c11 is CollisionShape2D:
+			has_shape = c11.shape != null
+	check(has_shape, "絵に置き換えたら当たり判定が無くなった")
+	fxp.free()
+
+	# #229: 追加した漁獲物と出現海域
+	var want_fish := {"turtle": [250, 3], "lobster": [200, 2], "anglerfish": [140, 2], "conger": [190, 2]}
+	for fid in want_fish:
+		check(Database.fish.has(fid), "漁獲物 %s が無い" % fid)
+		if Database.fish.has(fid):
+			check(int(Database.fish[fid].price) == int(want_fish[fid][0]), "%s の基準価格が違う" % fid)
+			check(int(Database.fish[fid].cap) == int(want_fish[fid][1]), "%s の魚倉占有が違う" % fid)
+			check(ResourceLoader.exists("res://assets/images/pixel/fish_%s.png" % fid), "%s の絵が無い" % fid)
+	var want_spawn := {
+		9: ["turtle"],
+		8: ["lobster"],
+		4: ["octopus", "squid", "bonito", "anglerfish", "conger", "lobster", "turtle"],
+	}
+	for isl4 in want_spawn:
+		var got_sp: Array = (Database.island(int(isl4)).get("spawn", []) as Array).duplicate()
+		got_sp.sort()
+		var exp_sp: Array = (want_spawn[isl4] as Array).duplicate()
+		exp_sp.sort()
+		check(got_sp == exp_sp, "島%d の漁獲物が指定と違う: %s" % [int(isl4), str(got_sp)])
+	for isl5 in [2, 5, 6]:
+		check((Database.island(isl5).get("spawn", []) as Array).has("anglerfish"), "島%d にアンコウが出ない" % isl5)
+	for isl6 in [3, 7]:
+		check((Database.island(isl6).get("spawn", []) as Array).has("conger"), "島%d にアナゴが出ない" % isl6)
+
+	# #255再: 巨大戦艦をさらに一回り小さく
+	check(psrc.contains("extra = 0.76"), "巨大戦艦がさらに小さくなっていない")
+
 	port.free()
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze/sunny_sea/facing/killer_shell/south_isle/streams/all_islands/bullet_shapes/cluster_range/torpedo_lock/pirate_dmg/ambient/hints2/bestiary/title_bg/flagship_label")
+		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze/sunny_sea/facing/killer_shell/south_isle/streams/all_islands/bullet_shapes/cluster_range/torpedo_lock/pirate_dmg/ambient/hints2/bestiary/title_bg/flagship_label/broadside/los_toast/fuel_dist/fleet_speed/fx_art/new_fish")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)

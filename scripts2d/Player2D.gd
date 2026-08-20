@@ -638,7 +638,7 @@ func _ship_scale() -> float:
 	var extra: float = 1.15 if GameState.ship_id == "cruiser" else 1.0
 	# #255: 巨大戦艦は一回り小さく
 	if GameState.ship_id == "dread":
-		extra = 0.87
+		extra = 0.76
 	return clampf(0.9 + float(GameState.ship().armor) / 1500.0, 0.9, 1.8) * extra
 
 func rebuild_visual() -> void:

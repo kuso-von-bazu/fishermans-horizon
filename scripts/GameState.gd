@@ -889,6 +889,17 @@ func fleet_speed() -> float:
 		sp = minf(sp, float(ship_def_of(i).speed))
 	return sp
 
+# #259: 船団速度を決めている船(律速艦)の名前。旗艦が最も遅ければ旗艦を返す。
+func slowest_ship_name() -> String:
+	var sp := float(ship().speed)
+	var who := str(ship().name)
+	for i in sailing_ships():
+		var d: Dictionary = ship_def_of(i)
+		if float(d.speed) < sp:
+			sp = float(d.speed)
+			who = str(d.name)
+	return who
+
 func fleet_add(stock_idx: int) -> bool:
 	if stock_idx < 0 or stock_idx >= ship_stock.size():
 		return false

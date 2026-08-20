@@ -12,6 +12,11 @@ var fish := {
 	"squid":    {"name": "イカ",     "cap": 2, "price": 130, "home": 1, "color": Color(0.9,0.8,0.85)},
 	"octopus":  {"name": "タコ",     "cap": 2, "price": 160, "home": 2, "color": Color(0.8,0.4,0.45)},
 	"grouper":  {"name": "クエ",     "cap": 1, "price": 300, "home": -1,"color": Color(0.55,0.4,0.3), "rare": true},
+	# #229: 中盤〜終盤の海域に出る漁獲物(レビュアー指定)
+	"turtle":   {"name": "ウミガメ", "cap": 3, "price": 250, "home": 9, "color": Color(0.45,0.6,0.4)},
+	"lobster":  {"name": "ロブスター","cap": 2, "price": 200, "home": 8, "color": Color(0.75,0.3,0.25)},
+	"anglerfish":{"name": "アンコウ", "cap": 2, "price": 140, "home": 2, "color": Color(0.35,0.3,0.35)},
+	"conger":   {"name": "アナゴ",   "cap": 2, "price": 190, "home": 3, "color": Color(0.5,0.42,0.35)},
 }
 
 # ---------------------------------------------------------------------------
@@ -64,7 +69,7 @@ var mob_weights := [
 	{"mermaid": 0.34, "lamia": 0.30, "kraken": 0.20, "wyvern": 0.16},                                     # 星霜(tier2)
 	{"zombie_fish": 0.36, "moon_jelly": 0.30, "kraken": 0.18, "wyvern": 0.16},                            # 常闇(tier2)
 	{"killer_shell": 0.24, "carabos": 0.26, "merman": 0.16, "charybdis": 0.14, "amphiptere": 0.12, "kraken": 0.08},  # 海嘯(tier3)
-	# #248: 外れの小島(tier4)。果ての島の出現表からティアマットとザッハークを除いて割合を按分
+	# #248: 北の孤島(tier4)。果ての島の出現表からティアマットとザッハークを除いて割合を按分
 	{"merman": 0.242, "charybdis": 0.242, "dagon": 0.323, "amphiptere": 0.193},
 	# #251: 南の孤島(tier2)。月下・星霜・常闇の3島の出現表を平均したもの
 	{"kraken": 0.200, "wyvern": 0.167, "starfish": 0.107, "zaratan": 0.093,
@@ -227,7 +232,7 @@ var departure_hints := {
 			"単横陣のスキル「一斉射撃」の瞬間火力はかなりのもの。",
 			"大砲は海賊船を高確率で炎上させる。",
 			"海賊王の目撃情報はこの辺りでよく聞かれる。",
-			"外れの小島では珍しい武器が売っているらしい。",   # #241再2: 外れの小島(#248)の追加に伴い
+			"北の孤島では珍しい武器が売っているらしい。",   # #241再2: 北の孤島(#248)の追加に伴い
 		],
 	},
 	7: {
@@ -247,15 +252,15 @@ var departure_hints := {
 			"大砲は海賊船を高確率で炎上させる。",
 		],
 	},
-	# #241再2: 外れの小島。レビュアーの指定は見出しが「果ての島からの出港」だったが、
-	# 内容(主がいない・珍しい武器)は外れの小島(#248)そのものなので、この島のヒントとして実装
+	# #241再2: 北の孤島。レビュアーの指定は見出しが「果ての島からの出港」だったが、
+	# 内容(主がいない・珍しい武器)は北の孤島(#248)そのものなので、この島のヒントとして実装
 	8: {
 		"random": [
 			"この島の近海に主はいないようだ。",
 			"この島では珍しい武器が売っている。",
 		],
 	},
-	# #241再3: 南の孤島。外れの小島と同じ2種
+	# #241再3: 南の孤島。北の孤島と同じ2種
 	9: {
 		"random": [
 			"この島の近海に主はいないようだ。",
@@ -368,12 +373,12 @@ var weapons := {
 	"cannon2": {"name": "大口径カノン砲", "kind": "aim",  "speed_mult": 0.7,  "dmg": 46, "cooldown": 1.25, "reload": 1.8, "mag": 5,  "range": 165, "price": 6500, "slip": true,  "debuff": false, "homing": false, "pirate_burn": 0.7, "tier": 3, "sfx": "sfx_cannon",  "desc": "大砲の上位。単発威力・射程を強化"},
 	"harpoon2":{"name": "強化銛砲",       "kind": "aim",  "speed_mult": 0.6,  "dmg": 24, "cooldown": 0.85, "reload": 2, "mag": 9,  "range": 125, "price": 5500, "slip": false, "debuff": true,  "homing": false, "tier": 3, "sfx": "sfx_harpoon", "desc": "銛の上位。連射・デバフ効率を強化"},
 	"torpedo2":{"name": "追尾魚雷改",     "kind": "lock", "speed_mult": 0.8,  "dmg": 30, "cooldown": 0.8,  "reload": 2.2, "mag": 10, "range": 195, "price": 8000, "slip": false, "debuff": false, "homing": true,  "pirate_burn": 0.35, "tier": 3, "sfx": "sfx_torpedo", "desc": "魚雷の上位。追尾・射程・弾数を強化"},
-	# #248: 外れの小島でしか買えない個性的な武器(only_island=販売する島を限定)
+	# #248: 北の孤島でしか買えない個性的な武器(only_island=販売する島を限定)
 	"spray":   {"name": "乱射砲",         "kind": "aim",  "speed_mult": 0.85, "dmg": 6,  "cooldown": 0.07, "reload": 1.2, "mag": 55, "range": 145, "price": 6000, "slip": false, "debuff": false, "homing": false, "falloff": true, "spray": 0.30, "tier": 4, "only_island": 8, "sfx": "sfx_gun",     "desc": "単発威力は高いものの、精度に問題がある。"},
 	"lance":   {"name": "槍砲",           "kind": "aim",  "speed_mult": 0.6,  "dmg": 24, "cooldown": 0.85, "reload": 1.8, "mag": 5,  "range": 125, "price": 7000, "slip": false, "debuff": false, "homing": false, "pierce": true, "shape": "lance_spear", "tier": 4, "only_island": 8, "sfx": "sfx_harpoon", "desc": "敵を貫通する槍を発射する。"},
 	# #251: 南の孤島でしか買えない放射系。押している間だけ短いリーチへ扇状に吹き続ける
-	"flamer":  {"name": "火炎放射器",     "kind": "aim",  "speed_mult": 0.55, "dmg": 5,  "cooldown": 0.05, "reload": 2.0, "mag": 60, "range": 80, "price": 2000, "slip": false, "debuff": false, "homing": false, "spray": 0.16, "stream": 480.0, "shape": "flame_jet", "pirate_burn": 1.0, "tier": 2, "only_island": 9, "sfx": "sfx_gun", "desc": "短いリーチへ火炎を吹き続ける。海賊船に必ず炎上"},
-	"chiller": {"name": "冷気放射器",     "kind": "aim",  "speed_mult": 0.55, "dmg": 5,  "cooldown": 0.05, "reload": 2.0, "mag": 60, "range": 80, "price": 2200, "slip": false, "debuff": true,  "debuff_kind": "chill", "homing": false, "spray": 0.16, "stream": 480.0, "shape": "frost_jet", "tier": 2, "only_island": 9, "sfx": "sfx_gun", "desc": "短いリーチへ冷気を吹き続ける。生物の攻撃頻度と移動速度が落ちる"},
+	"flamer":  {"name": "火炎放射器",     "kind": "aim",  "speed_mult": 0.55, "dmg": 5,  "cooldown": 0.05, "reload": 2.0, "mag": 60, "range": 80, "price": 2000, "slip": false, "debuff": false, "homing": false, "spray": 0.16, "stream": 480.0, "shape": "flame_jet", "art": "res://assets/images/pixel/fx_flame.png", "pirate_burn": 1.0, "tier": 2, "only_island": 9, "sfx": "sfx_flamer", "loop_sfx": "sfx_flamer", "desc": "短いリーチへ火炎を吹き続ける。海賊船に必ず炎上"},
+	"chiller": {"name": "冷気放射器",     "kind": "aim",  "speed_mult": 0.55, "dmg": 5,  "cooldown": 0.05, "reload": 2.0, "mag": 60, "range": 80, "price": 2200, "slip": false, "debuff": true,  "debuff_kind": "chill", "homing": false, "spray": 0.16, "stream": 480.0, "shape": "frost_jet", "art": "res://assets/images/pixel/fx_frost.png", "tier": 2, "only_island": 9, "sfx": "sfx_chiller", "loop_sfx": "sfx_chiller", "desc": "短いリーチへ冷気を吹き続ける。生物の攻撃頻度と移動速度が落ちる"},
 	"cluster": {"name": "クラスター魚雷", "kind": "lock", "speed_mult": 0.45, "dmg": 39, "cooldown": 0.8,  "reload": 2.2, "mag": 10, "range": 195, "price": 9000, "slip": false, "debuff": false, "homing": true,  "pirate_burn": 0.35, "cluster": 3, "tier": 4, "only_island": 8, "sfx": "sfx_torpedo", "desc": "発射後すぐ3発に分裂し、それぞれが敵を追尾する。"},
 }
 
@@ -421,19 +426,19 @@ var islands := [
 	# #174/#200: 次の島到達に必要な名声を全体的に引き上げ(その島の主だけでは足りず、海賊狩りが要る水準)
 	{"id": 1, "name": "潮鳴りの島",   "tier": 1, "fame_req": 22,   "price_mult": 2.08, "pos": Vector3(900, 0, -300),  "spawn": ["bonito","squid","mackerel"], "lords": ["whale","walrus"], "weather": "sunny"},   # #57再: 元の距離に戻す。#250: 強い日射し
 	# #190: 3つ目の島。砂漠とわずかな緑地。近海は常に夜(weather="night")
-	{"id": 2, "name": "月下の島",     "tier": 2, "fame_req": 70,  "price_mult": 3.0, "pos": Vector3(1700, 0, 200),  "spawn": ["squid","octopus","bonito"], "lords": ["aspidochelone","legion"], "weather": "night"},
+	{"id": 2, "name": "月下の島",     "tier": 2, "fame_req": 70,  "price_mult": 3.0, "pos": Vector3(1700, 0, 200),  "spawn": ["squid","octopus","bonito","anglerfish"], "lords": ["aspidochelone","legion"], "weather": "night"},
 	# #190: 月下の島の追加に伴い、嵐越え・果ては従来よりさらに遠方へ。#191/#192: 近海の天候演出
-	{"id": 3, "name": "嵐越えの島",   "tier": 3, "fame_req": 175,  "price_mult": 4.8, "pos": Vector3(2600, 0, 900),  "spawn": ["octopus","squid","bonito"], "lords": ["hydra","quetzal"], "weather": "storm"},
-	{"id": 4, "name": "果ての島",     "tier": 4, "fame_req": 400,  "price_mult": 10.8, "pos": Vector3(3600, 0, 300), "spawn": ["octopus","bonito"], "lords": ["ghost","leviathan"], "weather": "blizzard"},   # #187: 幽霊船はレヴィアタンの上(先に戦う想定)
+	{"id": 3, "name": "嵐越えの島",   "tier": 3, "fame_req": 175,  "price_mult": 4.8, "pos": Vector3(2600, 0, 900),  "spawn": ["octopus","squid","bonito","conger"], "lords": ["hydra","quetzal"], "weather": "storm"},
+	{"id": 4, "name": "果ての島",     "tier": 4, "fame_req": 400,  "price_mult": 10.8, "pos": Vector3(3600, 0, 300), "spawn": ["octopus","squid","bonito","anglerfish","conger","lobster","turtle"], "lords": ["ghost","leviathan"], "weather": "blizzard"},   # #187: 幽霊船はレヴィアタンの上(先に戦う想定)
 	# #239: 月下の島と同格(tier 2)。星霜=月下の北、常闇=月下の南
-	{"id": 5, "name": "星霜の島",     "tier": 2, "fame_req": 70,  "price_mult": 3.0, "pos": Vector3(1700, 0, -700), "spawn": ["squid","octopus","bonito"], "lords": ["undine","siren"], "weather": "starry"},
-	{"id": 6, "name": "常闇の島",     "tier": 2, "fame_req": 70,  "price_mult": 3.0, "pos": Vector3(1700, 0, 1100), "spawn": ["squid","octopus","bonito"], "lords": ["night_emperor","wraith"], "weather": "dark"},
+	{"id": 5, "name": "星霜の島",     "tier": 2, "fame_req": 70,  "price_mult": 3.0, "pos": Vector3(1700, 0, -700), "spawn": ["squid","octopus","bonito","anglerfish"], "lords": ["undine","siren"], "weather": "starry"},
+	{"id": 6, "name": "常闇の島",     "tier": 2, "fame_req": 70,  "price_mult": 3.0, "pos": Vector3(1700, 0, 1100), "spawn": ["squid","octopus","bonito","anglerfish"], "lords": ["night_emperor","wraith"], "weather": "dark"},
 	# #239: 嵐越えの島と同格(tier 3)。海嘯=嵐越えの南
-	{"id": 7, "name": "海嘯の島",     "tier": 3, "fame_req": 175, "price_mult": 4.8, "pos": Vector3(2600, 0, 1900), "spawn": ["octopus","squid","bonito"], "lords": ["kraken_lord","griffon"], "weather": "surge"},
+	{"id": 7, "name": "海嘯の島",     "tier": 3, "fame_req": 175, "price_mult": 4.8, "pos": Vector3(2600, 0, 1900), "spawn": ["octopus","squid","bonito","conger"], "lords": ["kraken_lord","griffon"], "weather": "surge"},
 	# #248: 終盤の寄り道。果ての島の北にある小さな雪原の島。近海の主はいない(酒場の主の情報も出ない)
-	{"id": 8, "name": "外れの小島",   "tier": 4, "fame_req": 400, "price_mult": 10.8, "pos": Vector3(3600, 0, -600), "spawn": ["octopus","bonito"], "lords": [], "weather": "flurry"},
+	{"id": 8, "name": "北の孤島",   "tier": 4, "fame_req": 400, "price_mult": 10.8, "pos": Vector3(3600, 0, -600), "spawn": ["lobster"], "lords": [], "weather": "flurry"},
 	# #251: 中盤の寄り道。常闇の島の南にある小さな草原の島。近海の主はいない
-	{"id": 9, "name": "南の孤島",     "tier": 2, "fame_req": 70,  "price_mult": 3.0, "pos": Vector3(1700, 0, 2000), "spawn": ["squid","octopus","bonito"], "lords": [], "weather": "sunny"},
+	{"id": 9, "name": "南の孤島",     "tier": 2, "fame_req": 70,  "price_mult": 3.0, "pos": Vector3(1700, 0, 2000), "spawn": ["turtle"], "lords": [], "weather": "sunny"},
 ]
 
 # #202: 出現海域ごとの敵HP倍率(始まり=等倍 / 潮鳴り1.5 / 月下1.9 / 嵐越え2.7 / 果て3.3)。
@@ -500,7 +505,7 @@ const SHOP_EXCLUDE := {
 
 # #248: 逆に「これしか売らない」島。載っていないものは並べない
 const SHOP_ONLY := {
-	8: {   # 外れの小島
+	8: {   # 北の孤島
 		"ships": ["corvette", "hunter_h", "hauler"],
 		"weapons": ["spray", "lance", "cluster"],
 	},

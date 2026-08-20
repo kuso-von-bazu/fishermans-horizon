@@ -39,6 +39,8 @@ var wave_amp: float = 0.0
 var wave_freq: float = 0.0
 var _wave_ph: float = 0.0
 var stream: float = 0.0   # #251: 放射系。この距離を飛ぶと消える(短いリーチ)
+var _aerial_told: bool = false   # #106再: 空中の敵をすり抜けた案内は弾ごとに1回だけ
+var art: String = ""   # #251再: 弾の絵(指定時は図形の代わりに画像を出す。当たり判定は図形のまま)
 # #248再2: クラスター魚雷の子。広く分かれてから収束し、一度外したら引き返さない
 var no_uturn: bool = false
 var turn_min: float = 0.4
@@ -70,6 +72,7 @@ func setup(p_dir: Vector2, w: Dictionary, p_target: Node2D = null) -> void:
 	spread_homing = bool(w.get("spread_homing", false))
 	pierce = bool(w.get("pierce", false))
 	stream = float(w.get("stream", 0.0))
+	art = str(w.get("art", ""))
 	no_uturn = bool(w.get("no_uturn", false))
 	turn_min = float(w.get("turn_min", 0.4))
 	turn_max = float(w.get("turn_max", 9.0))
@@ -245,10 +248,23 @@ func _build_visual() -> void:
 	outline.polygon = _scaled(poly, 1.45)
 	outline.color = Color(0, 0, 0, 0.7)
 	add_child(outline)
-	var mesh := Polygon2D.new()
-	mesh.polygon = poly
-	mesh.color = mcol
-	add_child(mesh)
+	# #251再: art 指定があれば図形の代わりに絵を出す(輪郭・当たり判定はそのまま)
+	var art_tex: Texture2D = null
+	if art != "" and ResourceLoader.exists(art):
+		art_tex = load(art)
+	if art_tex != null:
+		outline.visible = false
+		var spr := Sprite2D.new()
+		spr.texture = art_tex
+		spr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		var longest: float = float(maxi(art_tex.get_width(), art_tex.get_height()))
+		spr.scale = Vector2.ONE * ((r + 2.0) * 2.6 / maxf(longest, 1.0))
+		add_child(spr)
+	else:
+		var mesh := Polygon2D.new()
+		mesh.polygon = poly
+		mesh.color = mcol
+		add_child(mesh)
 	if not upright:
 		rotation = dir.angle() + PI / 2
 	var col := CollisionShape2D.new()
@@ -418,6 +434,10 @@ func _on_hit(body: Node) -> void:
 			return
 		# #106: 魚雷(homing)は空中の敵をすり抜ける(他の敵への射線上でも当てない)
 		if homing and body.get("aerial") == true:
+			# #106再: すり抜けた理由が分からないと不具合に見えるので1回だけ知らせる
+			if from_player and not _aerial_told:
+				_aerial_told = true
+				GameState.notice.emit("魚雷は空中の敵には当たらない!")
 			return
 		if pierce and _pierced.has(body.get_instance_id()):
 			return   # #248: 貫通弾は同じ敵に二重に当てない

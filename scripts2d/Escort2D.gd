@@ -258,7 +258,7 @@ func _ship_scale() -> float:
 	var extra: float = 1.15 if ship_id == "cruiser" else 1.0
 	# #255: 巨大戦艦は一回り小さく
 	if ship_id == "dread":
-		extra = 0.87
+		extra = 0.76
 	return clampf(0.9 + float(Database.ships[ship_id].armor) / 1500.0, 0.9, 1.8) * extra
 
 # #224: 突撃で貫いた敵に衝角ダメージ(1回の突撃につき同じ敵へは1度だけ)

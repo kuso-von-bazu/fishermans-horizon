@@ -82,6 +82,11 @@ func _ready() -> void:
 	_build_weather()
 	_build_islands()
 	_build_player()
+	# #256: 射線が遮られていることを海面上に赤で示すオーバーレイ
+	_los_overlay = Node2D.new()
+	_los_overlay.set_script(preload("res://scripts2d/LosOverlay2D.gd"))
+	_los_overlay.z_index = 5
+	add_child(_los_overlay)
 	hud = HUDScript.new()
 	add_child(hud)
 	port_ui = PortUIScript.new()
@@ -173,7 +178,7 @@ func _weather_params(w: String) -> Dictionary:
 			tint = Color(0.72, 0.80, 0.90, 0.18)
 			snow = 1.0
 			rough = 0.85
-		"flurry":    # #248: 外れの小島。吹雪を弱めた雪(天候効果そのものは吹雪と同じ)
+		"flurry":    # #248: 北の孤島。吹雪を弱めた雪(天候効果そのものは吹雪と同じ)
 			tint = Color(0.72, 0.80, 0.90, 0.10)
 			snow = 0.40
 			rough = 0.85
@@ -394,6 +399,8 @@ func _on_set_sail() -> void:
 	if not _boss_rush and hud and hud.has_method("show_departure_hint"):
 		hud.show_departure_hint(GameState.next_departure_hint())
 	Audio.play_bgm("bgm_sea")
+	# #259: 出港時に船団速度と、それを決めている船を知らせる
+	GameState.notice.emit("船団速度: %.1f (%s が律速)" % [GameState.fleet_speed(), GameState.slowest_ship_name()])
 	Audio.ambient_enabled = true   # #253: 波の音
 	_boss_bgm_on = ""
 	_return_hold = 0.0
@@ -471,8 +478,14 @@ func _forced_return(reason: String, wrecked: bool = false) -> void:
 
 # ---------------- メインループ ----------------
 func _physics_process(delta: float) -> void:
+	if _los_toast_t > 0.0:
+		_los_toast_t = maxf(_los_toast_t - delta, 0.0)   # #256
 	if phase != "sea":
+		Audio.stop_loop_sfx()   # #251再: 航海中以外では放射音を止める
+		if _los_overlay:
+			_los_overlay.set_state(null, Vector2.ZERO, Vector2.ZERO)
 		return
+	_update_los_overlay()   # #256
 	GameState.regen_fire(delta)
 	GameState.tick_slips(delta)   # #64/#72: 炎上・毒のスリップ
 	# #209: ボスラッシュ(燃料・魚倉・寄港なし。装甲は回復しない)
@@ -490,7 +503,14 @@ func _physics_process(delta: float) -> void:
 		return
 	if _dock_grace > 0.0:
 		_dock_grace -= delta
-	GameState.run_food = maxf(GameState.run_food - delta * 1.5 * GameState.food_drain_mult() * (1.2 if GameState.active_weather in ["blizzard", "flurry"] and not GameState.boss_rush else 1.0), 0.0)   # #232: 吹雪は燃料消費+20%
+	# #258: 燃料は「経過時間」ではなく「進んだ距離」に応じて減らす。
+	#   以前は時間比例だったため、遅い船を1隻入れると『遅い』のうえに
+	#   『同じ距離で燃料も余計に食う』二重の罰になっていた。
+	#   基準は旗艦が単艦で出したときの速度。船団が遅くても同じ距離なら同じ消費になる。
+	var _solo_px: float = maxf(float(GameState.ship().speed) * K, 1.0)
+	var _moved: float = player.velocity.length() * delta if is_instance_valid(player) else 0.0
+	var _weather_mult: float = 1.2 if GameState.active_weather in ["blizzard", "flurry"] and not GameState.boss_rush else 1.0   # #232: 吹雪は燃料消費+20%
+	GameState.run_food = maxf(GameState.run_food - (_moved / _solo_px) * 1.5 * GameState.food_drain_mult() * _weather_mult, 0.0)
 	# #68: Rキーを5秒長押しで直近の島へ帰還。長押し中に装甲0なら大破(後段の装甲チェックで処理)
 	if Input.is_action_pressed("fast_return") and not _returning and not _food_dialog_open:
 		_return_hold += delta
@@ -1298,17 +1318,73 @@ func _set_formation_slot(slot: int) -> void:
 		hud.set_formation(GameState.formation_slot)
 
 # #196: 射線上に味方(旗艦・僚艦)がいると撃てない(魚雷は射線を無視)
-func _line_blocked_for_player(dir: Vector2, dist: float) -> bool:
+# #257: 弾は旗艦の中心だけでなく左右の舷からも撃てる。射線が通る原点を返す。
+#   砲は船の中心線ではなく舷側に並ぶので、僚艦のすぐ脇をかすめるだけの
+#   理不尽な遮断が減り、僚艦が正面に重なる「盾」としての遮断は残る。
+const BROADSIDE_OFFSET := 30.0
+
+# その原点から撃ったとき、射線を遮っている僚艦を返す(遮っていなければ null)
+func _line_blocker_from(origin: Vector2, dir: Vector2, dist: float) -> Node2D:
 	for m in escorts:
 		if not is_instance_valid(m):
 			continue
-		var rel: Vector2 = m.global_position - player.global_position
+		var rel: Vector2 = m.global_position - origin
 		var along := rel.dot(dir)
 		if along <= 0.0 or along > dist:
 			continue
 		if absf(rel.cross(dir)) < 46.0:
-			return true
-	return false
+			return m
+	return null
+
+# #256: 「撃てない」を伝えるトーストの間隔(連打で溢れないように)
+const LOS_TOAST_CD := 2.0
+var _los_toast_t: float = 0.0
+var _los_overlay: Node2D = null
+
+func _notify_los_blocked(weapon_name: String) -> void:
+	if _los_toast_t > 0.0:
+		return
+	_los_toast_t = LOS_TOAST_CD
+	GameState.notice.emit("僚艦が射線上! (%s)" % weapon_name)
+
+# #256: 遮断の可視化。狙っている方向が塞がっていれば、原因の僚艦と射線を赤で示す
+func _update_los_overlay() -> void:
+	if _los_overlay == null or not is_instance_valid(player):
+		return
+	if phase != "sea" or GameState.docking_locked:
+		_los_overlay.set_state(null, Vector2.ZERO, Vector2.ZERO)
+		return
+	# 装備しているエイム武器のうち最も射程の長いものを基準にする
+	var reach := 0.0
+	for i in mini(4, GameState.weapons.size()):
+		var wid: String = GameState.weapons[i]
+		if wid == "" or not Database.weapons.has(wid):
+			continue
+		var w: Dictionary = Database.weapons[wid]
+		if str(w.kind) == "aim":
+			reach = maxf(reach, float(w.range) * K * 1.2)
+	if reach <= 0.0:
+		_los_overlay.set_state(null, Vector2.ZERO, Vector2.ZERO)
+		return
+	var m := get_global_mouse_position()
+	var dir := (m - player.global_position).normalized()
+	var blocker: Node2D = null
+	if _clear_muzzle(dir, reach) == null:
+		blocker = _line_blocker_from(player.global_position, dir, reach)
+	_los_overlay.set_state(blocker, player.global_position, m)
+
+# #257: 中心・左舷・右舷のうち射線が通る発射原点を返す。どこからも通らなければ null。
+func _clear_muzzle(dir: Vector2, dist: float) -> Variant:
+	var side := dir.orthogonal()
+	for off in [0.0, BROADSIDE_OFFSET, -BROADSIDE_OFFSET]:
+		var o: Vector2 = player.global_position + side * off
+		if _line_blocker_from(o, dir, dist) == null:
+			return o
+	return null
+
+# 中心から見て射線を遮っている僚艦(表示用。どの舷からも通らないときだけ意味を持つ)
+func _line_blocked_for_player(dir: Vector2, dist: float) -> bool:
+	return _clear_muzzle(dir, dist) == null
 
 # ---------------- 武器 ----------------
 func _reset_ammo() -> void:
@@ -1344,11 +1420,12 @@ func _update_weapons(delta: float) -> void:
 	for i in slot_cooldowns.size():
 		if slot_cooldowns[i] > 0:
 			slot_cooldowns[i] -= delta
-	if GameState.docking_locked:
-		return   # #101: 大破/寄港確定後は攻撃不可(討伐・賞金取得を防ぐ)
-	if _food_dialog_open:
-		return   # #24再: 食料選択ダイアログを開いている間はクリックしても射撃しない
+	if GameState.docking_locked or _food_dialog_open:
+		Audio.stop_loop_sfx()   # #251再: 撃てない状態では放射音も止める
+		return   # #101: 大破/寄港確定後は攻撃不可 / #24再: 食料選択中も撃たない
 	var slots := int(GameState.ship().slots)
+	# #251再: 放射系を撃っている間だけ持続音を鳴らす
+	var _want_loop := ""
 	if Input.is_action_pressed("fire_primary") and not _pointer_on_ui():   # #196再: 陣形ボタン上では撃たない
 		for i in slots:
 			var wid: String = GameState.weapons[i] if i < GameState.weapons.size() else ""
@@ -1358,6 +1435,8 @@ func _update_weapons(delta: float) -> void:
 			if w.kind == "aim" and slot_cooldowns[i] <= 0:
 				_fire_aim(w)
 				_consume_ammo(i, w)
+				if w.has("loop_sfx"):
+					_want_loop = str(w.loop_sfx)   # #251再
 	if Input.is_action_just_pressed("fire_torpedo"):
 		for i in slots:
 			var wid: String = GameState.weapons[i] if i < GameState.weapons.size() else ""
@@ -1371,6 +1450,11 @@ func _update_weapons(delta: float) -> void:
 					continue
 				_fire_torpedo(w)
 				_consume_ammo(i, w)
+	# #251再: 放射音の反映(撃っていなければ止める)
+	if _want_loop != "":
+		Audio.play_loop_sfx(_want_loop)
+	elif Audio.loop_sfx_name() != "":
+		Audio.stop_loop_sfx()
 	# HUDに残弾を表示(#27)
 	var texts: Array = []
 	for i in slots:
@@ -1399,13 +1483,18 @@ func _crewed(w: Dictionary) -> Dictionary:
 func _fire_aim(w: Dictionary) -> void:
 	var dir := (get_global_mouse_position() - player.global_position).normalized()
 	# #196: 味方に射線が重なるときは撃たない(フレンドリーファイア無し)。魚雷は射線を無視できる
-	if _line_blocked_for_player(dir, float(w.range) * K * 1.2):
+	# #257: 中心が塞がっていても、左右の舷から射線が通ればそこから撃つ
+	var muzzle = _clear_muzzle(dir, float(w.range) * K * 1.2)
+	if muzzle == null:
+		_notify_los_blocked(str(w.name))   # #256: 撃てなかったことを必ず伝える
 		return
-	Audio.play(w.get("sfx", "sfx_gun"), -8.0, randf_range(0.95, 1.05))   # #47再: 攻撃音を少し小さく
+	# #251再: 放射系は持続音(ループ)に任せ、1発ごとの効果音は鳴らさない
+	if not w.has("loop_sfx"):
+		Audio.play(w.get("sfx", "sfx_gun"), -8.0, randf_range(0.95, 1.05))   # #47再: 攻撃音を少し小さく
 	var proj := Area2D.new()
 	proj.set_script(ProjectileScript)
 	add_child(proj)
-	proj.global_position = player.global_position + dir * 40.0
+	proj.global_position = (muzzle as Vector2) + dir * 40.0
 	proj.from_player = true
 	proj.setup(dir, _crewed(w))
 
@@ -1804,8 +1893,8 @@ func _maybe_screenshot() -> void:
 				{"dmg": 22, "homing": true},                 # 魚雷(緑・カプセル)
 				# #248/#251: 追加した武器の弾も並べて見比べられるように
 				{"dmg": 24, "shape": "note"},                # (参考)音符弾
-				{"dmg": 5, "shape": "flame_jet"},            # 火炎放射器
-				{"dmg": 5, "shape": "frost_jet"},            # 冷気放射器
+				{"dmg": 5, "shape": "flame_jet", "art": "res://assets/images/pixel/fx_flame.png"},   # 火炎放射器
+				{"dmg": 5, "shape": "frost_jet", "art": "res://assets/images/pixel/fx_frost.png"},   # 冷気放射器
 				{"dmg": 24, "shape": "lance_spear"},         # 槍砲
 			]
 			for i in specs.size():

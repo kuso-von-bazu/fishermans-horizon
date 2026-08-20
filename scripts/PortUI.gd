@@ -237,7 +237,7 @@ func _update_fuel_estimate() -> void:
 		target_weather = str(Database.island(int(ld.island)).get("weather", ""))
 	var speed := maxf(float(GameState.ship().speed), 1.0)
 	var needed := from.distance_to(dest) / speed * 1.5 * GameState.food_drain_mult()
-	if target_weather in ["blizzard", "flurry"]:   # #248: 外れの小島の雪も燃料消費+20%
+	if target_weather in ["blizzard", "flurry"]:   # #248: 北の孤島の雪も燃料消費+20%
 		needed *= 1.2
 	var pct := int(ceil(needed / maxf(GameState.max_food(), 1.0) * 100.0))
 	_fuel_estimate.text = "目的地までの推定消費: 約%d%%%s" % [pct, "  【燃料不足】" if pct > 100 else ""]

@@ -7,6 +7,13 @@ var _bgm: AudioStreamPlayer
 var _current_bgm: String = ""
 # #253: 波の音。ゲーム中は常時ループ。オープニング/エンディング/ポーズ中は止める
 var _ambient: AudioStreamPlayer
+# #251再: 放射系武器の持続音。撃っている間だけ鳴らし続ける(1系統ずつ)
+var _loop_sfx: AudioStreamPlayer
+var _loop_name: String = ""
+const LOOP_FILES := {
+	"sfx_flamer": "res://assets/audio/火炎放射.mp3",
+	"sfx_chiller": "res://assets/audio/冷気放射.mp3",
+}
 const AMBIENT_FILE := "res://assets/audio/波の音.mp3"
 # 航海中・寄港中だけ true。オープニング/エンディングでは false。
 # ポーズ中の判定はここで一括して見る(呼び出し側に散らさない)
@@ -47,6 +54,9 @@ func _ready() -> void:
 			amb.loop = true
 		_ambient.stream = amb
 	_apply_ambient_volume()
+	# #251再: 放射音のループ再生用
+	_loop_sfx = AudioStreamPlayer.new()
+	add_child(_loop_sfx)
 	# ポーズ中でも止める判断ができるよう、Audio自身は常に動かす
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
@@ -134,6 +144,31 @@ func _process(_d: float) -> void:
 		play_ambient()
 	else:
 		stop_ambient()
+
+# #251再: 放射系の持続音。撃っている間は毎フレーム呼び、離したら stop_loop_sfx()。
+func play_loop_sfx(name: String) -> void:
+	if not LOOP_FILES.has(name):
+		return
+	if _loop_name == name and _loop_sfx.playing:
+		return   # すでに鳴っている(重ねて鳴らさない)
+	var path: String = str(LOOP_FILES[name])
+	if not ResourceLoader.exists(path):
+		return
+	var st := load(path)
+	if st is AudioStreamMP3:
+		st.loop = true
+	_loop_sfx.stream = st
+	_loop_sfx.volume_db = -12.0 + _volume_db(_sfx_volume)
+	_loop_name = name
+	_loop_sfx.play()
+
+func stop_loop_sfx() -> void:
+	if _loop_sfx and _loop_sfx.playing:
+		_loop_sfx.stop()
+	_loop_name = ""
+
+func loop_sfx_name() -> String:
+	return _loop_name if (_loop_sfx and _loop_sfx.playing) else ""
 
 # #253: 波の音の開始/停止。BGMの音量設定に連動させる
 func play_ambient() -> void:

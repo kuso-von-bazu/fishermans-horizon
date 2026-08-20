@@ -69,7 +69,7 @@ const PALETTES := [
 	{"shallow": Color(0.50,0.74,0.86,0.45), "sand": Color(0.86,0.82,0.64), "grass": Color(0.46,0.66,0.40), "grass2": Color(0.34,0.54,0.33), "mtn": Color(0.50,0.50,0.48), "peak": Color(0.74,0.74,0.72), "tree": Color(0.26,0.52,0.28), "trunk": Color(0.44,0.32,0.20), "trees": 4, "wob": 0.17},
 	{"shallow": Color(0.38,0.58,0.70,0.45), "sand": Color(0.62,0.62,0.55), "grass": Color(0.28,0.42,0.30), "grass2": Color(0.18,0.30,0.23), "mtn": Color(0.36,0.38,0.38), "peak": Color(0.56,0.58,0.58), "tree": Color(0.14,0.34,0.22), "trunk": Color(0.28,0.22,0.16), "trees": 11, "wob": 0.22},
 	{"shallow": Color(0.48,0.78,0.82,0.45), "sand": Color(0.90,0.86,0.68), "grass": Color(0.42,0.62,0.38), "grass2": Color(0.30,0.50,0.31), "mtn": Color(0.54,0.52,0.46), "peak": Color(0.78,0.76,0.70), "tree": Color(0.24,0.50,0.28), "trunk": Color(0.42,0.32,0.20), "trees": 3, "wob": 0.19},
-	# #248: 外れの小島。果ての島と同じ寒色だが地面はすべて雪原(緑地なし)で、島そのものが小さい
+	# #248: 北の孤島。果ての島と同じ寒色だが地面はすべて雪原(緑地なし)で、島そのものが小さい
 	{"shallow": Color(0.62,0.76,0.86,0.45), "sand": Color(0.90,0.92,0.95), "grass": Color(0.84,0.88,0.93), "grass2": Color(0.74,0.80,0.87), "mtn": Color(0.58,0.62,0.68), "peak": Color(0.96,0.98,1.00), "tree": Color(0.22,0.38,0.30), "trunk": Color(0.32,0.25,0.17), "trees": 2, "wob": 0.16, "conifer": true, "small": 0.66},
 	# #251: 南の孤島。草原に覆われた小さな島(木はまばら)
 	{"shallow": Color(0.52,0.80,0.84,0.45), "sand": Color(0.90,0.86,0.66), "grass": Color(0.50,0.72,0.40), "grass2": Color(0.38,0.60,0.34), "mtn": Color(0.52,0.52,0.46), "peak": Color(0.76,0.76,0.70), "tree": Color(0.26,0.54,0.28), "trunk": Color(0.44,0.32,0.20), "trees": 2, "wob": 0.17, "small": 0.66},
@@ -78,7 +78,7 @@ const PALETTES := [
 func _draw() -> void:
 	var p: Dictionary = PALETTES[clampi(island_id, 0, PALETTES.size() - 1)]
 	var wob: float = p.wob
-	var sc: float = float(p.get("small", 1.0))   # #248: 外れの小島は一回り小さく描く
+	var sc: float = float(p.get("small", 1.0))   # #248: 北の孤島は一回り小さく描く
 	# 浅瀬(にじみ)→砂浜→緑地→深緑→山 …すべて不規則な海岸線(#41)。#172: 島ごとに配色・輪郭のゆらぎを変える
 	draw_colored_polygon(_coast(132 * sc, wob, 1), p.shallow)
 	draw_colored_polygon(_coast(112 * sc, wob * 0.9, 1), p.sand)

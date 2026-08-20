@@ -178,7 +178,7 @@ func _ready() -> void:
 	var order2: Array = []
 	for isle3 in Database.islands_in_order():
 		order2.append(str(isle3.name))
-	check(order2 == ["始まりの島", "潮鳴りの島", "月下の島", "星霜の島", "常闇の島", "南の孤島", "海嘯の島", "嵐越えの島", "果ての島", "外れの小島"],
+	check(order2 == ["始まりの島", "潮鳴りの島", "月下の島", "星霜の島", "常闇の島", "南の孤島", "海嘯の島", "嵐越えの島", "果ての島", "北の孤島"],
 		"航路の並びが指定と違う: %s" % str(order2))
 
 	# --- #242: 武器の説明文 ---
