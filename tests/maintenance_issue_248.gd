@@ -1217,9 +1217,52 @@ func _ready() -> void:
 	exp4.sort()
 	check(sp4 == exp4, "果ての島の漁獲物が指定と違う: %s" % str(sp4))
 
+	# ---------------- #156再2: レヴィアタンの薙ぎ払いが弾を払い落とす ----------------
+	var lv := CharacterBody2D.new()
+	lv.set_script(Enemy)
+	lv.setup("lord", "leviathan")
+	add_child(lv)
+	await get_tree().process_frame
+	lv.global_position = Vector2.ZERO
+	# 射程内の自機の弾3発と、射程外の1発、敵弾1発を置く
+	var near_shots: Array = []
+	for k9 in 3:
+		var sp9 := Area2D.new()
+		sp9.set_script(Proj)
+		add_child(sp9)
+		sp9.from_player = true
+		sp9.setup(Vector2.RIGHT, {"dmg": 5.0})
+		sp9.global_position = Vector2(20.0 * float(k9), 0.0)
+		near_shots.append(sp9)
+	var far_shot := Area2D.new()
+	far_shot.set_script(Proj)
+	add_child(far_shot)
+	far_shot.from_player = true
+	far_shot.setup(Vector2.RIGHT, {"dmg": 5.0})
+	far_shot.global_position = Vector2(4000.0, 0.0)
+	var enemy_shot := Area2D.new()
+	enemy_shot.set_script(Proj)
+	add_child(enemy_shot)
+	enemy_shot.from_player = false
+	enemy_shot.setup(Vector2.RIGHT, {"dmg": 5.0})
+	enemy_shot.global_position = Vector2(10.0, 0.0)
+	await get_tree().process_frame
+	check(near_shots[0].is_in_group("player_shot"), "自機の弾がグループに登録されていない")
+	var swept: int = int(lv._sweep_away_shots(120.0))
+	check(swept == 3, "薙ぎ払いが射程内の弾を払い落とさない(%d発)" % swept)
+	await get_tree().process_frame
+	check(is_instance_valid(far_shot) and not far_shot.is_queued_for_deletion(), "射程外の弾まで消えた")
+	check(is_instance_valid(enemy_shot) and not enemy_shot.is_queued_for_deletion(), "敵の弾まで消えた")
+	far_shot.free()
+	enemy_shot.free()
+	lv.free()
+	# 薙ぎ払いの処理から実際に呼ばれていること
+	var esrc3 := FileAccess.get_file_as_string("res://scripts2d/Enemy2D.gd")
+	check(esrc3.contains("_sweep_away_shots(melee_r)"), "薙ぎ払いから弾の払い落としが呼ばれていない")
+
 	port.free()
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze/sunny_sea/facing/killer_shell/south_isle/streams/all_islands/bullet_shapes/cluster_range/torpedo_lock/pirate_dmg/ambient/hints2/bestiary/title_bg/flagship_label/broadside/los_toast/fuel_dist/fleet_speed/fx_art/new_fish/loop_sfx/no_debuff_toast/marlin")
+		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze/sunny_sea/facing/killer_shell/south_isle/streams/all_islands/bullet_shapes/cluster_range/torpedo_lock/pirate_dmg/ambient/hints2/bestiary/title_bg/flagship_label/broadside/los_toast/fuel_dist/fleet_speed/fx_art/new_fish/loop_sfx/no_debuff_toast/marlin/sweep_shots")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)

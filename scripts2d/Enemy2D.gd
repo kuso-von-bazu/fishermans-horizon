@@ -222,6 +222,21 @@ func _wave_ring(radius: float) -> void:
 	var t := get_tree().create_timer(0.7)
 	t.timeout.connect(func(): if is_instance_valid(ring): ring.queue_free())
 
+# #156再2: 薙ぎ払いは自機・僚艦の弾を払い落とす(範囲内の味方弾を消す)。
+# 敵弾は対象外。魚雷も含めて、届いている弾はまとめて消える。
+func _sweep_away_shots(reach: float) -> int:
+	var swept := 0
+	var r := reach + _radius
+	for n in get_tree().get_nodes_in_group("player_shot"):
+		if not is_instance_valid(n) or n.is_queued_for_deletion():
+			continue
+		if (n as Node2D).global_position.distance_to(global_position) <= r:
+			n.queue_free()
+			swept += 1
+	if swept > 0:
+		GameState.notice.emit("薙ぎ払いに弾を払い落とされた!")
+	return swept
+
 # #156: 薙ぎ払いの水しぶきエフェクト。攻撃方向へ扇状に飛沫を飛ばし、視覚的に薙ぎ払いを示す
 func _nagiharai_splash(dir: Vector2, reach: float) -> void:
 	var p := CPUParticles2D.new()
@@ -697,6 +712,7 @@ func _attack(delta: float, dist: float) -> void:
 		if id == "leviathan" and dist <= melee_r:   # #156再: 薙ぎ払いのヒット距離は通常の近接攻撃と同じに戻す
 			var atk_dir := (player.global_position - global_position).normalized()
 			_nagiharai_splash(atk_dir, melee_r)   # #156: 攻撃方向へしぶきエフェクト
+			_sweep_away_shots(melee_r)   # #156再2: 薙ぎ払いは飛んできた弾も払い落とす
 			_damage_player(eff_dmg * 1.3 * LORD_MELEE_MULT)   # #223
 			GameState.ignite(5.0)   # #65: 薙ぎ払いは必ず炎上
 			GameState.notice.emit("レヴィアタンの薙ぎ払い!")
