@@ -356,6 +356,8 @@ func _placeholder(c: Color) -> Texture2D:
 # #224再2: 包囲射撃(鶴翼陣)の間だけ、この敵の回避を無効にする
 var _no_dodge_t: float = 0.0
 var _counter_t: float = 0.0   # #239再8: 打ち返し弾のクールダウン
+const NO_DEBUFF_TOLD_CD := 8.0   # #187再3: 「デバフが効かない」の案内の最短間隔(秒)
+var _no_debuff_told_t: float = 0.0
 
 func suppress_dodge(secs: float) -> void:
 	_no_dodge_t = maxf(_no_dodge_t, secs)
@@ -446,8 +448,10 @@ func take_hit(amount: float, slip: bool, debuff: bool, no_dodge: bool = false, d
 		if _debuff_kind == "slip":
 			_slip += amount * (0.65 + 0.40 * _debuff_power)   # #37再々: 毒を強化
 	elif debuff and bool(def.get("no_debuff", false)):
-		# #187再2: 無効だと分かるように表示(頻繁に出しすぎないよう時々)
-		if randf() < 0.34:
+		# #187再3: 無効だと分かるように表示。確率だと銛を撃ち続ける間ずっと出るので、
+		#   最短間隔を置いて出す(1体につき NO_DEBUFF_TOLD_CD 秒に1回まで)
+		if _no_debuff_told_t <= 0.0:
+			_no_debuff_told_t = NO_DEBUFF_TOLD_CD
 			GameState.notice.emit("%s には銛のデバフが効かない!" % def.name)
 	# 被弾フラッシュ
 	if sprite:
@@ -464,6 +468,8 @@ func _physics_process(delta: float) -> void:
 		_no_dodge_t = maxf(_no_dodge_t - delta, 0.0)   # #224再2: 包囲射撃の回避無効
 	if _counter_t > 0.0:
 		_counter_t = maxf(_counter_t - delta, 0.0)   # #239再8: 打ち返し弾のクールダウン
+	if _no_debuff_told_t > 0.0:
+		_no_debuff_told_t = maxf(_no_debuff_told_t - delta, 0.0)   # #187再3
 	_tick_blink(delta)   # #239: レイスのテレポート
 	if _slip > 0.0:
 		var tick: float = minf(_slip, 8.0 * delta)

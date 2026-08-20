@@ -1416,6 +1416,24 @@ func _pointer_on_ui() -> bool:
 	var ui_root = hud.get("_ui_root")
 	return ui_root != null and ui_root.get_node_or_null("SharedOverlay") != null
 
+# #251再2: 放射系の持続音を鳴らすべきか。撃つボタンを押している間は、
+#   1発ごとのクールダウンに関係なく鳴らし続ける。リロード中は止める。
+func _loop_sfx_wanted(pressed: bool) -> String:
+	if not pressed:
+		return ""
+	for i in mini(int(GameState.ship().slots), GameState.weapons.size()):
+		var wid: String = GameState.weapons[i]
+		if wid == "" or not Database.weapons.has(wid):
+			continue
+		var w: Dictionary = Database.weapons[wid]
+		if not w.has("loop_sfx"):
+			continue
+		# リロード中(残クールダウンが1発ぶんより長い)は鳴らさない
+		if float(slot_cooldowns[i]) > float(w.cooldown) + 0.01:
+			continue
+		return str(w.loop_sfx)
+	return ""
+
 func _update_weapons(delta: float) -> void:
 	for i in slot_cooldowns.size():
 		if slot_cooldowns[i] > 0:
@@ -1424,8 +1442,6 @@ func _update_weapons(delta: float) -> void:
 		Audio.stop_loop_sfx()   # #251再: 撃てない状態では放射音も止める
 		return   # #101: 大破/寄港確定後は攻撃不可 / #24再: 食料選択中も撃たない
 	var slots := int(GameState.ship().slots)
-	# #251再: 放射系を撃っている間だけ持続音を鳴らす
-	var _want_loop := ""
 	if Input.is_action_pressed("fire_primary") and not _pointer_on_ui():   # #196再: 陣形ボタン上では撃たない
 		for i in slots:
 			var wid: String = GameState.weapons[i] if i < GameState.weapons.size() else ""
@@ -1435,8 +1451,6 @@ func _update_weapons(delta: float) -> void:
 			if w.kind == "aim" and slot_cooldowns[i] <= 0:
 				_fire_aim(w)
 				_consume_ammo(i, w)
-				if w.has("loop_sfx"):
-					_want_loop = str(w.loop_sfx)   # #251再
 	if Input.is_action_just_pressed("fire_torpedo"):
 		for i in slots:
 			var wid: String = GameState.weapons[i] if i < GameState.weapons.size() else ""
@@ -1450,9 +1464,12 @@ func _update_weapons(delta: float) -> void:
 					continue
 				_fire_torpedo(w)
 				_consume_ammo(i, w)
-	# #251再: 放射音の反映(撃っていなければ止める)
-	if _want_loop != "":
-		Audio.play_loop_sfx(_want_loop)
+	# #251再2: 放射音の反映。発射したフレームだけで判断すると、連射の合間
+	#   (毎フレームのうち大半)で止めてしまい、実質鳴らなくなる。
+	#   「押している間ずっと」で判断する。
+	var want_loop := _loop_sfx_wanted(Input.is_action_pressed("fire_primary") and not _pointer_on_ui())
+	if want_loop != "":
+		Audio.play_loop_sfx(want_loop)
 	elif Audio.loop_sfx_name() != "":
 		Audio.stop_loop_sfx()
 	# HUDに残弾を表示(#27)

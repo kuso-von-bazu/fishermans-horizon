@@ -1140,8 +1140,8 @@ func _ready() -> void:
 			check(ResourceLoader.exists("res://assets/images/pixel/fish_%s.png" % fid), "%s の絵が無い" % fid)
 	var want_spawn := {
 		9: ["turtle"],
-		8: ["lobster"],
-		4: ["octopus", "squid", "bonito", "anglerfish", "conger", "lobster", "turtle"],
+		8: ["marlin"],
+		4: ["octopus", "squid", "bonito", "anglerfish", "conger", "lobster", "turtle", "marlin"],
 	}
 	for isl4 in want_spawn:
 		var got_sp: Array = (Database.island(int(isl4)).get("spawn", []) as Array).duplicate()
@@ -1157,9 +1157,69 @@ func _ready() -> void:
 	# #255再: 巨大戦艦をさらに一回り小さく
 	check(psrc.contains("extra = 0.76"), "巨大戦艦がさらに小さくなっていない")
 
+	# ---------------- #251再2/#187再3/#229再 ----------------
+	# #251再2: 放射音は「押している間ずっと」鳴らす(連射の合間で止めない)
+	var w8 := Node2D.new()
+	w8.set_script(World2)
+	add_child(w8)
+	await get_tree().process_frame
+	GameState.reset_all()
+	GameState.fleet[0].ship_id = "corvette"   # 武器スロットのある船
+	GameState.fleet[0].weapons[0] = "flamer"
+	w8.slot_cooldowns = [0.0, 0.0, 0.0, 0.0]
+	check(w8._loop_sfx_wanted(true) == "sfx_flamer", "押している間に放射音が鳴らない")
+	check(w8._loop_sfx_wanted(false) == "", "押していないのに放射音が鳴る")
+	# 1発ごとのクールダウン中(=連射の合間)でも鳴らし続ける
+	w8.slot_cooldowns[0] = float(Database.weapons["flamer"].cooldown)
+	check(w8._loop_sfx_wanted(true) == "sfx_flamer", "連射の合間で放射音が止まる")
+	# リロード中は止める
+	w8.slot_cooldowns[0] = float(Database.weapons["flamer"].reload)
+	check(w8._loop_sfx_wanted(true) == "", "リロード中も放射音が鳴り続ける")
+	# 放射系でない武器では鳴らさない
+	GameState.fleet[0].weapons[0] = "gatling"
+	w8.slot_cooldowns[0] = 0.0
+	check(w8._loop_sfx_wanted(true) == "", "放射系でない武器で放射音が鳴る")
+	w8.free()
+
+	# #187再3: 「デバフが効かない」の案内は時間で間引く
+	var gh := CharacterBody2D.new()
+	gh.set_script(Enemy)
+	gh.setup("lord", "ghost")
+	add_child(gh)
+	await get_tree().process_frame
+	var told: Array = []
+	var cb8 := func(t: String):
+		if str(t).contains("デバフが効かない"):
+			told.append(t)
+	GameState.notice.connect(cb8)
+	for k8 in 30:
+		gh.take_hit(1.0, false, true)   # 銛で連打
+	check(told.size() == 1, "デバフ無効の案内が間引かれていない(30発で%d回)" % told.size())
+	check(gh._no_debuff_told_t > 0.0, "案内のクールダウンが働いていない")
+	# 時間が経てばまた出る
+	gh._no_debuff_told_t = 0.0
+	gh.take_hit(1.0, false, true)
+	check(told.size() == 2, "時間が経っても案内が出ない")
+	GameState.notice.disconnect(cb8)
+	check(Enemy.NO_DEBUFF_TOLD_CD >= 5.0, "案内の間隔が短すぎる")
+	gh.free()
+
+	# #229再: カジキマグロ
+	check(Database.fish.has("marlin"), "カジキマグロが無い")
+	check(int(Database.fish["marlin"].price) == 270, "カジキマグロの基準価格が違う")
+	check(int(Database.fish["marlin"].cap) == 4, "カジキマグロの魚倉占有が違う")
+	check(ResourceLoader.exists("res://assets/images/pixel/fish_marlin.png"), "カジキマグロの絵が無い")
+	var sp8: Array = (Database.island(8).get("spawn", []) as Array)
+	check(sp8 == ["marlin"], "北の孤島の漁獲物がカジキマグロのみでない: %s" % str(sp8))
+	var sp4: Array = (Database.island(4).get("spawn", []) as Array).duplicate()
+	sp4.sort()
+	var exp4: Array = ["octopus", "squid", "bonito", "anglerfish", "conger", "lobster", "turtle", "marlin"]
+	exp4.sort()
+	check(sp4 == exp4, "果ての島の漁獲物が指定と違う: %s" % str(sp4))
+
 	port.free()
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze/sunny_sea/facing/killer_shell/south_isle/streams/all_islands/bullet_shapes/cluster_range/torpedo_lock/pirate_dmg/ambient/hints2/bestiary/title_bg/flagship_label/broadside/los_toast/fuel_dist/fleet_speed/fx_art/new_fish")
+		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze/sunny_sea/facing/killer_shell/south_isle/streams/all_islands/bullet_shapes/cluster_range/torpedo_lock/pirate_dmg/ambient/hints2/bestiary/title_bg/flagship_label/broadside/los_toast/fuel_dist/fleet_speed/fx_art/new_fish/loop_sfx/no_debuff_toast/marlin")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)

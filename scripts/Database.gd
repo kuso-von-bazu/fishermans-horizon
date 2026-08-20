@@ -17,6 +17,7 @@ var fish := {
 	"lobster":  {"name": "ロブスター","cap": 2, "price": 200, "home": 8, "color": Color(0.75,0.3,0.25)},
 	"anglerfish":{"name": "アンコウ", "cap": 2, "price": 140, "home": 2, "color": Color(0.35,0.3,0.35)},
 	"conger":   {"name": "アナゴ",   "cap": 2, "price": 190, "home": 3, "color": Color(0.5,0.42,0.35)},
+	"marlin":   {"name": "カジキマグロ", "cap": 4, "price": 270, "home": 8, "color": Color(0.25,0.4,0.6)},
 }
 
 # ---------------------------------------------------------------------------
@@ -429,14 +430,14 @@ var islands := [
 	{"id": 2, "name": "月下の島",     "tier": 2, "fame_req": 70,  "price_mult": 3.0, "pos": Vector3(1700, 0, 200),  "spawn": ["squid","octopus","bonito","anglerfish"], "lords": ["aspidochelone","legion"], "weather": "night"},
 	# #190: 月下の島の追加に伴い、嵐越え・果ては従来よりさらに遠方へ。#191/#192: 近海の天候演出
 	{"id": 3, "name": "嵐越えの島",   "tier": 3, "fame_req": 175,  "price_mult": 4.8, "pos": Vector3(2600, 0, 900),  "spawn": ["octopus","squid","bonito","conger"], "lords": ["hydra","quetzal"], "weather": "storm"},
-	{"id": 4, "name": "果ての島",     "tier": 4, "fame_req": 400,  "price_mult": 10.8, "pos": Vector3(3600, 0, 300), "spawn": ["octopus","squid","bonito","anglerfish","conger","lobster","turtle"], "lords": ["ghost","leviathan"], "weather": "blizzard"},   # #187: 幽霊船はレヴィアタンの上(先に戦う想定)
+	{"id": 4, "name": "果ての島",     "tier": 4, "fame_req": 400,  "price_mult": 10.8, "pos": Vector3(3600, 0, 300), "spawn": ["octopus","squid","bonito","anglerfish","conger","lobster","turtle","marlin"], "lords": ["ghost","leviathan"], "weather": "blizzard"},   # #187: 幽霊船はレヴィアタンの上(先に戦う想定)
 	# #239: 月下の島と同格(tier 2)。星霜=月下の北、常闇=月下の南
 	{"id": 5, "name": "星霜の島",     "tier": 2, "fame_req": 70,  "price_mult": 3.0, "pos": Vector3(1700, 0, -700), "spawn": ["squid","octopus","bonito","anglerfish"], "lords": ["undine","siren"], "weather": "starry"},
 	{"id": 6, "name": "常闇の島",     "tier": 2, "fame_req": 70,  "price_mult": 3.0, "pos": Vector3(1700, 0, 1100), "spawn": ["squid","octopus","bonito","anglerfish"], "lords": ["night_emperor","wraith"], "weather": "dark"},
 	# #239: 嵐越えの島と同格(tier 3)。海嘯=嵐越えの南
 	{"id": 7, "name": "海嘯の島",     "tier": 3, "fame_req": 175, "price_mult": 4.8, "pos": Vector3(2600, 0, 1900), "spawn": ["octopus","squid","bonito","conger"], "lords": ["kraken_lord","griffon"], "weather": "surge"},
 	# #248: 終盤の寄り道。果ての島の北にある小さな雪原の島。近海の主はいない(酒場の主の情報も出ない)
-	{"id": 8, "name": "北の孤島",   "tier": 4, "fame_req": 400, "price_mult": 10.8, "pos": Vector3(3600, 0, -600), "spawn": ["lobster"], "lords": [], "weather": "flurry"},
+	{"id": 8, "name": "北の孤島",   "tier": 4, "fame_req": 400, "price_mult": 10.8, "pos": Vector3(3600, 0, -600), "spawn": ["marlin"], "lords": [], "weather": "flurry"},
 	# #251: 中盤の寄り道。常闇の島の南にある小さな草原の島。近海の主はいない
 	{"id": 9, "name": "南の孤島",     "tier": 2, "fame_req": 70,  "price_mult": 3.0, "pos": Vector3(1700, 0, 2000), "spawn": ["turtle"], "lords": [], "weather": "sunny"},
 ]
