@@ -404,10 +404,16 @@ func _spawn_critical_text(pos: Vector2) -> void:
 	var world := get_parent()
 	if world == null:
 		return
+	_spawn_float_text(world, pos, "クリティカル!", Color(1.0, 0.9, 0.15))
+
+# #261: 命中位置に浮かび上がる短い表示。クリティカルと回避で共用する。
+static func _spawn_float_text(world: Node, pos: Vector2, text: String, col: Color) -> void:
+	if world == null:
+		return
 	var l := Label.new()
-	l.text = "クリティカル!"
+	l.text = text
 	l.add_theme_font_size_override("font_size", 24)
-	l.add_theme_color_override("font_color", Color(1.0, 0.9, 0.15))
+	l.add_theme_color_override("font_color", col)
 	l.add_theme_constant_override("outline_size", 6)
 	l.add_theme_color_override("font_outline_color", Color(0.25, 0.1, 0.0, 0.95))
 	l.position = pos - Vector2(76, 42)

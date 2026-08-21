@@ -1,4 +1,5 @@
 extends CharacterBody2D
+const ProjectileScript = preload("res://scripts2d/Projectile2D.gd")
 ## Enemy2D — 主/戦闘モブ/海賊(見下ろし2D)。Codex生成の透過スプライトを本体に使用。
 ## 円形HPゲージ(#21)は _draw で描画。挙動は3D版Enemyを踏襲:
 ## 海賊=遠隔+近接(#9)、ヒュドラ=回復する炎、レヴィアタン=津波/薙ぎ払い、番い(#5相当は討伐管理)。
@@ -436,7 +437,8 @@ func take_hit(amount: float, slip: bool, debuff: bool, no_dodge: bool = false, d
 			sprite.modulate = Color(0.5, 0.7, 1.6)
 			var tw0 := create_tween()
 			tw0.tween_property(sprite, "modulate", Color.WHITE, 0.25)
-		GameState.notice.emit("%s が攻撃を回避!" % def.name)
+		# #261: トーストではなく、クリティカルと同じ枠で命中位置へ「回避!」と出す
+		ProjectileScript._spawn_float_text(get_parent(), global_position, "回避!", Color(0.55, 0.85, 1.0))
 		return 2 if bool(def.get("dodge_pass", false)) else 1
 	# #128: 遠隔攻撃を受けたら視界外でも即座に発見状態になり追ってくる
 	_aggro = true

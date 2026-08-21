@@ -220,9 +220,9 @@ func _ready() -> void:
 	var base: float = float(Database.weapons["gatling"].reload)
 	# #249再: レビュアー再指定の倍率
 	var want_reload := {
-		"gatling": 1.0, "cannon": 1.6, "harpoon": 1.8, "torpedo": 2.0,
-		"gatling2": 1.2, "cannon2": 1.8, "harpoon2": 2.0, "torpedo2": 2.2,
-		"spray": 1.2, "lance": 1.8, "cluster": 2.2,
+		"gatling": 1.0, "cannon": 1.6, "harpoon": 1.7, "torpedo": 2.0,
+		"gatling2": 1.2, "cannon2": 1.8, "harpoon2": 1.9, "torpedo2": 2.2,
+		"spray": 1.4, "lance": 1.8, "cluster": 2.2,
 	}
 	for wid3 in want_reload:
 		var got_r: float = float(Database.weapons[wid3].reload)
@@ -234,14 +234,14 @@ func _ready() -> void:
 	var g2: Dictionary = Database.weapons["gatling2"]
 	check(is_equal_approx(float(spray.cooldown), float(g2.cooldown)), "乱射砲の連射速度が重ガトリング砲と違う")
 	check(float(spray.dmg) > float(g2.dmg), "乱射砲の単発威力が重ガトリング砲を超えていない")
-	check(int(spray.mag) == int(g2.mag), "乱射砲の弾数が重ガトリング砲と違う")
+	check(int(spray.mag) < int(g2.mag), "乱射砲の弾数が重ガトリング砲以上になっている")
 	check(float(spray.get("spray", 0.0)) > 0.0, "乱射砲が散らばらない")
 	var lance: Dictionary = Database.weapons["lance"]
-	check(is_equal_approx(float(lance.dmg), float(Database.weapons["harpoon2"].dmg)), "槍砲の威力が強化銛砲と違う")
+	check(float(lance.dmg) > float(Database.weapons["harpoon2"].dmg), "槍砲の威力が強化銛砲を上回っていない")
 	check(not bool(lance.get("debuff", false)), "槍砲にデバフが付いている")
 	check(bool(lance.get("pierce", false)), "槍砲が貫通しない")
 	check(float(lance.get("pirate_burn", 0.0)) == 0.0, "槍砲に炎上効果が付いている")
-	check(int(lance.mag) == int(Database.weapons["cannon2"].mag), "槍砲の弾数が大口径カノン砲と違う")
+	check(int(lance.mag) > int(Database.weapons["cannon2"].mag), "槍砲の弾数が大口径カノン砲を上回っていない")
 	var cl: Dictionary = Database.weapons["cluster"]
 	check(int(cl.get("cluster", 0)) == 3, "クラスター魚雷が3発に分裂しない")
 	check(float(cl.dmg) * 3.0 > float(Database.weapons["torpedo2"].dmg), "全弾命中でも追尾魚雷改を超えない")
@@ -707,7 +707,7 @@ func _ready() -> void:
 		check(float(fw.spray) > 0.0, "%s が扇状に広がらない" % wid7)
 		check(absf(float(fw.dmg) / float(gat.dmg) - 1.5) < 0.35, "%s の威力がガトリングの1.5倍程度でない" % wid7)
 		check(absf(float(fw.mag) / float(gat.mag) - 1.5) < 0.35, "%s の弾数がガトリングの1.5倍程度でない" % wid7)
-		check(absf(float(fw.reload) - float(gat.reload) * 2.0) < 0.001, "%s のリロードがガトリングの2倍でない" % wid7)
+		check(absf(float(fw.reload) - float(gat.reload) * 2.2) < 0.001, "%s のリロードがガトリングの2.2倍でない" % wid7)
 	check(float(Database.weapons["flamer"].pirate_burn) >= 1.0, "火炎放射器が海賊船を確実に炎上させない")
 	check(str(Database.weapons["chiller"].debuff_kind) == "chill", "冷気放射器のデバフが chill でない")
 	check(float(Database.weapons["chiller"].get("pirate_burn", 0.0)) == 0.0, "冷気放射器に炎上が付いている")
@@ -1260,9 +1260,67 @@ func _ready() -> void:
 	var esrc3 := FileAccess.get_file_as_string("res://scripts2d/Enemy2D.gd")
 	check(esrc3.contains("_sweep_away_shots(melee_r)"), "薙ぎ払いから弾の払い落としが呼ばれていない")
 
+	# ---------------- #258再/#260再/#261 ----------------
+	# #258再: 停泊中も15%は消費する
+	var wsrc4 := FileAccess.get_file_as_string("res://scripts2d/World2D.gd")
+	check(wsrc4.contains("IDLE_FUEL_RATE"), "停泊中の燃料消費が実装されていない")
+	check(absf(World2.IDLE_FUEL_RATE - 0.15) < 0.001, "停泊中の消費が15%%でない(%.2f)" % World2.IDLE_FUEL_RATE)
+	check(wsrc4.contains("(1.0 - IDLE_FUEL_RATE)"), "航行中のぶんが距離基準で加算されていない")
+
+	# #260再: 武器のバランス調整(レビュアー指定値)
+	var want260 := {
+		"spray": {"dmg": 5.0, "mag": 50.0, "reload": 1.4},
+		"lance": {"dmg": 28.0, "mag": 9.0},
+		"harpoon": {"dmg": 20.0, "mag": 7.0, "reload": 1.7},
+		"cannon": {"dmg": 38.0},
+		"cannon2": {"dmg": 51.0},
+		"harpoon2": {"reload": 1.9},
+		"torpedo2": {"dmg": 32.0},
+		"flamer": {"dmg": 4.0, "reload": 2.2},
+		"chiller": {"dmg": 4.0, "reload": 2.2},
+	}
+	for wid9 in want260:
+		for fld in want260[wid9]:
+			var got9 := float(Database.weapons[wid9][fld])
+			var exp9 := float(want260[wid9][fld])
+			check(absf(got9 - exp9) < 0.001, "%s の %s が %.1f でない(%.2f)" % [wid9, fld, exp9, got9])
+	# リロード倍率(#249再)の整合も保つ
+	var base9 := float(Database.weapons["gatling"].reload)
+	check(absf(float(Database.weapons["harpoon"].reload) - base9 * 1.7) < 0.001, "銛のリロードが基準の1.7倍でない")
+
+	# #261: 回避はクリティカルと同じ枠で命中位置へ出す
+	var esrc4 := FileAccess.get_file_as_string("res://scripts2d/Enemy2D.gd")
+	check(esrc4.contains("_spawn_float_text(get_parent(), global_position, \"回避!\"")," 回避が浮き上がる表示になっていない")
+	check(not esrc4.contains("が攻撃を回避!"), "回避のトースト表示が残っている")
+	var psrc4 := FileAccess.get_file_as_string("res://scripts2d/Projectile2D.gd")
+	check(psrc4.contains("static func _spawn_float_text"), "浮き上がる表示が共用化されていない")
+	check(psrc4.contains("_spawn_float_text(world, pos, \"クリティカル!\""), "クリティカルが共用の表示を使っていない")
+	# 実際に回避すると表示が出る(トーストは出ない)
+	var dg := CharacterBody2D.new()
+	dg.set_script(Enemy)
+	dg.setup("mob", "charybdis")   # dodge を持つ敵
+	add_child(dg)
+	await get_tree().process_frame
+	var toasts: Array = []
+	var cb9 := func(t: String):
+		if str(t).contains("回避"):
+			toasts.append(t)
+	GameState.notice.connect(cb9)
+	var before9 := get_child_count()
+	for k10 in 60:
+		dg.take_hit(1.0, false, false)
+	await get_tree().process_frame
+	check(toasts.is_empty(), "回避でトーストが出ている: %s" % str(toasts))
+	check(get_child_count() > before9, "回避しても浮き上がる表示が出ない")
+	GameState.notice.disconnect(cb9)
+	for c12 in get_children():
+		if c12 is Label:
+			c12.free()
+	dg.free()
+
 	port.free()
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze/sunny_sea/facing/killer_shell/south_isle/streams/all_islands/bullet_shapes/cluster_range/torpedo_lock/pirate_dmg/ambient/hints2/bestiary/title_bg/flagship_label/broadside/los_toast/fuel_dist/fleet_speed/fx_art/new_fish/loop_sfx/no_debuff_toast/marlin/sweep_shots")
+		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze/sunny_sea/facing/killer_shell/south_isle/streams/all_islands/bullet_shapes/cluster_range/torpedo_lock/pirate_dmg/ambient/hints2/bestiary/title_bg/flagship_label/broadside/los_toast/fuel_dist/fleet_speed/fx_art/new_fish/loop_sfx/no_debuff_toast/marlin/sweep_shots/idle_fuel/weapon_balance/dodge_text")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)

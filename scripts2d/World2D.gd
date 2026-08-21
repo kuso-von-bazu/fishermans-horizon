@@ -510,7 +510,9 @@ func _physics_process(delta: float) -> void:
 	var _solo_px: float = maxf(float(GameState.ship().speed) * K, 1.0)
 	var _moved: float = player.velocity.length() * delta if is_instance_valid(player) else 0.0
 	var _weather_mult: float = 1.2 if GameState.active_weather in ["blizzard", "flurry"] and not GameState.boss_rush else 1.0   # #232: 吹雪は燃料消費+20%
-	GameState.run_food = maxf(GameState.run_food - (_moved / _solo_px) * 1.5 * GameState.food_drain_mult() * _weather_mult, 0.0)
+	# #258再: 停泊中も従来の15%は消費する(止まれば無消費、を避ける)
+	var _rate: float = IDLE_FUEL_RATE + (1.0 - IDLE_FUEL_RATE) * (_moved / _solo_px) / maxf(delta, 0.0001)
+	GameState.run_food = maxf(GameState.run_food - delta * _rate * 1.5 * GameState.food_drain_mult() * _weather_mult, 0.0)
 	# #68: Rキーを5秒長押しで直近の島へ帰還。長押し中に装甲0なら大破(後段の装甲チェックで処理)
 	if Input.is_action_pressed("fast_return") and not _returning and not _food_dialog_open:
 		_return_hold += delta
@@ -1337,6 +1339,9 @@ func _line_blocker_from(origin: Vector2, dir: Vector2, dist: float) -> Node2D:
 	return null
 
 # #256: 「撃てない」を伝えるトーストの間隔(連打で溢れないように)
+# #258再: 停泊中の燃料消費(航行中を1としたときの割合)
+const IDLE_FUEL_RATE := 0.15
+
 const LOS_TOAST_CD := 2.0
 var _los_toast_t: float = 0.0
 var _los_overlay: Node2D = null
