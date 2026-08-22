@@ -1,0 +1,64 @@
+name: コンサル希望
+description: 仕様の是非・設計の悩み・バランスの方向性など「どうするか一緒に考えてほしい」ことはこちら。毎週水曜14:00以降にまとめて回答します。
+title: "[コンサル] "
+labels: ["コンサル"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **答えが決まっていない相談**はこちらへお願いします。
+        (例: この仕組みはプレーヤーが戸惑わないか / 2つの案のどちらがよいか /
+        この要素は面白くなっているか / バランスの方向性をどう決めるか など)
+
+        「こう直してほしい」と内容が決まっている要望は
+        「ゲームへの意見・フィードバック」の方が早く反映されます。
+
+        ---
+
+        **回答の時期について**
+        コンサル希望は**毎週水曜の14:00以降にまとめて**回答します。
+        じっくり調べて根拠のある提案をするための枠なので、
+        急ぎの不具合や単純な修正依頼は通常の意見としてお出しください。
+  - type: dropdown
+    id: consult_kind
+    attributes:
+      label: 相談の種類
+      options:
+        - 仕組み・仕様の是非(この作りで伝わるか、戸惑わないか)
+        - 2つ以上の案のどちらを採るか
+        - バランスの方向性(数値をどう動かすか)
+        - 面白さ・遊びの幅(この要素は機能しているか)
+        - 現状の把握(一覧・集計を出してほしい)
+        - その他
+    validations:
+      required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: 現状
+      description: 今どうなっているか。分かる範囲で構いません(こちらでも実装を調べます)。
+      placeholder: |
+        例) 僚艦が射線を遮るとエイム武器が発射できない仕組みにしている。
+    validations:
+      required: true
+  - type: textarea
+    id: concern
+    attributes:
+      label: 相談したいこと・気になっていること
+      description: 何に迷っているか、どうなってほしいかを書いてください。
+      placeholder: |
+        例) プレーヤーが戸惑う懸念があるので、解決策があれば提案してほしい。
+    validations:
+      required: true
+  - type: textarea
+    id: intent
+    attributes:
+      label: そう作った狙い(任意)
+      description: 意図が分かると、狙いを壊さない案を出せます。
+      placeholder: |
+        例) 陣形や立ち回りを考える楽しみを作りたかった。
+  - type: textarea
+    id: note
+    attributes:
+      label: 補足(任意)
+      placeholder: 参考にしてほしい過去のissue、試したこと、譲れない条件など
