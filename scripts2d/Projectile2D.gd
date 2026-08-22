@@ -53,7 +53,7 @@ func setup(p_dir: Vector2, w: Dictionary, p_target: Node2D = null) -> void:
 	dmg = float(w.get("dmg", 5))
 	speed = (70.0 + float(w.get("dmg", 5)) * 0.3) * K * float(w.get("speed_mult", 1.0))   # #65: 弾速倍率
 	if from_player:
-		speed *= GameState.formation_passive("shot_speed")   # #224再2: 斜線陣
+		speed *= GameState.formation_passive("shot_speed") * GameState.badge_mult("shot_speed")   # #224再2: 斜線陣
 		add_to_group("player_shot")   # #156再2: レヴィアタンの薙ぎ払いで払い落とす対象
 	else:
 		add_to_group("enemy_shot")   # #224再2: 防御弾幕(輪形陣)の迎撃対象

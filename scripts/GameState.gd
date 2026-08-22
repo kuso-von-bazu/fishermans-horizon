@@ -191,6 +191,73 @@ func hire_crew(job_id: String) -> bool:
 	stats_changed.emit()
 	return true
 
+# #267: 漂流者の救出。空き枠があればクルーとして加わり、無ければ謝礼を受け取る。
+#   ジョブはその海域の酒場で雇える顔ぶれから選ぶが、
+#   水夫(弱すぎる)と副船長(1隻1名の制約)は除く。
+const CASTAWAY_JOBS := ["veteran", "marine", "navigator", "cook"]
+
+func rescue_castaway() -> String:
+	var job_id: String = CASTAWAY_JOBS[randi() % CASTAWAY_JOBS.size()]
+	var j: Dictionary = jobs[job_id]
+	# 空きのある艦を探す(旗艦から順に)
+	var slot := -1
+	for i in sailing_ships():
+		if fleet[i].crew.size() < CREW_MAX:
+			slot = i
+			break
+	if slot < 0:
+		# 枠が無ければ謝礼(その海域で雇う額と同額)
+		var reward := hire_cost(job_id)
+		add_money(reward)
+		var msg := "漂流者を救出! 乗る枠が無く、謝礼 %d を受け取った" % reward
+		notice.emit(msg)
+		return msg
+	# 酒場と同じ手順でクルーを作る(契約金は取らない)
+	var bm := hire_bonus_mult(job_id)
+	var high: bool = Database.tier_of(current_island) >= 3
+	var base: int = 5 if high else 3
+	var m := {
+		"name": _unique_crew_name(),
+		"job": job_id,
+		"hp": base + randi_range(0, 2 * bm), "agi": base + randi_range(0, 2 * bm),
+		"sht": base + randi_range(0, 2 * bm), "int_": base + randi_range(0, 2 * bm),
+		"vis": base + randi_range(0, 2 * bm),
+	}
+	if j.has("req"):
+		var req: Array = j.req
+		m[req[0]] = int(req[1]) + randi_range(0, 4 * bm)
+	(fleet[slot].crew as Array).append(m)
+	stats_changed.emit()
+	var msg2 := "漂流者を救出! %s(%s)が %s に乗り込んだ" % [m.name, j.name, fleet_label(slot)]
+	notice.emit(msg2)
+	return msg2
+
+# #267: 漂流貨物。全海域の漁獲物からランダムに1種、5〜10匹ぶんを積む。
+#   魚倉の空きを超える分は積めない(空き<1匹ぶんなら1匹も積めないことがある)。
+func collect_drifting_cargo() -> String:
+	var ids: Array = []
+	for fid in Database.fish:
+		ids.append(str(fid))
+	if ids.is_empty():
+		return ""
+	var id: String = ids[randi() % ids.size()]
+	var want := randi_range(5, 10)
+	var got := 0
+	for k in want:
+		if not add_cargo(id):
+			break   # 魚倉に入らなくなったら打ち切り
+		got += 1
+	var nm: String = str(Database.fish[id].name)
+	var msg3 := ""
+	if got == 0:
+		msg3 = "漂流貨物を回収したが、魚倉に空きが無かった(%s)" % nm
+	elif got < want:
+		msg3 = "漂流貨物から %s を%d匹回収(魚倉が満杯で%d匹は積めなかった)" % [nm, got, want - got]
+	else:
+		msg3 = "漂流貨物から %s を%d匹回収!" % [nm, got]
+	notice.emit(msg3)
+	return msg3
+
 # #85再: 嵐越えの島(island>=3)以降は契約金3倍・上乗せ4倍。ただし水夫は据え置き。#190: 月下の島(index2)は潮鳴りまでと同条件
 func hire_cost(job_id: String) -> int:
 	var mult := 3 if (Database.tier_of(current_island) >= 3 and job_id != "sailor") else 1   # #239
@@ -300,9 +367,15 @@ func food_drain_mult() -> float:   # 体力+料理人: 燃料(食料)減少を�
 	var h := float(_crew_sum("hp"))
 	var eff := h if h <= 10.0 else 10.0 + log(1.0 + (h - 10.0))
 	var m := 1.0 / (1.0 + 0.02 * eff)
-	for c in crew:
-		if c.job == "cook":
-			m *= 0.85
+	# #258再2: 料理人は船団全体で数える。1人目0.85、2人目以降は効果が逓減する
+	#   (0.85 → 0.90 → 0.94 …)。多数積んでも頭打ちになるようにしている。
+	var cooks := 0
+	for i in sailing_ships():
+		for c in fleet[i].crew:
+			if c.job == "cook":
+				cooks += 1
+	for k in cooks:
+		m *= 1.0 - 0.15 * pow(0.65, float(k))
 	return m
 
 func damage_cut() -> float:        # 敏捷: 被ダメカット(最大40%)
@@ -347,7 +420,7 @@ func lock_range_mult() -> float:   # #201: ロック距離は視力に依存し�
 func damage_player(amount: float) -> void:
 	if docking_locked:
 		return   # #105: 寄港確定後は被弾しない
-	run_armor = maxf(run_armor - amount * (1.0 - damage_cut()) * formation_passive("flag_dmg_taken"), 0.0)   # #224再2: 輪形陣
+	run_armor = maxf(run_armor - amount * (1.0 - damage_cut()) * formation_passive("flag_dmg_taken") * badge_mult("flag_dmg_taken") * badge_mult("fleet_dmg_taken"), 0.0)   # #224再2: 輪形陣
 	if at_sea and amount >= 3.0 and burn_t <= 0.0 and randf() < 0.12:
 		burn_t = 4.5
 		burn_dps = 2.5 + amount * 0.12
@@ -406,6 +479,14 @@ var cargo: Dictionary = {}
 # 海賊の首: pirate_id -> 個数(魚倉を圧迫しない)。遺産も別管理。
 var heads: Dictionary = {}
 var relics: int = 0   # 旧文明の遺産(換金待ち)の総額
+# #265: 実績。achieved=達成した実績id / badge_id=選択中のバッヂ / relic_count=遺産の入手個数
+#   caught_fish=これまでに漁獲した魚のid(全種類の達成判定に使う)
+var achieved: Dictionary = {}
+var badge_id: String = ""
+var relic_count: int = 0
+var caught_fish: Dictionary = {}
+var charge_all_tungsten: bool = false   # 突撃!の達成条件(発動時に判定して立てる)
+
 
 var current_island: int = 0
 var unlocked_islands: Array[int] = [0]   # 名声で入港可能になった島
@@ -453,6 +534,9 @@ func reset_all() -> void:
 	cargo = {}
 	heads = {}
 	relics = 0
+	relic_count = 0
+	caught_fish = {}
+	charge_all_tungsten = false
 	current_island = 0
 	unlocked_islands = [0]
 	visited_islands = [0]
@@ -518,7 +602,7 @@ func save_game() -> void:
 		"current_island": current_island,
 		"unlocked_islands": unlocked_islands, "visited_islands": visited_islands,
 		"defeated_lords": defeated_lords, "claimed_lords": claimed_lords,
-		"kills": kills,
+		"kills": kills, "relic_count": relic_count, "caught_fish": caught_fish,   # #265
 		"guide_target": guide_target, "has_departed": has_departed,
 		"world": WORLD_VERSION,   # #190: 島構成のバージョン(島を挿入したらセーブの島indexを移行する)
 	}
@@ -605,6 +689,8 @@ func load_game() -> bool:
 	cargo = _to_int_dict(data.get("cargo", {}))
 	heads = _to_int_dict(data.get("heads", {}))
 	kills = _to_int_dict(data.get("kills", {}))   # #177: 討伐記録
+	relic_count = int(data.get("relic_count", 0))   # #265
+	caught_fish = data.get("caught_fish", {})
 	dock_reset()
 	stats_changed.emit()
 	return true
@@ -654,8 +740,17 @@ func _to_int_key_dict(d) -> Dictionary:
 func ship() -> Dictionary:
 	return Database.ships[ship_id]
 
+# #258再2: 燃料タンクは船団の平均。2〜5番艦の燃料値も残量に効く。
+#   (魚倉は合計だが、燃料は「積める量の平均」なので合計にはしない)
 func max_food() -> float:
-	return float(ship().food)
+	var total := float(ship().food)
+	var n := 1
+	for i in sailing_ships():
+		if i == 0:
+			continue   # 旗艦は上で数えている
+		total += float(ship_def_of(i).food)
+		n += 1
+	return total / float(n)
 
 # #196再: 魚倉のキャパシティは船団に組み込んでいる全船の合計
 func max_hold() -> int:
@@ -736,6 +831,9 @@ func add_cargo(id: String, cap_needed: int = -1) -> bool:
 		notice.emit("魚倉が満杯です")
 		return false
 	cargo[id] = int(cargo.get(id, 0)) + 1
+	if Database.fish.has(id):
+		caught_fish[id] = true   # #265: 実績「渭川漁父」用(魚だけ数える)
+		check_achievements()
 	stats_changed.emit()
 	return true
 
@@ -744,11 +842,181 @@ func add_head(pirate_id: String) -> void:
 	stats_changed.emit()
 
 # #177: 討伐記録。戦闘モブ・海賊の討伐数を種別+idで加算(999カンスト)
+# #265: 実績の達成判定・バッヂ効果・保存
+func is_achieved(aid: String) -> bool:
+	return bool(achieved.get(aid, false))
+
+# 実績の進捗 [現在値, 必要値]
+func achievement_progress(a: Dictionary) -> Array:
+	match str(a.get("check", "")):
+		"mob":
+			return [kill_count("mob", str(a.target)), int(a.need)]
+		"lord":
+			return [1 if (defeated_lords.has(str(a.target)) or claimed_lords.has(str(a.target))) else 0, 1]
+		"pirate_all":
+			return [kill_count("pirate", "raider") + kill_count("pirate", "corsair") + kill_count("pirate", "dread"), int(a.need)]
+		"relic":
+			return [relic_count, int(a.need)]
+		"fish":
+			return [caught_fish.size(), Database.fish.size()]
+	return [1 if is_achieved(str(a.id)) else 0, 1]
+
+# その敵を1体でも倒したか(名前を出してよいか)。(3)〜(7)は最初から名前を出す
+func achievement_revealed(a: Dictionary) -> bool:
+	if is_achieved(str(a.id)):
+		return true
+	match str(a.get("check", "")):
+		"mob":
+			return kill_count("mob", str(a.target)) > 0
+		"lord":
+			return defeated_lords.has(str(a.target)) or claimed_lords.has(str(a.target))
+		"pirate_all":
+			return kill_count("pirate", "raider") + kill_count("pirate", "corsair") + kill_count("pirate", "dread") > 0
+	return true
+
+func check_achievements() -> Array:
+	var newly: Array = []
+	for a in Database.achievements:
+		var aid := str(a.id)
+		if is_achieved(aid):
+			continue
+		if _achievement_met(a):
+			achieved[aid] = true
+			newly.append(aid)
+			if not boss_rush:
+				notice.emit("実績達成: %s" % str(a.name))   # #209: ボスラッシュ中は出さない
+	if not newly.is_empty():
+		_save_achievements()   # レヴィアタン討伐で即エンディングでも残るよう即保存
+	return newly
+
+func _achievement_met(a: Dictionary) -> bool:
+	match str(a.get("check", "")):
+		"mob":
+			return kill_count("mob", str(a.target)) >= int(a.need)
+		"lord":
+			return defeated_lords.has(str(a.target)) or claimed_lords.has(str(a.target))
+		"pirate_all":
+			var p := kill_count("pirate", "raider") + kill_count("pirate", "corsair") + kill_count("pirate", "dread")
+			return p >= int(a.need) and kill_count("pirate", "king") >= 3
+		"relic":
+			return relic_count >= int(a.need)
+		"fish":
+			return caught_fish.size() >= Database.fish.size()
+		"wealth":
+			if str(a.id) == "fame_max":
+				return fame >= FAME_MAX
+			return money >= 500000
+		"crew":
+			return _crew_achievement(str(a.id))
+		"fleet":
+			return _fleet_achievement(str(a.id))
+	return false
+
+# パラメータのカンストは既存の STAT_MAX(=50)を使う
+func _crew_maxed(c: Dictionary) -> bool:
+	for k in ["hp", "agi", "sht", "int_", "vis"]:
+		if int(c.get(k, 0)) >= STAT_MAX:
+			return true
+	return false
+
+# 船団の最大隻数(実績の「5隻すべて」の基準)
+func max_fleet_cap() -> int:
+	return 5
+
+func _crew_achievement(aid: String) -> bool:
+	if aid == "master_one":
+		for e in fleet:
+			for c in e.crew:
+				if _crew_maxed(c):
+					return true
+		return false
+	if fleet.size() < max_fleet_cap():
+		return false
+	for e2 in fleet:
+		var ok := false
+		for c2 in e2.crew:
+			if _crew_maxed(c2):
+				ok = true
+				break
+		if not ok:
+			return false
+	return true
+
+func _fleet_achievement(aid: String) -> bool:
+	match aid:
+		"charge_all":
+			return charge_all_tungsten
+		"weapon_master":
+			var have := {}
+			for e in fleet:
+				for w in e.weapons:
+					if str(w) != "":
+						have[str(w)] = true
+			return have.size() >= Database.weapons.size()
+		"mixed_fleet":
+			var want := {"hunter_h": false, "frigate_l": false, "frigate_h": false, "cruiser": false, "dread": false}
+			for e2 in fleet:
+				if want.has(str(e2.ship_id)):
+					want[str(e2.ship_id)] = true
+			for k in want:
+				if not bool(want[k]):
+					return false
+			return true
+		"battle_fleet":
+			if fleet.size() < max_fleet_cap():
+				return false
+			for e3 in fleet:
+				if str(e3.ship_id) != "cruiser" and str(e3.ship_id) != "dread":
+					return false
+			return true
+	return false
+
+# #265: 選択中のバッヂによる倍率。該当キーが無ければ1.0
+func badge_mult(key: String) -> float:
+	if badge_id == "" or not is_achieved(badge_id):
+		return 1.0
+	var a := Database.achievement(badge_id)
+	if a.is_empty():
+		return 1.0
+	return float((a.get("buff", {}) as Dictionary).get(key, 1.0))
+
+# バッヂを選ぶ(達成済みのみ)。同じidを選び直すと解除
+func select_badge(aid: String) -> void:
+	if aid != "" and not is_achieved(aid):
+		return
+	badge_id = "" if badge_id == aid else aid
+	_save_achievements()
+	stats_changed.emit()
+
+# 実績はセーブデータとは別に保存する(レヴィアタン討伐→即エンディングでも残す)
+const ACHIEVE_PATH := "user://achievements.dat"
+
+func _save_achievements() -> void:
+	var f := FileAccess.open(ACHIEVE_PATH, FileAccess.WRITE)
+	if f == null:
+		return
+	f.store_string(JSON.stringify({"achieved": achieved, "badge": badge_id}))
+	f.close()
+
+func load_achievements() -> void:
+	if not FileAccess.file_exists(ACHIEVE_PATH):
+		return
+	var f := FileAccess.open(ACHIEVE_PATH, FileAccess.READ)
+	if f == null:
+		return
+	var d = JSON.parse_string(f.get_as_text())
+	f.close()
+	if typeof(d) != TYPE_DICTIONARY:
+		return
+	achieved = d.get("achieved", {})
+	badge_id = str(d.get("badge", ""))
+
 func record_kill(kind: String, id: String) -> void:
 	if kind != "mob" and kind != "pirate":
 		return
 	var key := "%s:%s" % [kind, id]
 	kills[key] = mini(int(kills.get(key, 0)) + 1, 999)
+	check_achievements()   # #265
 
 # #177: 討伐数の取得(未討伐は0)
 func kill_count(kind: String, id: String) -> int:
@@ -756,16 +1024,23 @@ func kill_count(kind: String, id: String) -> int:
 
 func add_relic(value: int) -> void:
 	relics += value
+	relic_count += 1   # #265: 実績「考古学者」用の入手個数
+	check_achievements()
 	notice.emit("旧文明の遺産を発見(+%d相当)" % value)
 	stats_changed.emit()
 
 func add_money(amount: int) -> void:
 	money += amount
 	money_changed.emit(money)
+	check_achievements()   # #265
+
+# #265: 名声は FAME_MAX でカンストする
+const FAME_MAX := 999
 
 func add_fame(amount: int) -> void:
-	fame += amount
+	fame = mini(fame + amount, FAME_MAX)
 	fame_changed.emit(fame)
+	check_achievements()   # #265
 	# 名声で島を解放
 	for isle in Database.islands:
 		if fame >= isle.fame_req and not unlocked_islands.has(isle.id):

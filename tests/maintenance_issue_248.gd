@@ -413,10 +413,13 @@ func _ready() -> void:
 	add_child(wavy)
 	wavy.from_player = false
 	wavy.setup(Vector2.RIGHT, {"dmg": 1.0, "shape": "note", "upright": true, "wave_amp": 170.0, "wave_freq": 7.5})
-	for f3 in 12:
+	# 蛇行の位相は弾ごとに乱数なので、ずれの最大値で見る(1周ぶん動かす)
+	wavy._wave_ph = 0.0   # 位相を固定して測る
+	var max_gap := 0.0
+	for f3 in 40:
 		await get_tree().physics_frame
-	check(absf(wavy.global_position.y - straight.global_position.y) > 1.0,
-		"蛇行弾が直進弾と同じ軌道(%.2f)" % absf(wavy.global_position.y - straight.global_position.y))
+		max_gap = maxf(max_gap, absf(wavy.global_position.y - straight.global_position.y))
+	check(max_gap > 5.0, "蛇行弾が直進弾と同じ軌道(最大ずれ%.2f)" % max_gap)
 	check(absf(straight.rotation) > 0.0001 and absf(wavy.rotation) < 0.0001, "upright の有無で弾の向きが変わらない")
 	straight.free()
 	wavy.free()
@@ -665,7 +668,11 @@ func _ready() -> void:
 		south_pool[Database.pick_mob(SOUTH)] = true
 	for mid2 in south_pool:
 		check(allowed.has(mid2), "南の孤島に他の海域の敵(%s)が出る" % str(mid2))
+	# #75再: クラーケン・ワイバーンは南の孤島から外れたので、それ以外を確かめる
 	for mid3 in allowed:
+		if str(mid3) == "kraken" or str(mid3) == "wyvern":
+			check(not south_pool.has(mid3), "南の孤島から %s が外れていない" % str(mid3))
+			continue
 		check(south_pool.has(mid3), "南の孤島に %s が出ない" % str(mid3))
 	# 造船所: 船は同格の島と同じ、武器は専用2種のみ
 	var got_s: Dictionary = await _listed(port, SOUTH)
@@ -1192,13 +1199,14 @@ func _ready() -> void:
 		if str(t).contains("デバフが効かない"):
 			told.append(t)
 	GameState.notice.connect(cb8)
+	# 幽霊船は15%で回避し、回避すると案内の手前で返る。no_dodge=true で確実に当てる
 	for k8 in 30:
-		gh.take_hit(1.0, false, true)   # 銛で連打
+		gh.take_hit(1.0, false, true, true)   # 銛で連打
 	check(told.size() == 1, "デバフ無効の案内が間引かれていない(30発で%d回)" % told.size())
 	check(gh._no_debuff_told_t > 0.0, "案内のクールダウンが働いていない")
 	# 時間が経てばまた出る
 	gh._no_debuff_told_t = 0.0
-	gh.take_hit(1.0, false, true)
+	gh.take_hit(1.0, false, true, true)
 	check(told.size() == 2, "時間が経っても案内が出ない")
 	GameState.notice.disconnect(cb8)
 	check(Enemy.NO_DEBUFF_TOLD_CD >= 5.0, "案内の間隔が短すぎる")
@@ -1369,9 +1377,161 @@ func _ready() -> void:
 	check(absf(float(Database.lords["undine"].atk_cd) - 0.65) < 0.001,
 		"ウンディーネの攻撃間隔が0.65でない(%.2f)" % float(Database.lords["undine"].atk_cd))
 
+	# ---------------- #75再/#258再2/#266/#267/#265 ----------------
+	# #75再: 出現海域の変更
+	var want_islands := {
+		"kraken": ["潮鳴りの島", "月下の島", "星霜の島", "常闇の島"],
+		"wyvern": ["潮鳴りの島", "月下の島", "星霜の島", "常闇の島"],
+		"killer_shell": ["海嘯の島", "果ての島", "北の孤島"],
+		"carabos": ["海嘯の島", "果ての島", "北の孤島"],
+	}
+	for sp_id in want_islands:
+		var got_isles: Array = []
+		for isle7 in Database.islands_in_order():
+			var idx7 := int(isle7.id)
+			if idx7 < Database.mob_weights.size() and Database.mob_weights[idx7].has(sp_id):
+				got_isles.append(str(isle7.name))
+		got_isles.sort()
+		var exp_isles: Array = (want_islands[sp_id] as Array).duplicate()
+		exp_isles.sort()
+		check(got_isles == exp_isles, "%s の出現海域が指定と違う: %s" % [sp_id, str(got_isles)])
+	# 全島の出現割合は合計1
+	for isl8 in Database.mob_weights.size():
+		var sum8 := 0.0
+		for k8 in Database.mob_weights[isl8]:
+			sum8 += float(Database.mob_weights[isl8][k8])
+		check(absf(sum8 - 1.0) < 0.02, "島%d の出現割合の合計が1でない(%.3f)" % [isl8, sum8])
+
+	# #258再2: 燃料タンクは船団の平均 / 料理人は船団全体で逓減
+	GameState.reset_all()
+	var solo_food: float = GameState.max_food()
+	check(absf(solo_food - float(GameState.ship().food)) < 0.01, "単艦の燃料が旗艦の値と違う")
+	# 2番艦に燃料の多い船を足すと平均が上がる
+	GameState.fleet.append(GameState.new_ship_entry("hauler", []))
+	GameState.fleet[1].crew = [{"name": "副", "job": "firstmate", "hp": 1, "agi": 1, "sht": 1, "int_": 1, "vis": 1}]
+	var two_food: float = GameState.max_food()
+	var expect_avg: float = (float(Database.ships["raft"].food) + float(Database.ships["hauler"].food)) / 2.0
+	check(absf(two_food - expect_avg) < 0.01, "燃料タンクが船団の平均でない(%.1f / 期待%.1f)" % [two_food, expect_avg])
+	# 料理人: 1人目より2人目の上乗せが小さい(逓減)
+	GameState.reset_all()
+	var m0: float = GameState.food_drain_mult()
+	GameState.fleet[0].crew = [{"name": "料1", "job": "cook", "hp": 0, "agi": 0, "sht": 0, "int_": 0, "vis": 0}]
+	var m1: float = GameState.food_drain_mult()
+	GameState.fleet[0].crew.append({"name": "料2", "job": "cook", "hp": 0, "agi": 0, "sht": 0, "int_": 0, "vis": 0})
+	var m2: float = GameState.food_drain_mult()
+	check(m1 < m0, "料理人1人で燃料消費が減らない")
+	check(m2 < m1, "料理人2人目で燃料消費が減らない")
+	check((m1 - m2) < (m0 - m1), "料理人の効果が逓減していない(1人目%.4f 2人目%.4f)" % [m0 - m1, m1 - m2])
+	# 2番艦の料理人も効く
+	GameState.reset_all()
+	GameState.fleet.append(GameState.new_ship_entry("cutter", []))
+	GameState.fleet[1].crew = [{"name": "副", "job": "firstmate", "hp": 1, "agi": 1, "sht": 1, "int_": 1, "vis": 1},
+		{"name": "料", "job": "cook", "hp": 0, "agi": 0, "sht": 0, "int_": 0, "vis": 0}]
+	check(GameState.food_drain_mult() < 1.0, "2番艦の料理人が効いていない")
+
+	# #267: 漂流者・漂流貨物
+	var FlotS = preload("res://scripts2d/Flotsam2D.gd")
+	for fx in ["res://assets/images/pixel/fx_castaway.png", "res://assets/images/pixel/fx_cargo.png"]:
+		check(ResourceLoader.exists(fx), "漂流物の絵が無い: " + fx)
+	GameState.reset_all()
+	# 枠に空きがあればクルーになる
+	GameState.fleet[0].crew = []
+	var before_crew: int = (GameState.fleet[0].crew as Array).size()
+	GameState.rescue_castaway()
+	check((GameState.fleet[0].crew as Array).size() == before_crew + 1, "漂流者がクルーにならない")
+	var jb: String = str((GameState.fleet[0].crew as Array)[0].job)
+	check(jb != "sailor" and jb != "firstmate", "漂流者に水夫/副船長が出た(%s)" % jb)
+	# 枠が無ければ謝礼
+	GameState.fleet[0].crew = []
+	for k11 in GameState.CREW_MAX:
+		GameState.fleet[0].crew.append({"name": "満%d" % k11, "job": "veteran", "hp": 1, "agi": 1, "sht": 1, "int_": 1, "vis": 1})
+	var money_before: int = GameState.money
+	GameState.rescue_castaway()
+	check(GameState.money > money_before, "枠が無いのに謝礼が出ない")
+	check((GameState.fleet[0].crew as Array).size() == GameState.CREW_MAX, "満員なのにクルーが増えた")
+	# 漂流貨物: 魚倉の空きぶんだけ積む
+	GameState.reset_all()
+	GameState.cargo = {}
+	GameState.collect_drifting_cargo()
+	var total_cargo := 0
+	for cid in GameState.cargo:
+		total_cargo += int(GameState.cargo[cid])
+	check(total_cargo > 0, "漂流貨物から何も得られない")
+	check(GameState.used_hold() <= GameState.max_hold(), "漂流貨物で魚倉があふれた")
+
+	# #265: 実績
+	check(Database.achievements.size() == 47, "実績の数が47でない(%d)" % Database.achievements.size())
+	check(GameState.FAME_MAX == 999, "名声のカンストが999でない")
+	GameState.reset_all()
+	GameState.add_fame(99999)
+	check(GameState.fame == 999, "名声がカンストしない(%d)" % GameState.fame)
+	# バフの大きさが陣形を大きく下回る
+	var max_pct := 0.0
+	for a9 in Database.achievements:
+		for k9 in (a9.buff as Dictionary):
+			max_pct = maxf(max_pct, absf(float(a9.buff[k9]) - 1.0) * 100.0)
+	check(max_pct <= 3.0 + 0.001, "バッヂのバフが3%%を超えている(%.1f%%)" % max_pct)
+	check(max_pct * 2.0 < 15.0, "バッヂのバフが陣形(最大15%)に近すぎる")
+	# グループごとの最大値の並び (5)>=(1)>=(4)>=(3)>=(2)>=(6)>=(7)
+	var gmax := {}
+	for a10 in Database.achievements:
+		var g10 := str(a10.group)
+		for k10 in (a10.buff as Dictionary):
+			gmax[g10] = maxf(float(gmax.get(g10, 0.0)), absf(float(a10.buff[k10]) - 1.0) * 100.0)
+	var order10 := ["wealth", "kill", "crew", "fleet", "lord", "fish", "relic"]
+	for i10 in range(order10.size() - 1):
+		var hi10 := float(gmax[order10[i10]])
+		var lo10 := float(gmax[order10[i10 + 1]])
+		check(hi10 >= lo10 - 0.001, "バフの大きさの並びが指定と違う(%s %.1f%% < %s %.1f%%)" % [order10[i10], hi10, order10[i10 + 1], lo10])
+	# 討伐系は番号が進むほど効果が大きい
+	var prev := -1.0
+	for a11 in Database.achievements:
+		if str(a11.group) != "kill" or str(a11.id) == "bounty_hunter":
+			continue
+		var pct11 := 0.0
+		for k11b in (a11.buff as Dictionary):
+			pct11 = absf(float(a11.buff[k11b]) - 1.0) * 100.0
+		check(pct11 >= prev - 0.001, "討伐実績の効果が単調に増えていない(%s)" % str(a11.id))
+		prev = pct11
+	# バッヂ効果が実際に倍率へ効く
+	GameState.reset_all()
+	GameState.achieved = {}
+	GameState.badge_id = ""
+	check(is_equal_approx(GameState.badge_mult("reload"), 1.0), "バッヂ未選択なのに倍率がかかる")
+	var pick := ""
+	for a12 in Database.achievements:
+		if (a12.buff as Dictionary).has("reload"):
+			pick = str(a12.id)
+			break
+	check(pick != "", "リロード系のバッヂが無い")
+	GameState.achieved[pick] = true
+	GameState.select_badge(pick)
+	check(GameState.badge_mult("reload") < 1.0, "バッヂを選んでも倍率が変わらない")
+	GameState.select_badge(pick)   # 同じものを選び直すと解除
+	check(GameState.badge_id == "", "同じバッヂを選び直しても解除されない")
+	# 未達成のバッヂは選べない
+	GameState.achieved = {}
+	GameState.select_badge(pick)
+	check(GameState.badge_id == "", "未達成のバッヂが選べてしまう")
+	# 討伐で実績が達成される
+	GameState.reset_all()
+	GameState.achieved = {}
+	for k12 in 30:
+		GameState.record_kill("mob", "narwhal")
+	check(GameState.is_achieved("kill_narwhal"), "討伐30体で実績が達成されない")
+	# 主の討伐で実績が達成される(エンディング直行でも残るよう即保存)
+	GameState.defeated_lords.append("leviathan")
+	GameState.check_achievements()
+	check(GameState.is_achieved("lord_leviathan"), "レヴィアタン討伐の実績が達成されない")
+	check(FileAccess.file_exists(GameState.ACHIEVE_PATH), "実績が別ファイルへ保存されていない")
+	# 全実績の絵が存在する
+	for a13 in Database.achievements:
+		var ic := str(a13.get("icon", ""))
+		check(ic != "" and ResourceLoader.exists(ic), "実績 %s の絵が無い: %s" % [str(a13.id), ic])
+
 	port.free()
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze/sunny_sea/facing/killer_shell/south_isle/streams/all_islands/bullet_shapes/cluster_range/torpedo_lock/pirate_dmg/ambient/hints2/bestiary/title_bg/flagship_label/broadside/los_toast/fuel_dist/fleet_speed/fx_art/new_fish/loop_sfx/no_debuff_toast/marlin/sweep_shots/idle_fuel/weapon_balance/dodge_text/ammo_guard/crosshair/hp_tuning")
+		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze/sunny_sea/facing/killer_shell/south_isle/streams/all_islands/bullet_shapes/cluster_range/torpedo_lock/pirate_dmg/ambient/hints2/bestiary/title_bg/flagship_label/broadside/los_toast/fuel_dist/fleet_speed/fx_art/new_fish/loop_sfx/no_debuff_toast/marlin/sweep_shots/idle_fuel/weapon_balance/dodge_text/ammo_guard/crosshair/hp_tuning/spawn_islands/fuel_avg/flotsam/achievements")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)

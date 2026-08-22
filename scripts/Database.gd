@@ -64,17 +64,16 @@ var mob_weights := [
 	{"narwhal": 0.55, "seahunter": 0.25, "ornithocheirus": 0.15, "wyrm": 0.05},
 	{"wyrm": 0.45, "kraken": 0.35, "wyvern": 0.20},
 	{"kraken": 0.22, "wyvern": 0.18, "starfish": 0.32, "zaratan": 0.28},                                  # #190: 月下の島。オニヒトデ/ザラタンが主役
-	{"kraken": 0.18, "wyvern": 0.16, "merman": 0.18, "charybdis": 0.16, "amphiptere": 0.16, "starfish": 0.08, "zaratan": 0.08},   # #75/#71: 嵐越え以降はワイアーム非出現+アンフィプテレ
-	{"merman": 0.15, "charybdis": 0.15, "tiamat": 0.2, "dagon": 0.2, "amphiptere": 0.12, "zahhak": 0.18}, # #75再/#71: 果てはクラーケン/ワイバーンも非出現。#72再: ザッハーク追加
+	{"merman": 0.274, "charybdis": 0.242, "amphiptere": 0.242, "starfish": 0.121, "zaratan": 0.121},   # #75再: クラーケン/ワイバーンを外す
+	{"merman": 0.120, "charybdis": 0.120, "tiamat": 0.160, "dagon": 0.160, "amphiptere": 0.096, "zahhak": 0.144, "killer_shell": 0.100, "carabos": 0.100},   # #75再: キラーシェル/カーラボスを追加
 	# #239: 追加した島(index 5=星霜 / 6=常闇 / 7=海嘯)。**islands と同じ並び順で持つこと**
 	{"mermaid": 0.34, "lamia": 0.30, "kraken": 0.20, "wyvern": 0.16},                                     # 星霜(tier2)
 	{"zombie_fish": 0.36, "moon_jelly": 0.30, "kraken": 0.18, "wyvern": 0.16},                            # 常闇(tier2)
-	{"killer_shell": 0.24, "carabos": 0.26, "merman": 0.16, "charybdis": 0.14, "amphiptere": 0.12, "kraken": 0.08},  # 海嘯(tier3)
+	{"killer_shell": 0.261, "carabos": 0.283, "merman": 0.174, "charybdis": 0.152, "amphiptere": 0.130},   # 海嘯(tier3) #75再: クラーケンを外す
 	# #248: 北の孤島(tier4)。果ての島の出現表からティアマットとザッハークを除いて割合を按分
-	{"merman": 0.242, "charybdis": 0.242, "dagon": 0.323, "amphiptere": 0.193},
+	{"merman": 0.194, "charybdis": 0.194, "dagon": 0.258, "amphiptere": 0.154, "killer_shell": 0.100, "carabos": 0.100},   # #75再: キラーシェル/カーラボスを追加
 	# #251: 南の孤島(tier2)。月下・星霜・常闇の3島の出現表を平均したもの
-	{"kraken": 0.200, "wyvern": 0.167, "starfish": 0.107, "zaratan": 0.093,
-		"mermaid": 0.113, "lamia": 0.100, "zombie_fish": 0.120, "moon_jelly": 0.100},
+	{"starfish": 0.169, "zaratan": 0.147, "mermaid": 0.179, "lamia": 0.158, "zombie_fish": 0.189, "moon_jelly": 0.158},   # #75再: クラーケン/ワイバーンを外す
 ]
 
 func pick_mob(tier: int) -> String:
@@ -319,6 +318,69 @@ var pirates := {
 	# hp/dmgは出現海域(island)に応じてEnemy2Dで強化。
 	"king":     {"name": "海賊王",   "hp": 2200, "dmg": 26, "bounty": 4000, "fame": 30, "ranged": true, "wpn": "all", "volley_pool": ["cannon", "gatling", "torpedo"], "volley_pick": 2, "speed": 12.0, "atk_cd": 0.6, "shoot_moving": true, "range_mult": 1.45, "always_aggro": true, "face_left": true, "color": Color(0.1,0.08,0.1)},
 }
+
+# ---------------------------------------------------------------------------
+# #265: 実績とバッヂ。達成すると島の実績メニューで「選択」でき、航海中に小さなバフが付く。
+#   buff のキーは formation_passive と同じ(reload/speed/ram/shot_dmg/shot_speed/
+#   flag_dmg_taken/fleet_dmg_taken)。効果は陣形(5〜15%)を大きく下回る 0.4〜3.0% に収める。
+#   group: kill=モブ討伐 / lord=主討伐 / fleet=編成 / crew=クルー / wealth=資金名声 / fish=漁 / relic=遺物
+#   check: 達成判定の種類。mob / pirate_all / lord / fleet / crew / wealth / fish / relic
+# ---------------------------------------------------------------------------
+var achievements := [
+	{"id": "kill_narwhal", "group": "kill", "name": "ユニコーンキラー", "desc": "ユニコーン を30体討伐", "check": "mob", "target": "narwhal", "need": 30, "buff": {"reload": 0.9940}, "icon": "res://assets/images/pixel/mob_narwhal.png"},
+	{"id": "kill_seahunter", "group": "kill", "name": "シーハンターキラー", "desc": "シーハンター を30体討伐", "check": "mob", "target": "seahunter", "need": 30, "buff": {"speed": 1.0069}, "icon": "res://assets/images/pixel/mob_seahunter.png"},
+	{"id": "kill_ornithocheirus", "group": "kill", "name": "オルニケイトスキラー", "desc": "オルニケイトス を30体討伐", "check": "mob", "target": "ornithocheirus", "need": 30, "buff": {"ram": 1.0079}, "icon": "res://assets/images/pixel/mob_ornithocheirus.png"},
+	{"id": "kill_wyrm", "group": "kill", "name": "ワイアームキラー", "desc": "ワイアーム を30体討伐", "check": "mob", "target": "wyrm", "need": 30, "buff": {"shot_dmg": 1.0088}, "icon": "res://assets/images/pixel/mob_wyrm.png"},
+	{"id": "kill_wyvern", "group": "kill", "name": "ワイバーンキラー", "desc": "ワイバーン を30体討伐", "check": "mob", "target": "wyvern", "need": 30, "buff": {"shot_speed": 1.0098}, "icon": "res://assets/images/pixel/mob_wyvern.png"},
+	{"id": "kill_kraken", "group": "kill", "name": "クラーケンキラー", "desc": "クラーケン を30体討伐", "check": "mob", "target": "kraken", "need": 30, "buff": {"flag_dmg_taken": 0.9893}, "icon": "res://assets/images/pixel/mob_kraken.png"},
+	{"id": "kill_starfish", "group": "kill", "name": "オニヒトデキラー", "desc": "オニヒトデ を30体討伐", "check": "mob", "target": "starfish", "need": 30, "buff": {"fleet_dmg_taken": 0.9883}, "icon": "res://assets/images/pixel/mob_starfish.png"},
+	{"id": "kill_zaratan", "group": "kill", "name": "ザラタンキラー", "desc": "ザラタン を30体討伐", "check": "mob", "target": "zaratan", "need": 30, "buff": {"reload": 0.9874}, "icon": "res://assets/images/pixel/mob_zaratan.png"},
+	{"id": "kill_mermaid", "group": "kill", "name": "マーメイドキラー", "desc": "マーメイド を30体討伐", "check": "mob", "target": "mermaid", "need": 30, "buff": {"speed": 1.0136}, "icon": "res://assets/images/pixel/mob_mermaid.png"},
+	{"id": "kill_lamia", "group": "kill", "name": "ラミアキラー", "desc": "ラミア を30体討伐", "check": "mob", "target": "lamia", "need": 30, "buff": {"ram": 1.0145}, "icon": "res://assets/images/pixel/mob_lamia.png"},
+	{"id": "kill_zombie_fish", "group": "kill", "name": "ゾンビウオキラー", "desc": "ゾンビウオ を90体討伐", "check": "mob", "target": "zombie_fish", "need": 90, "buff": {"shot_dmg": 1.0155}, "icon": "res://assets/images/pixel/mob_zombie_fish.png"},
+	{"id": "kill_moon_jelly", "group": "kill", "name": "ムーンジェリーキラー", "desc": "ムーンジェリー を30体討伐", "check": "mob", "target": "moon_jelly", "need": 30, "buff": {"shot_speed": 1.0164}, "icon": "res://assets/images/pixel/mob_moon_jelly.png"},
+	{"id": "kill_killer_shell", "group": "kill", "name": "キラーシェルキラー", "desc": "キラーシェル を30体討伐", "check": "mob", "target": "killer_shell", "need": 30, "buff": {"flag_dmg_taken": 0.9826}, "icon": "res://assets/images/pixel/mob_killer_shell.png"},
+	{"id": "kill_carabos", "group": "kill", "name": "カーラボスキラー", "desc": "カーラボス を30体討伐", "check": "mob", "target": "carabos", "need": 30, "buff": {"fleet_dmg_taken": 0.9817}, "icon": "res://assets/images/pixel/mob_carabos.png"},
+	{"id": "kill_merman", "group": "kill", "name": "マーマンキラー", "desc": "マーマン を90体討伐", "check": "mob", "target": "merman", "need": 90, "buff": {"reload": 0.9807}, "icon": "res://assets/images/pixel/mob_merman.png"},
+	{"id": "kill_charybdis", "group": "kill", "name": "カリュブディスキラー", "desc": "カリュブディス を30体討伐", "check": "mob", "target": "charybdis", "need": 30, "buff": {"speed": 1.0202}, "icon": "res://assets/images/pixel/mob_charybdis.png"},
+	{"id": "kill_amphiptere", "group": "kill", "name": "アンフィプテレキラー", "desc": "アンフィプテレ を30体討伐", "check": "mob", "target": "amphiptere", "need": 30, "buff": {"ram": 1.0212}, "icon": "res://assets/images/pixel/mob_amphiptere.png"},
+	{"id": "kill_dagon", "group": "kill", "name": "ダゴンキラー", "desc": "ダゴン を30体討伐", "check": "mob", "target": "dagon", "need": 30, "buff": {"shot_dmg": 1.0221}, "icon": "res://assets/images/pixel/mob_dagon.png"},
+	{"id": "kill_zahhak", "group": "kill", "name": "ザッハークキラー", "desc": "ザッハーク を30体討伐", "check": "mob", "target": "zahhak", "need": 30, "buff": {"shot_speed": 1.0231}, "icon": "res://assets/images/pixel/mob_zahhak.png"},
+	{"id": "kill_tiamat", "group": "kill", "name": "ティアマットキラー", "desc": "ティアマット を30体討伐", "check": "mob", "target": "tiamat", "need": 30, "buff": {"flag_dmg_taken": 0.9760}, "icon": "res://assets/images/pixel/mob_tiamat.png"},
+	{"id": "bounty_hunter", "group": "kill", "name": "バウンティハンター", "desc": "海賊を200隻、海賊王を3隻討伐", "check": "pirate_all", "target": "", "need": 200, "buff": {"shot_dmg": 1.0080}, "icon": "res://assets/images/pixel/pirate_king.png"},
+	{"id": "lord_sawshark", "group": "lord", "name": "電動ノコギリザメ狩り", "desc": "電動ノコギリザメ を討伐", "check": "lord", "target": "sawshark", "need": 1, "buff": {"reload": 0.9960}, "icon": "res://assets/images/pixel/lord_sawshark.png"},
+	{"id": "lord_dumbo", "group": "lord", "name": "ウミダンボ狩り", "desc": "ウミダンボ を討伐", "check": "lord", "target": "dumbo", "need": 1, "buff": {"speed": 1.0045}, "icon": "res://assets/images/pixel/lord_dumbo.png"},
+	{"id": "lord_whale", "group": "lord", "name": "ヒゲマッコウナガスクジラ狩り", "desc": "ヒゲマッコウナガスクジラ を討伐", "check": "lord", "target": "whale", "need": 1, "buff": {"ram": 1.0051}, "icon": "res://assets/images/pixel/lord_whale.png"},
+	{"id": "lord_walrus", "group": "lord", "name": "ギガントセイウチ狩り", "desc": "ギガントセイウチ を討伐", "check": "lord", "target": "walrus", "need": 1, "buff": {"shot_dmg": 1.0056}, "icon": "res://assets/images/pixel/lord_walrus.png"},
+	{"id": "lord_aspidochelone", "group": "lord", "name": "アスピドケロン狩り", "desc": "アスピドケロン を討伐", "check": "lord", "target": "aspidochelone", "need": 1, "buff": {"shot_speed": 1.0061}, "icon": "res://assets/images/pixel/lord_aspidochelone.png"},
+	{"id": "lord_legion", "group": "lord", "name": "レギオン狩り", "desc": "レギオン を討伐", "check": "lord", "target": "legion", "need": 1, "buff": {"flag_dmg_taken": 0.9933}, "icon": "res://assets/images/pixel/lord_legion.png"},
+	{"id": "lord_undine", "group": "lord", "name": "ウンディーネ狩り", "desc": "ウンディーネ を討伐", "check": "lord", "target": "undine", "need": 1, "buff": {"fleet_dmg_taken": 0.9928}, "icon": "res://assets/images/pixel/lord_undine.png"},
+	{"id": "lord_siren", "group": "lord", "name": "セイレーン狩り", "desc": "セイレーン を討伐", "check": "lord", "target": "siren", "need": 1, "buff": {"reload": 0.9923}, "icon": "res://assets/images/pixel/lord_siren.png"},
+	{"id": "lord_night_emperor", "group": "lord", "name": "夜の帝王狩り", "desc": "夜の帝王 を討伐", "check": "lord", "target": "night_emperor", "need": 1, "buff": {"speed": 1.0083}, "icon": "res://assets/images/pixel/lord_night_emperor.png"},
+	{"id": "lord_wraith", "group": "lord", "name": "レイス狩り", "desc": "レイス を討伐", "check": "lord", "target": "wraith", "need": 1, "buff": {"ram": 1.0088}, "icon": "res://assets/images/pixel/lord_wraith.png"},
+	{"id": "lord_kraken_lord", "group": "lord", "name": "オクトパス狩り", "desc": "オクトパス を討伐", "check": "lord", "target": "kraken_lord", "need": 1, "buff": {"shot_dmg": 1.0093}, "icon": "res://assets/images/pixel/lord_kraken_lord.png"},
+	{"id": "lord_griffon", "group": "lord", "name": "グリフォン狩り", "desc": "グリフォン を討伐", "check": "lord", "target": "griffon", "need": 1, "buff": {"shot_speed": 1.0099}, "icon": "res://assets/images/pixel/lord_griffon.png"},
+	{"id": "lord_hydra", "group": "lord", "name": "ヒュドラ狩り", "desc": "ヒュドラ を討伐", "check": "lord", "target": "hydra", "need": 1, "buff": {"flag_dmg_taken": 0.9896}, "icon": "res://assets/images/pixel/lord_hydra.png"},
+	{"id": "lord_quetzal", "group": "lord", "name": "ケツァルコアトル狩り", "desc": "ケツァルコアトル を討伐", "check": "lord", "target": "quetzal", "need": 1, "buff": {"fleet_dmg_taken": 0.9891}, "icon": "res://assets/images/pixel/lord_quetzal.png"},
+	{"id": "lord_ghost", "group": "lord", "name": "幽霊船狩り", "desc": "幽霊船 を討伐", "check": "lord", "target": "ghost", "need": 1, "buff": {"reload": 0.9885}, "icon": "res://assets/images/pixel/lord_ghost.png"},
+	{"id": "lord_leviathan", "group": "lord", "name": "レヴィアタン狩り", "desc": "レヴィアタン を討伐", "check": "lord", "target": "leviathan", "need": 1, "buff": {"speed": 1.0120}, "icon": "res://assets/images/pixel/lord_leviathan.png"},
+	{"id": "charge_all", "group": "fleet", "name": "突撃!", "desc": "5隻すべてに超硬タングステン衝角を装備して「突撃」を発動", "check": "fleet", "target": "", "need": 0, "buff": {"ram": 1.0150}, "icon": "res://assets/images/pixel/badge_charge.png"},
+	{"id": "weapon_master", "group": "fleet", "name": "ウェポンマスター", "desc": "船団全体で全種類の武器を装備", "check": "fleet", "target": "", "need": 0, "buff": {"shot_dmg": 1.0140}, "icon": "res://assets/images/pixel/badge_weapon.png"},
+	{"id": "mixed_fleet", "group": "fleet", "name": "混合船団", "desc": "駆逐艦・軽/重フリゲート・快速戦艦・巨大戦艦で船団を編成", "check": "fleet", "target": "", "need": 0, "buff": {"speed": 1.0130}, "icon": "res://assets/images/pixel/badge_mixed.png"},
+	{"id": "battle_fleet", "group": "fleet", "name": "堂々たる戦艦部隊", "desc": "5隻すべてが快速戦艦か巨大戦艦", "check": "fleet", "target": "", "need": 0, "buff": {"fleet_dmg_taken": 0.9880}, "icon": "res://assets/images/pixel/badge_battle.png"},
+	{"id": "master_one", "group": "crew", "name": "極めし者", "desc": "いずれかのパラメータがカンストしたクルーがいる", "check": "crew", "target": "", "need": 0, "buff": {"shot_speed": 1.0160}, "icon": "res://assets/images/pixel/badge_master1.png"},
+	{"id": "master_all", "group": "crew", "name": "極めし者達", "desc": "カンストしたクルーが5隻すべてに乗っている", "check": "crew", "target": "", "need": 0, "buff": {"reload": 0.9780}, "icon": "res://assets/images/pixel/badge_master5.png"},
+	{"id": "fame_max", "group": "wealth", "name": "名声赫赫", "desc": "名声999に到達", "check": "wealth", "target": "", "need": 0, "buff": {"shot_dmg": 1.0300}, "icon": "res://assets/images/pixel/badge_fame.png"},
+	{"id": "rich", "group": "wealth", "name": "錦衣玉食", "desc": "資金500000に到達", "check": "wealth", "target": "", "need": 0, "buff": {"flag_dmg_taken": 0.9740}, "icon": "res://assets/images/pixel/badge_rich.png"},
+	{"id": "all_fish", "group": "fish", "name": "渭川漁父", "desc": "すべての種類の魚を漁獲", "check": "fish", "target": "", "need": 0, "buff": {"speed": 1.0060}, "icon": "res://assets/images/pixel/badge_fish.png"},
+	{"id": "relic100", "group": "relic", "name": "考古学者", "desc": "旧文明の遺産を100個入手", "check": "relic", "target": "", "need": 100, "buff": {"reload": 0.9960}, "icon": "res://assets/images/pixel/badge_relic.png"},
+]
+
+func achievement(aid: String) -> Dictionary:
+	for a in achievements:
+		if str(a.id) == aid:
+			return a
+	return {}
 
 # #177: 討伐記録(図鑑)。戦闘能力があるモブ及び海賊のみ(近海の主は酒場で別掲)。
 # 並び順・図鑑用の説明文を定義。def/画像/討伐数は kind+id で引く。

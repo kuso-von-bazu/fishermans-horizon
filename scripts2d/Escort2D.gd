@@ -416,7 +416,8 @@ func take_damage(amount: float) -> void:
 		return
 	var cut: float = minf(0.015 * GameState.crew_sum_of(fleet_index, "agi"), 0.40)
 	var e: Dictionary = GameState.fleet[fleet_index]
-	var dealt := amount * (1.0 - cut)
+	# #265: バッヂ「船団全体の被ダメージダウン」も効かせる
+	var dealt := amount * (1.0 - cut) * GameState.badge_mult("fleet_dmg_taken")
 	e.armor = maxf(float(e.armor) - dealt, 0.0)
 	# #215再2: 旗艦(GameState.damage_player)と同じく、被弾時12%で炎上する
 	if amount >= 3.0 and _burn_t <= 0.0 and randf() < 0.12:

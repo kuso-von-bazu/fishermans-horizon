@@ -4,6 +4,7 @@ extends CanvasLayer
 
 var lbl_money: Label
 var lbl_fame: Label
+var badge_icon: TextureRect   # #265: 選択中のバッヂ
 var lbl_loc: Label
 var bar_food: ProgressBar
 var bar_hold: ProgressBar
@@ -63,7 +64,17 @@ func _build() -> void:
 	lbl_money = _label("資金: 0", 22)
 	lbl_fame = _label("名声: 0", 22)
 	vb.add_child(lbl_money)
-	vb.add_child(lbl_fame)
+	# #265: 名声の右へ、選択中のバッヂを出す
+	var fame_row := HBoxContainer.new()
+	fame_row.add_theme_constant_override("separation", 8)
+	fame_row.add_child(lbl_fame)
+	badge_icon = TextureRect.new()
+	badge_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	badge_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	badge_icon.custom_minimum_size = Vector2(28, 28)
+	badge_icon.visible = false
+	fame_row.add_child(badge_icon)
+	vb.add_child(fame_row)
 
 	# 右上: 場所
 	var tr := PanelContainer.new()
@@ -394,6 +405,16 @@ func refresh_money_fame() -> void:
 		lbl_money.text = "資金: %d" % GameState.money
 	if lbl_fame:
 		lbl_fame.text = "名声: %d" % GameState.fame
+	# #265: バッヂの表示を更新
+	if badge_icon:
+		var a := Database.achievement(GameState.badge_id)
+		var path := str(a.get("icon", "")) if not a.is_empty() else ""
+		if path != "" and ResourceLoader.exists(path) and GameState.is_achieved(GameState.badge_id):
+			badge_icon.texture = load(path)
+			badge_icon.tooltip_text = str(a.name)
+			badge_icon.visible = true
+		else:
+			badge_icon.visible = false
 
 func set_location(text: String) -> void:
 	if lbl_loc:

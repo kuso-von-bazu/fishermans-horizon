@@ -8,6 +8,7 @@ const FishSchoolScript = preload("res://scripts2d/FishSchool2D.gd")
 const EnemyScript = preload("res://scripts2d/Enemy2D.gd")
 const ProjectileScript = preload("res://scripts2d/Projectile2D.gd")
 const RelicScript = preload("res://scripts2d/Relic2D.gd")
+const FlotsamScript = preload("res://scripts2d/Flotsam2D.gd")   # #267
 const ObstacleScript = preload("res://scripts2d/Obstacle2D.gd")
 const EscortScript = preload("res://scripts2d/Escort2D.gd")
 const HUDScript = preload("res://scripts2d/HUD2D.gd")
@@ -33,6 +34,7 @@ var phase: String = "title"
 var fish_schools: Array = []
 var enemies: Array = []
 var relics_world: Array = []
+var flotsam_world: Array = []   # #267: 漂流者・漂流貨物
 var obstacles: Array = []      # #193: 海上の障害物(岩礁/流氷)
 var escorts: Array = []        # #196: 船団の僚艦(2番艦〜5番艦)
 var slot_cooldowns: Array = [0.0, 0.0, 0.0, 0.0]
@@ -99,6 +101,7 @@ func _ready() -> void:
 	title.start_pressed.connect(_on_title_start)
 	title.continue_pressed.connect(_on_title_continue)
 	title.boss_rush_pressed.connect(_on_boss_rush)   # #209
+	GameState.load_achievements()   # #265: 実績はセーブとは別に読み込む
 	GameState.dock_reset()
 	_enter_dock(0, false)
 	port_ui.close()
@@ -620,6 +623,7 @@ func _update_spawns(delta: float) -> void:
 	fish_schools = fish_schools.filter(func(f): return is_instance_valid(f) and not f.depleted())
 	enemies = enemies.filter(func(e): return is_instance_valid(e))
 	relics_world = relics_world.filter(func(r): return is_instance_valid(r))
+	flotsam_world = flotsam_world.filter(func(x): return is_instance_valid(x))   # #267
 	obstacles = obstacles.filter(func(o): return is_instance_valid(o))
 	for fs in fish_schools.duplicate():
 		if player.global_position.distance_to(fs.global_position) > 320 * K:
@@ -627,6 +631,9 @@ func _update_spawns(delta: float) -> void:
 	for r in relics_world.duplicate():
 		if player.global_position.distance_to(r.global_position) > 360 * K:
 			r.queue_free()
+	for x in flotsam_world.duplicate():   # #267
+		if player.global_position.distance_to(x.global_position) > 360 * K:
+			x.queue_free()
 	# #193: 障害物も遠く離れたら片付ける(数を保ちつつ処理を軽く)
 	for o in obstacles.duplicate():
 		if player.global_position.distance_to(o.global_position) > 380 * K:
@@ -658,6 +665,9 @@ func _update_spawns(delta: float) -> void:
 		_spawn_enemy()
 	if relics_world.size() < 2 and randf() < 0.12:
 		_spawn_relic()
+	# #267: 漂流者・漂流貨物のレアスポーン(遺産よりさらに珍しい)
+	if not _boss_rush and flotsam_world.size() < 1 and randf() < 0.035:
+		_spawn_flotsam()
 	# #193: 障害物は地形に近いので、1tickに複数出して早めに規定数まで満たす
 	for i in 3:
 		if obstacles.size() >= _obstacle_max():
@@ -972,6 +982,31 @@ func _spawn_relic() -> void:
 	r.global_position = pos
 	relics_world.append(r)
 
+# #267: 漂流者・漂流貨物を1つ出す。配置の条件は遺産と同じ(島の上・障害物の上は避ける)
+func _spawn_flotsam() -> void:
+	var pos := _ring_pos(60, 180)
+	for attempt in 6:
+		var ok := _clear_of_obstacles(pos)
+		if ok:
+			for isle_node in islands:
+				if pos.distance_to(isle_node.global_position) < 340.0:
+					ok = false
+					break
+		if ok:
+			break
+		pos = _ring_pos(60, 180)
+	if not _clear_of_obstacles(pos):
+		return
+	for isle_node2 in islands:
+		if pos.distance_to(isle_node2.global_position) < 340.0:
+			return
+	var f := Area2D.new()
+	f.set_script(FlotsamScript)
+	f.setup("castaway" if randf() < 0.5 else "cargo")
+	add_child(f)
+	f.global_position = pos
+	flotsam_world.append(f)
+
 # ---------------- ボスラッシュ(#209) ----------------
 # 出現順: 主を順に、7番目に海賊王(取り巻きは海賊(大)1+海賊(中)1で固定)
 # #209再9: 新しい主(#239)を加え、出現順もレビュアー指定へ入れ替え。
@@ -1186,6 +1221,16 @@ func _use_skill() -> void:
 	if phase != "sea" or _skill_cd > 0.0:
 		return
 	var sk: Dictionary = _current_skill()
+	# #265: 実績「突撃!」= 5隻すべてが超硬タングステン衝角の状態で単縦陣の突撃を発動
+	if str(sk.kind) == "charge" and GameState.fleet.size() >= GameState.max_fleet_cap():
+		var all_tungsten := true
+		for e0 in GameState.fleet:
+			if str(e0.get("ram", "none")) != "tungsten":
+				all_tungsten = false
+				break
+		if all_tungsten:
+			GameState.charge_all_tungsten = true
+			GameState.check_achievements()
 	match str(sk.kind):
 		"volley":
 			# #224再: 非ロックオン時も発動できる。ロック中はロック対象へ、
@@ -1406,7 +1451,7 @@ func _consume_ammo(i: int, w: Dictionary) -> void:
 		return
 	slot_ammo[i] = int(slot_ammo[i]) - 1
 	if slot_ammo[i] <= 0:
-		slot_cooldowns[i] = float(w.reload) * GameState.formation_passive("reload")   # #224再2: 単横陣
+		slot_cooldowns[i] = float(w.reload) * GameState.formation_passive("reload") * GameState.badge_mult("reload")   # #224再2: 単横陣
 		slot_ammo[i] = int(w.mag)
 		GameState.notice.emit("%s リロード中…" % w.name)
 	else:
@@ -1495,7 +1540,7 @@ func _crewed(w: Dictionary) -> Dictionary:
 	# #251: 武器が自前のデバフ種別を持つ場合(冷気放射器)は銛の設定で上書きしない
 	if not w.has("debuff_kind"):
 		w2["debuff_kind"] = GameState.harpoon_debuff   # #196再: 旗艦の銛の効果
-	var dmg: float = float(w.dmg) * GameState.attack_mult() * GameState.formation_passive("shot_dmg")   # #224再2: 鶴翼陣
+	var dmg: float = float(w.dmg) * GameState.attack_mult() * GameState.formation_passive("shot_dmg") * GameState.badge_mult("shot_dmg")   # #224再2: 鶴翼陣
 	if randf() < GameState.crit_chance():
 		dmg *= 2.0   # 水兵のクリティカル
 		w2["crit"] = true   # #139: メッセージは命中時に出す
@@ -1655,6 +1700,9 @@ func _update_sonar() -> void:
 	for r in relics_world:
 		if is_instance_valid(r):
 			blips.append({"pos": r.global_position, "color": Color(1.0, 0.9, 0.4)})
+	for x2 in flotsam_world:   # #267: 漂流物もソナーに出す
+		if is_instance_valid(x2):
+			blips.append({"pos": x2.global_position, "color": Color(0.6, 1.0, 0.85)})
 	for isle in islands:
 		blips.append({"pos": isle.global_position, "color": Color(0.55, 0.85, 0.5)})
 	hud.set_guide(_guide_world_pos())   # #60/#61
@@ -1798,12 +1846,13 @@ func _clear_sea_actors() -> void:
 	for c in get_children():
 		if c is Area2D and c.get_script() == ProjectileScript:
 			c.queue_free()
-	for a in fish_schools + enemies + relics_world + obstacles:
+	for a in fish_schools + enemies + relics_world + obstacles + flotsam_world:
 		if is_instance_valid(a):
 			a.queue_free()
 	fish_schools.clear()
 	enemies.clear()
 	relics_world.clear()
+	flotsam_world.clear()   # #267
 	obstacles.clear()
 	lock_target = null
 
@@ -1829,7 +1878,9 @@ func _maybe_screenshot() -> void:
 	var want_help := false      # #236: 操作早見表
 	var want_settings := false  # #235: 音量設定
 	var want_fleet := false     # #224再2: 編成タブ
-	var want_hintlog := false   # #241再2: ヒントログ
+	var want_hintlog := false
+	var want_ach := false   # #265
+	var want_ach2 := false   # #265: 実績メニューを下までスクロールして撮る   # #241再2: ヒントログ
 	for a in args:
 		if a.begins_with("--shot"):
 			want_shot = true
@@ -1850,6 +1901,8 @@ func _maybe_screenshot() -> void:
 			want_settings = a.find("settings") != -1 # #235
 			want_fleet = a.find("fleet") != -1       # #224再2
 			want_hintlog = a.find("hintlog") != -1   # #241再2
+			want_ach = a.find("ach") != -1   # #265: 実績メニュー
+			want_ach2 = a.find("ach2") != -1   # #265
 			# #190: isle<N> で撮影する海域(島index)を指定(天候・障害物の確認用)
 			var ip := a.find("isle")
 			if ip != -1 and ip + 4 < a.length():
@@ -1985,6 +2038,20 @@ func _maybe_screenshot() -> void:
 				elif a2.find("crew") != -1:
 					port_ui._tavern_section = "crew"
 			port_ui.show_tavern()
+		if want_ach:
+			# #265: すべての実績を達成した状態で実績メニューを開く(確認用)
+			for a2 in Database.achievements:
+				GameState.achieved[str(a2.id)] = true
+			GameState.badge_id = "fame_max"
+			port_ui.show_achievements()
+			# #265: ach2 指定時は下(専用バッヂの並ぶ(3)〜(7))までスクロールする
+			if want_ach2:
+				await get_tree().create_timer(0.3).timeout
+				var sc0: Node = port_ui.content.get_parent()
+				while sc0 != null and not (sc0 is ScrollContainer):
+					sc0 = sc0.get_parent()
+				if sc0 is ScrollContainer:
+					(sc0 as ScrollContainer).scroll_vertical = 100000
 		if want_yard:
 			port_ui._shipyard_weapon_slot = 0   # #248: 武器一覧も写るようスロット1を開いておく
 			port_ui.show_shipyard()

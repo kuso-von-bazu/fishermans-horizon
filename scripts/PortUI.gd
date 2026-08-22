@@ -75,6 +75,7 @@ func _build() -> void:
 	tabs.add_child(_fleet_tab)
 	tabs.add_child(_btn("航路", show_travel))
 	tabs.add_child(_btn("討伐記録", show_bestiary))   # #177
+	tabs.add_child(_btn("実績", show_achievements))   # #265
 	var tab_spacer := Control.new()
 	tab_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tabs.add_child(tab_spacer)
@@ -407,6 +408,119 @@ HP:%d  賞金:%d  [%s]
 					GameState.notice.emit("%s へのガイドを設定" % lname)
 				show_tavern()))
 		content.add_child(row)
+
+# ---------------- 実績とバッヂ(#265) ----------------
+const ACH_GROUP_NAMES := {
+	"kill": "討伐(戦闘能力があるモブ・海賊)",
+	"lord": "近海の主の討伐",
+	"fleet": "編成",
+	"crew": "クルーの育成",
+	"wealth": "資金と名声",
+	"fish": "漁",
+	"relic": "旧文明の遺物",
+}
+
+# バッヂの効果を日本語にする
+func badge_text(a: Dictionary) -> String:
+	var buff: Dictionary = a.get("buff", {})
+	for k in buff:
+		var v := float(buff[k])
+		var pct: float = absf(v - 1.0) * 100.0
+		match str(k):
+			"reload":
+				return "船団のリロード時間 -%.1f%%" % pct
+			"speed":
+				return "前進最高速 +%.1f%%" % pct
+			"ram":
+				return "衝角・体当たりダメージ +%.1f%%" % pct
+			"shot_dmg":
+				return "遠隔攻撃ダメージ +%.1f%%" % pct
+			"shot_speed":
+				return "弾速 +%.1f%%" % pct
+			"flag_dmg_taken":
+				return "旗艦の被ダメージ -%.1f%%" % pct
+			"fleet_dmg_taken":
+				return "船団の被ダメージ -%.1f%%" % pct
+	return "-"
+
+# バッヂの絵。討伐系は敵のドット絵、それ以外は専用の絵
+func _badge_icon(a: Dictionary, h: float) -> Control:
+	var path := str(a.get("icon", ""))
+	if path != "" and ResourceLoader.exists(path):
+		var tr := TextureRect.new()
+		tr.texture = load(path)
+		tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.custom_minimum_size = Vector2(h, h)
+		return tr
+	return _unknown_portrait(h)
+
+func show_achievements() -> void:
+	_refresh_header()
+	_clear()
+	content.add_child(_h("実績", 22))
+	var done := 0
+	for a0 in Database.achievements:
+		if GameState.is_achieved(str(a0.id)):
+			done += 1
+	content.add_child(_p("達成: %d / %d" % [done, Database.achievements.size()]))
+	content.add_child(_p("達成した実績を選ぶと、航海中に名声の右へバッヂが出て小さなバフが付く(選び直しで解除)。"))
+	var cur := ""
+	if GameState.badge_id != "":
+		var ca := Database.achievement(GameState.badge_id)
+		if not ca.is_empty():
+			cur = "%s(%s)" % [str(ca.name), badge_text(ca)]
+	content.add_child(_p("選択中のバッヂ: %s" % ("なし" if cur == "" else cur)))
+	var shown := {}
+	for g in ACH_GROUP_NAMES:
+		var first := true
+		for a in Database.achievements:
+			if str(a.group) != str(g):
+				continue
+			if first:
+				content.add_child(_p(""))
+				content.add_child(_h(str(ACH_GROUP_NAMES[g]), 18))
+				first = false
+			shown[str(a.id)] = true
+			_add_achievement_row(a)
+
+func _add_achievement_row(a: Dictionary) -> void:
+	var aid := str(a.id)
+	var got: bool = GameState.is_achieved(aid)
+	var seen: bool = GameState.achievement_revealed(a)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	# 絵は達成済みのみ表示(未達成は「？」)
+	row.add_child(_badge_icon(a, 44) if got else _unknown_portrait(44))
+	var pr: Array = GameState.achievement_progress(a)
+	var title := str(a.name) if seen else "？？？？？"
+	var body := ""
+	if got:
+		body = "%s\n達成済み  バッヂ効果: %s" % [str(a.desc), badge_text(a)]
+	elif seen:
+		if int(pr[1]) > 1:
+			body = "%s\n進捗 %d / %d" % [str(a.desc), int(pr[0]), int(pr[1])]
+		else:
+			body = str(a.desc)
+	else:
+		body = "まだ出会っていない"
+	var info := _rt("%s\n%s" % [title, body])
+	info.custom_minimum_size = Vector2(520, 0)
+	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	# 未達成はグレーアウト
+	if not got:
+		info.modulate = Color(1, 1, 1, 0.55)
+	row.add_child(info)
+	if got:
+		var picked: bool = GameState.badge_id == aid
+		var b := _btn("選択を解除" if picked else "選択", func():
+			GameState.select_badge(aid)
+			show_achievements())
+		if picked:
+			b.add_theme_color_override("font_color", Color(1.0, 0.92, 0.45))
+		row.add_child(b)
+	content.add_child(row)
 
 # ---------------- 討伐記録(#177) ----------------
 func show_bestiary() -> void:
