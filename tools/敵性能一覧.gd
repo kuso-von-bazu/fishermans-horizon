@@ -114,6 +114,25 @@ func _ready() -> void:
 				str(ld.name), extra, str(isle4.name),
 				Database.scaled_hp(float(ld.hp), idx4), int(ld.dmg),
 				atk_interval(ld, "lord"), float(ld.get("speed", 10.0)), esc]
+	out += "\n## 島ごとの戦闘能力があるモブの出現割合(#75)\n\n"
+	for isle5 in Database.islands_in_order():
+		var idx5 := int(isle5.id)
+		if idx5 >= Database.mob_weights.size():
+			continue
+		var parts5: Array = []
+		for k5 in Database.mob_weights[idx5]:
+			parts5.append("%s %.0f%%" % [str(Database.combat_mobs[str(k5)].name), 100.0 * float(Database.mob_weights[idx5][k5])])
+		out += "- **%s**(tier%d): %s\n" % [str(isle5.name), Database.tier_of(idx5), " / ".join(parts5)]
+	out += "\n### モブごとの出現する島\n\n| 敵 | 出現する島 |\n|---|---|\n"
+	for mid5 in Database.combat_mobs:
+		var where5: Array = []
+		for isle6 in Database.islands_in_order():
+			var idx6 := int(isle6.id)
+			if idx6 < Database.mob_weights.size() and Database.mob_weights[idx6].has(mid5):
+				where5.append(str(isle6.name))
+		out += "| %s | %s |\n" % [str(Database.combat_mobs[mid5].name),
+			("(通常出現なし。主の取り巻きのみ)" if where5.is_empty() else " / ".join(where5))]
+
 	var f := FileAccess.open("user://enemies_dump.md", FileAccess.WRITE)
 	f.store_string(out)
 	f.close()

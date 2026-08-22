@@ -1318,9 +1318,60 @@ func _ready() -> void:
 			c12.free()
 	dg.free()
 
+	# ---------------- #264/#256再/#262再/#263再 ----------------
+	# #264: 撃てなかったときに弾を消費しない
+	var wsrc5 := FileAccess.get_file_as_string("res://scripts2d/World2D.gd")
+	check(wsrc5.contains("func _fire_aim(w: Dictionary) -> bool:"), "_fire_aim が発射の成否を返さない")
+	check(wsrc5.contains("if _fire_aim(w):"), "撃てたときだけ弾を減らす形になっていない")
+	check(wsrc5.contains("return false   # #264"), "遮断時に false を返していない")
+	# 実際に、射線が塞がっていると弾が減らないこと
+	var w10 := Node2D.new()
+	w10.set_script(World2)
+	add_child(w10)
+	await get_tree().process_frame
+	var pl10 := CharacterBody2D.new()
+	w10.add_child(pl10)
+	w10.player = pl10
+	pl10.global_position = Vector2.ZERO
+	# 実際に狙う向き(マウスの位置は環境で変わるので実行時に求める)
+	var aim_dir: Vector2 = (w10.get_global_mouse_position() - pl10.global_position).normalized()
+	var eb10 := CharacterBody2D.new()
+	w10.add_child(eb10)
+	eb10.global_position = pl10.global_position + aim_dir * 95.0   # 真正面=どの舷からも塞がる
+	w10.escorts = [eb10]
+	check(w10._clear_muzzle(aim_dir, 864.0) == null, "テストの配置が射線を塞げていない")
+	var fired: bool = w10._fire_aim(Database.weapons["gatling"].duplicate())
+	check(not fired, "射線が塞がっているのに発射できた")
+	eb10.global_position = pl10.global_position - aim_dir * 4000.0   # 背後へ退避
+	var fired2: bool = w10._fire_aim(Database.weapons["gatling"].duplicate())
+	check(fired2, "射線が空いているのに発射できない")
+	w10.free()
+
+	# #256再: 照準は常時表示(塞がっていなくても出る)
+	var LosS2 = preload("res://scripts2d/LosOverlay2D.gd")
+	var lsrc := FileAccess.get_file_as_string("res://scripts2d/LosOverlay2D.gd")
+	check(lsrc.contains("if active:"), "照準の常時表示が実装されていない")
+	check(lsrc.contains("aim_col"), "照準の色が塞がりの有無で変わらない")
+	var los2 := Node2D.new()
+	los2.set_script(LosS2)
+	add_child(los2)
+	los2.set_state(null, Vector2.ZERO, Vector2(100, 0), true)
+	check(los2.active and los2.blocker == null, "塞がっていないときも照準を出す状態になっていない")
+	los2.set_state(null, Vector2.ZERO, Vector2.ZERO, false)
+	check(not los2.active, "航海中以外でも照準が出る")
+	los2.free()
+
+	# #262再/#263再: 指定されたHPと攻撃間隔
+	check(Database.scaled_hp(float(Database.combat_mobs["killer_shell"].hp), 7) == 3900,
+		"キラーシェルの海嘯の島でのHPが3900でない(%d)" % Database.scaled_hp(float(Database.combat_mobs["killer_shell"].hp), 7))
+	check(Database.scaled_hp(float(Database.combat_mobs["zombie_fish"].hp), 6) == 900,
+		"ゾンビウオの常闇の島でのHPが900でない(%d)" % Database.scaled_hp(float(Database.combat_mobs["zombie_fish"].hp), 6))
+	check(absf(float(Database.lords["undine"].atk_cd) - 0.65) < 0.001,
+		"ウンディーネの攻撃間隔が0.65でない(%.2f)" % float(Database.lords["undine"].atk_cd))
+
 	port.free()
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze/sunny_sea/facing/killer_shell/south_isle/streams/all_islands/bullet_shapes/cluster_range/torpedo_lock/pirate_dmg/ambient/hints2/bestiary/title_bg/flagship_label/broadside/los_toast/fuel_dist/fleet_speed/fx_art/new_fish/loop_sfx/no_debuff_toast/marlin/sweep_shots/idle_fuel/weapon_balance/dodge_text")
+		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze/sunny_sea/facing/killer_shell/south_isle/streams/all_islands/bullet_shapes/cluster_range/torpedo_lock/pirate_dmg/ambient/hints2/bestiary/title_bg/flagship_label/broadside/los_toast/fuel_dist/fleet_speed/fx_art/new_fish/loop_sfx/no_debuff_toast/marlin/sweep_shots/idle_fuel/weapon_balance/dodge_text/ammo_guard/crosshair/hp_tuning")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)

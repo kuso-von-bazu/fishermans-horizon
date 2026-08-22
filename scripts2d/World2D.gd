@@ -483,7 +483,7 @@ func _physics_process(delta: float) -> void:
 	if phase != "sea":
 		Audio.stop_loop_sfx()   # #251再: 航海中以外では放射音を止める
 		if _los_overlay:
-			_los_overlay.set_state(null, Vector2.ZERO, Vector2.ZERO)
+			_los_overlay.set_state(null, Vector2.ZERO, Vector2.ZERO, false)
 		return
 	_update_los_overlay()   # #256
 	GameState.regen_fire(delta)
@@ -1357,7 +1357,7 @@ func _update_los_overlay() -> void:
 	if _los_overlay == null or not is_instance_valid(player):
 		return
 	if phase != "sea" or GameState.docking_locked:
-		_los_overlay.set_state(null, Vector2.ZERO, Vector2.ZERO)
+		_los_overlay.set_state(null, Vector2.ZERO, Vector2.ZERO, false)
 		return
 	# 装備しているエイム武器のうち最も射程の長いものを基準にする
 	var reach := 0.0
@@ -1369,8 +1369,8 @@ func _update_los_overlay() -> void:
 		if str(w.kind) == "aim":
 			reach = maxf(reach, float(w.range) * K * 1.2)
 	if reach <= 0.0:
-		_los_overlay.set_state(null, Vector2.ZERO, Vector2.ZERO)
-		return
+		_los_overlay.set_state(null, player.global_position, get_global_mouse_position(), true)
+		return   # #256再: エイム武器が無くても照準そのものは出す
 	var m := get_global_mouse_position()
 	var dir := (m - player.global_position).normalized()
 	var blocker: Node2D = null
@@ -1454,8 +1454,8 @@ func _update_weapons(delta: float) -> void:
 				continue
 			var w: Dictionary = Database.weapons[wid]
 			if w.kind == "aim" and slot_cooldowns[i] <= 0:
-				_fire_aim(w)
-				_consume_ammo(i, w)
+				if _fire_aim(w):
+					_consume_ammo(i, w)   # #264: 撃てたときだけ弾を減らす
 	if Input.is_action_just_pressed("fire_torpedo"):
 		for i in slots:
 			var wid: String = GameState.weapons[i] if i < GameState.weapons.size() else ""
@@ -1502,14 +1502,15 @@ func _crewed(w: Dictionary) -> Dictionary:
 	w2.dmg = dmg
 	return w2
 
-func _fire_aim(w: Dictionary) -> void:
+# #264: 実際に発射できたかを返す(撃てなかったときに弾を減らさないため)
+func _fire_aim(w: Dictionary) -> bool:
 	var dir := (get_global_mouse_position() - player.global_position).normalized()
 	# #196: 味方に射線が重なるときは撃たない(フレンドリーファイア無し)。魚雷は射線を無視できる
 	# #257: 中心が塞がっていても、左右の舷から射線が通ればそこから撃つ
 	var muzzle = _clear_muzzle(dir, float(w.range) * K * 1.2)
 	if muzzle == null:
 		_notify_los_blocked(str(w.name))   # #256: 撃てなかったことを必ず伝える
-		return
+		return false   # #264: 弾を消費させない
 	# #251再: 放射系は持続音(ループ)に任せ、1発ごとの効果音は鳴らさない
 	if not w.has("loop_sfx"):
 		Audio.play(w.get("sfx", "sfx_gun"), -8.0, randf_range(0.95, 1.05))   # #47再: 攻撃音を少し小さく
@@ -1519,6 +1520,7 @@ func _fire_aim(w: Dictionary) -> void:
 	proj.global_position = (muzzle as Vector2) + dir * 40.0
 	proj.from_player = true
 	proj.setup(dir, _crewed(w))
+	return true
 
 func _fire_torpedo(w: Dictionary) -> void:
 	# #252: ロック中の敵がいるときだけ呼ばれる(呼び出し側で確認済み)
