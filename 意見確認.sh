@@ -22,9 +22,18 @@ if [ -z "$REPO" ]; then
   echo "ERROR: .gh_repo にリポジトリ(owner/name)を書いてください。" >&2; exit 1
 fi
 
-echo "== オープン中の意見 ($REPO) 古い順 =="
+# コンサル希望(コンサルラベル)は開発者が別のタイミングで手動対応するため、
+# ここでは拾わない。件数だけ知らせる。
+CONSULT="$("$GH" issue list --repo "$REPO" --state open --limit 50 --label コンサル --json number --jq 'length' 2>/dev/null || echo 0)"
+
+echo "== オープン中の意見 ($REPO) 古い順 / コンサル希望は除く =="
 "$GH" issue list --repo "$REPO" --state open --limit 50 \
   --json number,title,labels,body,createdAt,author \
-  --jq 'sort_by(.createdAt) | .[] | "──────────\n#\(.number)  [\(.author.login)]  \(.title)\n  ラベル: \([.labels[].name] | join(","))\n\(.body)\n"'
+  --jq 'map(select(([.labels[].name] | index("コンサル")) | not)) | sort_by(.createdAt) | .[] | "──────────\n#\(.number)  [\(.author.login)]  \(.title)\n  ラベル: \([.labels[].name] | join(","))\n\(.body)\n"'
 echo "──────────"
+if [ "${CONSULT:-0}" != "0" ]; then
+  echo "※ コンサル希望が ${CONSULT} 件あります(このスクリプトでは表示しません)。"
+  echo "   開発者が別途 Fable で対応するため、/loop では触らないこと。"
+  echo "   見る場合: gh issue list --repo \"$REPO\" --state open --label コンサル"
+fi
 echo "(反映後: gh issue comment <番号> -b \"✅反映: ...\" ; gh issue close <番号>)"
