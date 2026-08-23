@@ -25,6 +25,12 @@ LONG_OVERRIDE = {"lord_leviathan.png": 200, "lord_leviathan_front.png": 200, "lo
                  "lord_siren.png": 180, "lord_siren_front.png": 180, "lord_siren_back.png": 180,
                  # #239再6: オクトパス(触腕が細かいので高精細。48pxだと足が潰れて塊に見える)
                  "lord_kraken_lord.png": 180, "lord_kraken_lord_front.png": 180, "lord_kraken_lord_back.png": 180,
+                 # #270/#271/#272: 序盤の主も高精細に(ドット絵が粗いという指摘)
+                 "lord_sawshark.png": 180, "lord_sawshark_front.png": 180, "lord_sawshark_back.png": 180,
+                 "lord_walrus.png": 180, "lord_walrus_front.png": 180, "lord_walrus_back.png": 180,
+                 "lord_dumbo.png": 180, "lord_dumbo_front.png": 180, "lord_dumbo_back.png": 180,
+                 # #265再: ムーンジェリー・海賊王・夜の帝王(横向きだけ粗かった)
+                 "mob_moon_jelly.png": 180, "pirate_king.png": 180, "lord_night_emperor.png": 180,
                  # #239再7: レイス(ぼろ布のほつれが細かい)
                  "lord_wraith.png": 180, "lord_wraith_front.png": 180, "lord_wraith_back.png": 180}
 # #81: レヴィアタンは色数も増やしてより詳細に。#173: ケツァルも増色。#81再: ヒュドラ増色・ケツァル64色
@@ -39,6 +45,9 @@ COLORS_OVERRIDE = {"lord_leviathan.png": 64, "lord_leviathan_front.png": 64, "lo
                    "lord_siren.png": 64, "lord_siren_front.png": 64, "lord_siren_back.png": 64,
                    # #239再6: オクトパス
                    "lord_kraken_lord.png": 64, "lord_kraken_lord_front.png": 64, "lord_kraken_lord_back.png": 64,
+                   # #270/#271/#272 と #265再
+                   "lord_sawshark.png": 64, "lord_walrus.png": 64, "lord_dumbo.png": 64,
+                   "mob_moon_jelly.png": 64, "pirate_king.png": 64, "lord_night_emperor.png": 64,
                    # #239再7: レイス
                    "lord_wraith.png": 64, "lord_wraith_front.png": 64, "lord_wraith_back.png": 64}
 

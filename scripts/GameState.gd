@@ -897,7 +897,7 @@ func _achievement_met(a: Dictionary) -> bool:
 			return defeated_lords.has(str(a.target)) or claimed_lords.has(str(a.target))
 		"pirate_all":
 			var p := kill_count("pirate", "raider") + kill_count("pirate", "corsair") + kill_count("pirate", "dread")
-			return p >= int(a.need) and kill_count("pirate", "king") >= 3
+			return p >= int(a.need) and kill_count("pirate", "king") >= 2   # #265再: 3隻→2隻
 		"relic":
 			return relic_count >= int(a.need)
 		"fish":

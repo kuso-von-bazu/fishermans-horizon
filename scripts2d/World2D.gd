@@ -1880,7 +1880,8 @@ func _maybe_screenshot() -> void:
 	var want_fleet := false     # #224再2: 編成タブ
 	var want_hintlog := false
 	var want_ach := false   # #265
-	var want_ach2 := false   # #265: 実績メニューを下までスクロールして撮る   # #241再2: ヒントログ
+	var want_ach2 := false   # #265: 実績メニューを下までスクロールして撮る
+	var want_ach3 := false   # #265再: 未達成のまま撮る(「？」の揃いを見る)   # #241再2: ヒントログ
 	for a in args:
 		if a.begins_with("--shot"):
 			want_shot = true
@@ -1903,6 +1904,7 @@ func _maybe_screenshot() -> void:
 			want_hintlog = a.find("hintlog") != -1   # #241再2
 			want_ach = a.find("ach") != -1   # #265: 実績メニュー
 			want_ach2 = a.find("ach2") != -1   # #265
+			want_ach3 = a.find("ach3") != -1   # #265再
 			# #190: isle<N> で撮影する海域(島index)を指定(天候・障害物の確認用)
 			var ip := a.find("isle")
 			if ip != -1 and ip + 4 < a.length():
@@ -2040,8 +2042,9 @@ func _maybe_screenshot() -> void:
 			port_ui.show_tavern()
 		if want_ach:
 			# #265: すべての実績を達成した状態で実績メニューを開く(確認用)
-			for a2 in Database.achievements:
-				GameState.achieved[str(a2.id)] = true
+			if not want_ach3:
+				for a2 in Database.achievements:
+					GameState.achieved[str(a2.id)] = true
 			GameState.badge_id = "fame_max"
 			port_ui.show_achievements()
 			# #265: ach2 指定時は下(専用バッヂの並ぶ(3)〜(7))までスクロールする

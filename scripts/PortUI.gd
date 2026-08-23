@@ -455,6 +455,28 @@ func _badge_icon(a: Dictionary, h: float) -> Control:
 		return tr
 	return _unknown_portrait(h)
 
+# #265再: 未達成のバッヂ枠。バッヂ画像と同じ正方形にして一覧の左端を揃える
+func _unknown_badge(h: float) -> Control:
+	var box := Panel.new()
+	box.custom_minimum_size = Vector2(h, h)
+	box.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.12, 0.16, 0.20, 0.85)
+	sb.border_color = Color(0.35, 0.42, 0.5, 0.9)
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(4)
+	box.add_theme_stylebox_override("panel", sb)
+	var q := Label.new()
+	q.text = "？"
+	q.add_theme_font_size_override("font_size", int(h * 0.5))
+	q.add_theme_color_override("font_color", Color(0.6, 0.68, 0.75))
+	q.set_anchors_preset(Control.PRESET_FULL_RECT)
+	q.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	q.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	box.add_child(q)
+	return box
+
 func show_achievements() -> void:
 	_refresh_header()
 	_clear()
@@ -491,7 +513,8 @@ func _add_achievement_row(a: Dictionary) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
 	# 絵は達成済みのみ表示(未達成は「？」)
-	row.add_child(_badge_icon(a, 44) if got else _unknown_portrait(44))
+	# #265再: 未達成の「？」もバッヂと同じ枠に収め、一覧の左端を揃える
+	row.add_child(_badge_icon(a, 44) if got else _unknown_badge(44))
 	var pr: Array = GameState.achievement_progress(a)
 	var title := str(a.name) if seen else "？？？？？"
 	var body := ""
@@ -591,7 +614,7 @@ func show_shipyard() -> void:
 		if not Database.shop_has_ship(GameState.current_island, sid):
 			continue  # #247: この島では扱わない船
 		var cost := GameState.ship_buy_cost(sid)   # #196: 下取り無し・購入した船はストックへ
-		var line := "%s  燃料%d 魚倉%d 装甲%d 武器枠%d 速%.0f" % [s.name, s.food, s.hold, s.armor, s.slots, s.speed]
+		var line := "%s  燃料%d 魚倉%d 装甲%d 武器枠%d 速%.1f" % [s.name, s.food, s.hold, s.armor, s.slots, s.speed]
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 10)
 		var lab := _p(line)
@@ -810,7 +833,7 @@ func show_fleet() -> void:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 8)
 		var ok := GameState.can_sail(i)
-		var lab := _p("%s: %s  装甲%d 速%.0f 武器枠%d  クルー%d/%d %s" % [
+		var lab := _p("%s: %s  装甲%d 速%.1f 武器枠%d  クルー%d/%d %s" % [
 			GameState.fleet_label(i), sd.name, sd.armor, sd.speed, sd.slots,
 			e.crew.size(), GameState.CREW_MAX,
 			"" if ok else "【副船長がいないため出港不可】"])
@@ -900,7 +923,7 @@ func show_fleet() -> void:
 		var sd2: Dictionary = Database.ships[sid]
 		var srow := HBoxContainer.new()
 		srow.add_theme_constant_override("separation", 8)
-		var slab := _p("%s  装甲%d 速%.0f 武器枠%d" % [sd2.name, sd2.armor, sd2.speed, sd2.slots])
+		var slab := _p("%s  装甲%d 速%.1f 武器枠%d" % [sd2.name, sd2.armor, sd2.speed, sd2.slots])
 		slab.custom_minimum_size = Vector2(420, 0)
 		srow.add_child(slab)
 		var si := i

@@ -577,8 +577,9 @@ func _physics_process(delta: float) -> void:
 		var kite_ok: bool = hp / maxf(max_hp, 1.0) <= float(def.get("kite_hp", 1.0))
 		if bool(def.get("kite", false)) and kite_ok and (bool(def.get("kite_always", false)) or _escorts_cleared()) and dist < attack_range * 0.85:
 			move_dir = -to.normalized()
-			# 島の迂回で進行方向が揺れても、見た目はプレイヤーの真逆で固定する
-			face_dir = -to.normalized()
+			# #273: 引き撃ち中は後退しつつも、見た目は船団の側を向いたままにする
+			#   (撃ちながら下がる絵にするため。進行方向ではなく敵→自機の向きで固定)
+			face_dir = to.normalized()
 		# #149再: ティアマット等はプレイヤーを追いつつさらに大きくジグザグに移動
 		elif bool(def.get("zigzag", false)):
 			var perp := move_dir.rotated(PI / 2)

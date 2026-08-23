@@ -69,7 +69,7 @@ var mob_weights := [
 	# #239: 追加した島(index 5=星霜 / 6=常闇 / 7=海嘯)。**islands と同じ並び順で持つこと**
 	{"mermaid": 0.34, "lamia": 0.30, "kraken": 0.20, "wyvern": 0.16},                                     # 星霜(tier2)
 	{"zombie_fish": 0.36, "moon_jelly": 0.30, "kraken": 0.18, "wyvern": 0.16},                            # 常闇(tier2)
-	{"killer_shell": 0.261, "carabos": 0.283, "merman": 0.174, "charybdis": 0.152, "amphiptere": 0.130},   # 海嘯(tier3) #75再: クラーケンを外す
+	{"killer_shell": 0.254, "carabos": 0.276, "merman": 0.170, "moon_jelly": 0.150, "starfish": 0.150},   # 海嘯(tier3) #75再2: カリュブディス/アンフィプテレを外しムーンジェリー/オニヒトデを追加
 	# #248: 北の孤島(tier4)。果ての島の出現表からティアマットとザッハークを除いて割合を按分
 	{"merman": 0.194, "charybdis": 0.194, "dagon": 0.258, "amphiptere": 0.154, "killer_shell": 0.100, "carabos": 0.100},   # #75再: キラーシェル/カーラボスを追加
 	# #251: 南の孤島(tier2)。月下・星霜・常闇の3島の出現表を平均したもの
@@ -347,7 +347,7 @@ var achievements := [
 	{"id": "kill_dagon", "group": "kill", "name": "ダゴンキラー", "desc": "ダゴン を30体討伐", "check": "mob", "target": "dagon", "need": 30, "buff": {"shot_dmg": 1.0221}, "icon": "res://assets/images/pixel/mob_dagon.png"},
 	{"id": "kill_zahhak", "group": "kill", "name": "ザッハークキラー", "desc": "ザッハーク を30体討伐", "check": "mob", "target": "zahhak", "need": 30, "buff": {"shot_speed": 1.0231}, "icon": "res://assets/images/pixel/mob_zahhak.png"},
 	{"id": "kill_tiamat", "group": "kill", "name": "ティアマットキラー", "desc": "ティアマット を30体討伐", "check": "mob", "target": "tiamat", "need": 30, "buff": {"flag_dmg_taken": 0.9760}, "icon": "res://assets/images/pixel/mob_tiamat.png"},
-	{"id": "bounty_hunter", "group": "kill", "name": "バウンティハンター", "desc": "海賊を200隻、海賊王を3隻討伐", "check": "pirate_all", "target": "", "need": 200, "buff": {"shot_dmg": 1.0080}, "icon": "res://assets/images/pixel/pirate_king.png"},
+	{"id": "bounty_hunter", "group": "kill", "name": "バウンティハンター", "desc": "海賊を100隻、海賊王を2隻討伐", "check": "pirate_all", "target": "", "need": 100, "buff": {"shot_dmg": 1.0080}, "icon": "res://assets/images/pixel/pirate_king.png"},
 	{"id": "lord_sawshark", "group": "lord", "name": "電動ノコギリザメ狩り", "desc": "電動ノコギリザメ を討伐", "check": "lord", "target": "sawshark", "need": 1, "buff": {"reload": 0.9960}, "icon": "res://assets/images/pixel/lord_sawshark.png"},
 	{"id": "lord_dumbo", "group": "lord", "name": "ウミダンボ狩り", "desc": "ウミダンボ を討伐", "check": "lord", "target": "dumbo", "need": 1, "buff": {"speed": 1.0045}, "icon": "res://assets/images/pixel/lord_dumbo.png"},
 	{"id": "lord_whale", "group": "lord", "name": "ヒゲマッコウナガスクジラ狩り", "desc": "ヒゲマッコウナガスクジラ を討伐", "check": "lord", "target": "whale", "need": 1, "buff": {"ram": 1.0051}, "icon": "res://assets/images/pixel/lord_whale.png"},
@@ -368,10 +368,10 @@ var achievements := [
 	{"id": "weapon_master", "group": "fleet", "name": "ウェポンマスター", "desc": "船団全体で全種類の武器を装備", "check": "fleet", "target": "", "need": 0, "buff": {"shot_dmg": 1.0140}, "icon": "res://assets/images/pixel/badge_weapon.png"},
 	{"id": "mixed_fleet", "group": "fleet", "name": "混合船団", "desc": "駆逐艦・軽/重フリゲート・快速戦艦・巨大戦艦で船団を編成", "check": "fleet", "target": "", "need": 0, "buff": {"speed": 1.0130}, "icon": "res://assets/images/pixel/badge_mixed.png"},
 	{"id": "battle_fleet", "group": "fleet", "name": "堂々たる戦艦部隊", "desc": "5隻すべてが快速戦艦か巨大戦艦", "check": "fleet", "target": "", "need": 0, "buff": {"fleet_dmg_taken": 0.9880}, "icon": "res://assets/images/pixel/badge_battle.png"},
-	{"id": "master_one", "group": "crew", "name": "極めし者", "desc": "いずれかのパラメータがカンストしたクルーがいる", "check": "crew", "target": "", "need": 0, "buff": {"shot_speed": 1.0160}, "icon": "res://assets/images/pixel/badge_master1.png"},
-	{"id": "master_all", "group": "crew", "name": "極めし者達", "desc": "カンストしたクルーが5隻すべてに乗っている", "check": "crew", "target": "", "need": 0, "buff": {"reload": 0.9780}, "icon": "res://assets/images/pixel/badge_master5.png"},
+	{"id": "master_one", "group": "crew", "name": "極めし者", "desc": "いずれかのパラメータがカンストしたクルーがいる", "check": "crew", "target": "", "need": 0, "buff": {"shot_speed": 1.0130}, "icon": "res://assets/images/pixel/badge_master1.png"},
+	{"id": "master_all", "group": "crew", "name": "極めし者達", "desc": "カンストしたクルーが5隻すべてに乗っている", "check": "crew", "target": "", "need": 0, "buff": {"reload": 0.9800}, "icon": "res://assets/images/pixel/badge_master5.png"},
 	{"id": "fame_max", "group": "wealth", "name": "名声赫赫", "desc": "名声999に到達", "check": "wealth", "target": "", "need": 0, "buff": {"shot_dmg": 1.0300}, "icon": "res://assets/images/pixel/badge_fame.png"},
-	{"id": "rich", "group": "wealth", "name": "錦衣玉食", "desc": "資金500000に到達", "check": "wealth", "target": "", "need": 0, "buff": {"flag_dmg_taken": 0.9740}, "icon": "res://assets/images/pixel/badge_rich.png"},
+	{"id": "rich", "group": "wealth", "name": "錦衣玉食", "desc": "資金500000に到達", "check": "wealth", "target": "", "need": 0, "buff": {"flag_dmg_taken": 0.9800}, "icon": "res://assets/images/pixel/badge_rich.png"},
 	{"id": "all_fish", "group": "fish", "name": "渭川漁父", "desc": "すべての種類の魚を漁獲", "check": "fish", "target": "", "need": 0, "buff": {"speed": 1.0060}, "icon": "res://assets/images/pixel/badge_fish.png"},
 	{"id": "relic100", "group": "relic", "name": "考古学者", "desc": "旧文明の遺産を100個入手", "check": "relic", "target": "", "need": 100, "buff": {"reload": 0.9960}, "icon": "res://assets/images/pixel/badge_relic.png"},
 ]
@@ -465,8 +465,8 @@ var ships := {
 	# #190: rangeは「販売が解禁される島index」。月下の島(2)の追加でコルベット以降を1つずつ後ろへずらす
 	"corvette": {"name": "コルベット",     "food": 200, "hold": 40,  "armor": 480,  "slots": 4, "range": 2, "speed": 12.5, "price": 32000,  "trade": 12000},   # #190: 月下の島で追加
 	# #228: 猟特化フリゲートを駆逐艦へ改称。快速艦は後退時の減速が緩やか(reverse=0.9)
-	"hunter_h": {"name": "駆逐艦",         "food": 170, "hold": 32,  "armor": 600,  "slots": 4, "range": 3, "speed": 15.0, "price": 50000,  "trade": 18000, "reverse": 0.9},
-	"hauler":   {"name": "大型運搬艦",     "food": 240, "hold": 70,  "armor": 720,  "slots": 4, "range": 3, "speed": 11.0, "price": 50000,  "trade": 18000},
+	"hunter_h": {"name": "駆逐艦",         "food": 170, "hold": 32,  "armor": 600,  "slots": 4, "range": 3, "speed": 15.0, "price": 60000,  "trade": 18000, "reverse": 0.9},
+	"hauler":   {"name": "大型運搬艦",     "food": 240, "hold": 70,  "armor": 720,  "slots": 4, "range": 3, "speed": 12.0, "price": 50000,  "trade": 18000},
 	# #228: 果ての島での追加順は軽→重→快速→巨大。visualは既存のフリゲート/快速艦の船影を共用する
 	"frigate_l":{"name": "軽フリゲート",   "food": 250, "hold": 35,  "armor": 800,  "slots": 4, "range": 4, "speed": 16.0, "price": 70000,  "trade": 25000, "reverse": 0.9, "visual": "hunter_h"},
 	"frigate_h":{"name": "重フリゲート",   "food": 280, "hold": 40,  "armor": 900,  "slots": 4, "range": 4, "speed": 15.0, "price": 90000,  "trade": 32000, "reverse": 0.9, "visual": "cruiser"},

@@ -1529,9 +1529,53 @@ func _ready() -> void:
 		var ic := str(a13.get("icon", ""))
 		check(ic != "" and ResourceLoader.exists(ic), "実績 %s の絵が無い: %s" % [str(a13.id), ic])
 
+	# ---------------- #269/#266再/#75再2/#273/#265再/#270-272/画像修正 ----------------
+	# #269: 造船所の速度表示は小数1桁
+	var psrc5 := FileAccess.get_file_as_string("res://scripts/PortUI.gd")
+	check(psrc5.contains("速%.1f"), "造船所の速度が小数で表示されない")
+	check(not psrc5.contains("速%.0f"), "船の速度に整数表示が残っている(敵の「速度:%d」は対象外)")
+
+	# #266再: 大型運搬艦の速度12.0 / 駆逐艦の価格60000
+	check(is_equal_approx(float(Database.ships["hauler"].speed), 12.0), "大型運搬艦の速度が12.0でない")
+	check(int(Database.ships["hunter_h"].price) == 60000, "駆逐艦の価格が60000でない")
+
+	# #75再2: 海嘯の島の顔ぶれ
+	var kaisho: Dictionary = Database.mob_weights[7]
+	for k_gone in ["charybdis", "amphiptere"]:
+		check(not kaisho.has(k_gone), "海嘯の島から %s が外れていない" % k_gone)
+	for k_add in ["moon_jelly", "starfish"]:
+		check(kaisho.has(k_add), "海嘯の島に %s が追加されていない" % k_add)
+
+	# #273: ウンディーネは引き撃ち中も船団の側を向く
+	var esrc5 := FileAccess.get_file_as_string("res://scripts2d/Enemy2D.gd")
+	check(esrc5.contains("face_dir = to.normalized()"), "引き撃ち中に船団の側を向いていない")
+	check(not esrc5.contains("face_dir = -to.normalized()"), "引き撃ち中に背を向ける記述が残っている")
+
+	# #265再: バフの弱体化と達成条件の緩和
+	check(is_equal_approx(float(Database.achievement("rich").buff["flag_dmg_taken"]), 0.98), "錦衣玉食が-2.0%でない")
+	check(is_equal_approx(float(Database.achievement("master_one").buff["shot_speed"]), 1.013), "極めし者が+1.3%でない")
+	check(is_equal_approx(float(Database.achievement("master_all").buff["reload"]), 0.98), "極めし者達が-2.0%でない")
+	check(int(Database.achievement("bounty_hunter").need) == 100, "バウンティハンターの条件が100隻でない")
+	var gsrc5 := FileAccess.get_file_as_string("res://scripts/GameState.gd")
+	check(gsrc5.contains('kill_count("pirate", "king") >= 2'), "海賊王の条件が2隻に緩和されていない")
+	# バッヂ枠のサイズ統一
+	check(psrc5.contains("func _unknown_badge"), "未達成のバッヂ枠が専用になっていない")
+	check(psrc5.contains("_unknown_badge(44)"), "未達成の枠がバッヂと同じサイズになっていない")
+	check(psrc5.contains("STRETCH_KEEP_ASPECT_CENTERED"), "バッヂのアスペクト比が保たれない")
+
+	# #270-272 と 画像修正: ドット絵の精細化と透過
+	for hi_id in ["lord_sawshark", "lord_walrus", "lord_dumbo", "mob_moon_jelly", "pirate_king", "lord_night_emperor"]:
+		var ip5 := "res://assets/images/pixel/%s.png" % hi_id
+		check(ResourceLoader.exists(ip5), "ドット絵が無い: " + ip5)
+		var im5 := Image.load_from_file(ip5)
+		# 高精細化: 長辺が180pxであること(従来は48px)
+		check(maxi(im5.get_width(), im5.get_height()) >= 180, "%s のドット絵が精細でない(%dx%d)" % [hi_id, im5.get_width(), im5.get_height()])
+		# 透過が効いていること(外周が不透明で埋まっていない)
+		check(_edge_fill(im5) < 0.5, "%s の背景の透過が失敗している(辺の%.0f%%が不透明)" % [hi_id, _edge_fill(im5) * 100.0])
+
 	port.free()
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze/sunny_sea/facing/killer_shell/south_isle/streams/all_islands/bullet_shapes/cluster_range/torpedo_lock/pirate_dmg/ambient/hints2/bestiary/title_bg/flagship_label/broadside/los_toast/fuel_dist/fleet_speed/fx_art/new_fish/loop_sfx/no_debuff_toast/marlin/sweep_shots/idle_fuel/weapon_balance/dodge_text/ammo_guard/crosshair/hp_tuning/spawn_islands/fuel_avg/flotsam/achievements")
+		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze/sunny_sea/facing/killer_shell/south_isle/streams/all_islands/bullet_shapes/cluster_range/torpedo_lock/pirate_dmg/ambient/hints2/bestiary/title_bg/flagship_label/broadside/los_toast/fuel_dist/fleet_speed/fx_art/new_fish/loop_sfx/no_debuff_toast/marlin/sweep_shots/idle_fuel/weapon_balance/dodge_text/ammo_guard/crosshair/hp_tuning/spawn_islands/fuel_avg/flotsam/achievements/ship_ui/kaisho/kite_face/badge_size/hi_res")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)
