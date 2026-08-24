@@ -1573,9 +1573,40 @@ func _ready() -> void:
 		# 透過が効いていること(外周が不透明で埋まっていない)
 		check(_edge_fill(im5) < 0.5, "%s の背景の透過が失敗している(辺の%.0f%%が不透明)" % [hi_id, _edge_fill(im5) * 100.0])
 
+	# ---------------- #258再3: 体力は船団全体を参照し、逓減を緩める ----------------
+	GameState.reset_all()
+	GameState.fleet[0].crew = []
+	var base_m: float = GameState.food_drain_mult()
+	# 旗艦のクルーの体力が効く
+	GameState.fleet[0].crew = [{"name": "甲", "job": "veteran", "hp": 10, "agi": 0, "sht": 0, "int_": 0, "vis": 0}]
+	var flag_m: float = GameState.food_drain_mult()
+	check(flag_m < base_m, "旗艦の体力で燃料消費が減らない")
+	# 2番艦のクルーの体力も効く(船団全体を参照)
+	GameState.fleet.append(GameState.new_ship_entry("cutter", []))
+	GameState.fleet[1].crew = [{"name": "副", "job": "firstmate", "hp": 1, "agi": 1, "sht": 1, "int_": 1, "vis": 1},
+		{"name": "乙", "job": "veteran", "hp": 10, "agi": 0, "sht": 0, "int_": 0, "vis": 0}]
+	var fleet_m: float = GameState.food_drain_mult()
+	check(fleet_m < flag_m, "2番艦の体力が燃料節約に効いていない")
+	# 逓減が緩んでいること: 体力20→100 で節約が大きく伸びる(従来は2.6ptしか動かなかった)
+	var gsrc6 := FileAccess.get_file_as_string("res://scripts/GameState.gd")
+	check(gsrc6.contains("20.0 + 8.0 * log(1.0 + (h - 20.0) / 8.0)"), "逓減の式が緩められていない")
+	check(not gsrc6.contains("10.0 + log(1.0 + (h - 10.0))"), "従来の逓減の式が残っている")
+	# 実測: 体力20と体力100の差が10ポイント以上あること
+	GameState.reset_all()
+	GameState.fleet[0].crew = [{"name": "a", "job": "veteran", "hp": 20, "agi": 0, "sht": 0, "int_": 0, "vis": 0}]
+	var m20: float = GameState.food_drain_mult()
+	GameState.fleet[0].crew = [{"name": "b", "job": "veteran", "hp": 100, "agi": 0, "sht": 0, "int_": 0, "vis": 0}]
+	var m100: float = GameState.food_drain_mult()
+	check((m20 - m100) * 100.0 > 10.0,
+		"体力20→100の差が小さすぎる(%.1fポイント)" % ((m20 - m100) * 100.0))
+	# 頭打ちは残っている(体力100→200では大きく動かない)
+	GameState.fleet[0].crew = [{"name": "c", "job": "veteran", "hp": 200, "agi": 0, "sht": 0, "int_": 0, "vis": 0}]
+	var m200: float = GameState.food_drain_mult()
+	check((m100 - m200) * 100.0 < (m20 - m100) * 100.0, "逓減が効かなくなっている")
+
 	port.free()
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze/sunny_sea/facing/killer_shell/south_isle/streams/all_islands/bullet_shapes/cluster_range/torpedo_lock/pirate_dmg/ambient/hints2/bestiary/title_bg/flagship_label/broadside/los_toast/fuel_dist/fleet_speed/fx_art/new_fish/loop_sfx/no_debuff_toast/marlin/sweep_shots/idle_fuel/weapon_balance/dodge_text/ammo_guard/crosshair/hp_tuning/spawn_islands/fuel_avg/flotsam/achievements/ship_ui/kaisho/kite_face/badge_size/hi_res")
+		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze/sunny_sea/facing/killer_shell/south_isle/streams/all_islands/bullet_shapes/cluster_range/torpedo_lock/pirate_dmg/ambient/hints2/bestiary/title_bg/flagship_label/broadside/los_toast/fuel_dist/fleet_speed/fx_art/new_fish/loop_sfx/no_debuff_toast/marlin/sweep_shots/idle_fuel/weapon_balance/dodge_text/ammo_guard/crosshair/hp_tuning/spawn_islands/fuel_avg/flotsam/achievements/ship_ui/kaisho/kite_face/badge_size/hi_res/fleet_hp")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)
