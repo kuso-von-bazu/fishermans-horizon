@@ -1646,7 +1646,7 @@ func _ready() -> void:
 
 	# ---------------- #274/#277/#239再8: 横向き1枚のみ+左右反転 ----------------
 	var SideEnemy = preload("res://scripts2d/Enemy2D.gd")
-	for spec14 in [["lord", "ghost"], ["mob", "killer_shell"], ["mob", "moon_jelly"]]:
+	for spec14 in [["lord", "ghost"], ["mob", "killer_shell"], ["mob", "moon_jelly"], ["mob", "charybdis"]]:
 		var k14 := str(spec14[0])
 		var i14 := str(spec14[1])
 		var d14: Dictionary = Database.enemy_def(k14, i14)

@@ -129,7 +129,7 @@ func _ready() -> void:
 
 	var names := ["lord_undine","lord_siren","lord_night_emperor","lord_night_bat_medium","lord_night_bat_small","lord_wraith","lord_kraken_lord","lord_griffon","mob_mermaid","mob_lamia","mob_zombie_fish","mob_moon_jelly","mob_killer_shell","mob_carabos"]
 	# #274/#277/#239再8: 横向き1枚だけを使う敵(side_only)は正面/背面を持たない
-	var side_only_arts := ["mob_moon_jelly", "mob_killer_shell", "lord_ghost"]
+	var side_only_arts := ["mob_moon_jelly", "mob_killer_shell", "lord_ghost", "mob_charybdis"]
 	for n in names:
 		for suffix in ["", "_front", "_back"]:
 			var base := "res://assets/images/pixel/%s%s.png" % [n,suffix]
@@ -143,6 +143,12 @@ func _ready() -> void:
 		check(ResourceLoader.exists(art_path), "挿絵なし: "+n)
 		var art_image := Image.load_from_file(art_path)
 		check(not art_image.is_empty() and art_image.get_used_rect().has_area(), "空の挿絵: "+n)
+	# 元の一枚絵も残っていないこと(残っているとドット絵の一括再生成で復活する)
+	for n2 in side_only_arts:
+		for suffix2 in ["_front", "_back"]:
+			var src2 := "res://assets/images/%s%s.png" % [n2, suffix2]
+			check(not ResourceLoader.exists(src2), "一枚絵が残っている(再生成で復活する): "+src2)
+
 	if failures.is_empty():
 		print("MAINTENANCE_TEST_OK crit/weather/fishing/port/formations/audio/help/assets")
 		get_tree().quit(0)
