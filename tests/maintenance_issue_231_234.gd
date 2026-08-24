@@ -128,9 +128,14 @@ func _ready() -> void:
 	check(help_text.contains("W / S") and help_text.contains("ガトリングガン") and help_text.contains("5　陣形スキル"), "早見表に操作と武器説明を掲載")
 
 	var names := ["lord_undine","lord_siren","lord_night_emperor","lord_night_bat_medium","lord_night_bat_small","lord_wraith","lord_kraken_lord","lord_griffon","mob_mermaid","mob_lamia","mob_zombie_fish","mob_moon_jelly","mob_killer_shell","mob_carabos"]
+	# #274/#277/#239再8: 横向き1枚だけを使う敵(side_only)は正面/背面を持たない
+	var side_only_arts := ["mob_moon_jelly", "mob_killer_shell", "lord_ghost"]
 	for n in names:
 		for suffix in ["", "_front", "_back"]:
 			var base := "res://assets/images/pixel/%s%s.png" % [n,suffix]
+			if suffix != "" and side_only_arts.has(n):
+				check(not ResourceLoader.exists(base), "横向き1枚のみのはず: "+base)
+				continue
 			check(ResourceLoader.exists(base), "画像なし: "+base)
 			var sprite_image := Image.load_from_file(base)
 			check(not sprite_image.is_empty() and sprite_image.get_used_rect().has_area(), "透明・空画像: "+base)

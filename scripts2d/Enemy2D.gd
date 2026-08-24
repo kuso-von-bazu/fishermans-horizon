@@ -117,8 +117,10 @@ func _ready() -> void:
 	add_child(sprite)
 	# #26: 正面/後ろ姿のドット絵(あれば移動方向で切替)
 	_tex_side = tex
-	_tex_front = _load_dir_tex("front")
-	_tex_back = _load_dir_tex("back")
+	# #274/#277/#239再: side_only の敵は横向きの1枚だけを使い、海賊と同じく左右反転のみで表現する
+	if not bool(def.get("side_only", false)):
+		_tex_front = _load_dir_tex("front")
+		_tex_back = _load_dir_tex("back")
 	# 空中の敵は影を落として浮遊感(#torpedo不可)
 	if aerial and tex:
 		_shadow = Sprite2D.new()
@@ -303,6 +305,11 @@ func _update_facing(move_dir: Vector2) -> void:
 	# #190: 回転する敵(オニヒトデ/アスピドケロン)は向きの概念がないので横向き固定・反転なし
 	if float(def.get("spin", 0.0)) > 0.0:
 		return
+	# #274/#277/#239再8: 横向きの1枚だけを使う敵。正面/背面へは切り替えず、
+	#   海賊と同じく左右反転だけで向きを表現する(絵が再生成されても効くようここでも落とす)
+	if bool(def.get("side_only", false)):
+		_tex_front = null
+		_tex_back = null
 	# #118: ケツァル等は常に正面(プレイヤー向き)固定で不自然な切替を防ぐ
 	if bool(def.get("always_front", false)):
 		if _facing != "front" and _tex_front != null:

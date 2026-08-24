@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cqc61d3kvn5r2"
-path="res://.godot/imported/mob_moon_jelly_front.png-1eece7dbc460e8577f1983ef4bd5f473.ctex"
+uid="uid://p8ntaxidaa31"
+path="res://.godot/imported/lord_griffon_front.png-1584fd4b12cf7de14035101930edf79c.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/images/pixel/mob_moon_jelly_front.png"
-dest_files=["res://.godot/imported/mob_moon_jelly_front.png-1eece7dbc460e8577f1983ef4bd5f473.ctex"]
+source_file="res://assets/images/lord_griffon_front.png"
+dest_files=["res://.godot/imported/lord_griffon_front.png-1584fd4b12cf7de14035101930edf79c.ctex"]
 
 [params]
 

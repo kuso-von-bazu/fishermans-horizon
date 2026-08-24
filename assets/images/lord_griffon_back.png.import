@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ehlkkq6ogbis"
-path="res://.godot/imported/lord_ghost_front.png-db5f7aa05840c2b4d53f3229e04bb94c.ctex"
+uid="uid://0v4x11gog2ea"
+path="res://.godot/imported/lord_griffon_back.png-aa63d7e8bc0267f89e2ba0c5b82d3d80.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/images/pixel/lord_ghost_front.png"
-dest_files=["res://.godot/imported/lord_ghost_front.png-db5f7aa05840c2b4d53f3229e04bb94c.ctex"]
+source_file="res://assets/images/lord_griffon_back.png"
+dest_files=["res://.godot/imported/lord_griffon_back.png-aa63d7e8bc0267f89e2ba0c5b82d3d80.ctex"]
 
 [params]
 

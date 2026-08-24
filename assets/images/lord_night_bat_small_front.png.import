@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c3yhwqavow1p8"
-path="res://.godot/imported/mob_killer_shell_front.png-be22385097239a46dae22763e2054f8a.ctex"
+uid="uid://2a8dux0egimm"
+path="res://.godot/imported/lord_night_bat_small_front.png-b7eb89f4dfb38446f9d24f379995393a.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/images/pixel/mob_killer_shell_front.png"
-dest_files=["res://.godot/imported/mob_killer_shell_front.png-be22385097239a46dae22763e2054f8a.ctex"]
+source_file="res://assets/images/lord_night_bat_small_front.png"
+dest_files=["res://.godot/imported/lord_night_bat_small_front.png-b7eb89f4dfb38446f9d24f379995393a.ctex"]
 
 [params]
 

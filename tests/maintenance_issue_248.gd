@@ -32,6 +32,45 @@ func _edge_fill(img: Image) -> float:
 		maxf(float(left) / float(h), float(right) / float(h)))
 
 # 不透明画素のかたまりが何個あるか(体から離れた断片の検出)。8近傍で数える
+func _stray_blob_max(img: Image) -> int:
+	# 不透明画素の連結成分を数え、最大(=本体)を除いた中で最大の面積を返す。
+	# 生成画像に焼き付いた額縁の直線や、体から離れた断片はここに現れる。
+	# しきい値0.4: ドット絵化でアルファは0/255に2値化されるので、
+	#   薄いアルファでつながって見える誤検出を避けられる。
+	var w := img.get_width()
+	var h := img.get_height()
+	var seen := {}
+	var sizes: Array[int] = []
+	for y in h:
+		for x in w:
+			var key := y * w + x
+			if img.get_pixel(x, y).a < 0.4 or seen.has(key):
+				continue
+			var n := 0
+			var stack: Array = [key]
+			seen[key] = true
+			while not stack.is_empty():
+				var k: int = stack.pop_back()
+				n += 1
+				var cy: int = k / w
+				var cx: int = k % w
+				for dy in [-1, 0, 1]:
+					for dx in [-1, 0, 1]:
+						var ny: int = cy + dy
+						var nx: int = cx + dx
+						if ny < 0 or nx < 0 or ny >= h or nx >= w:
+							continue
+						var nk := ny * w + nx
+						if seen.has(nk) or img.get_pixel(nx, ny).a < 0.4:
+							continue
+						seen[nk] = true
+						stack.append(nk)
+			sizes.append(n)
+	if sizes.size() < 2:
+		return 0
+	sizes.sort()
+	return int(sizes[sizes.size() - 2])
+
 func _blob_count(img: Image) -> int:
 	var w := img.get_width()
 	var h := img.get_height()
@@ -575,13 +614,14 @@ func _ready() -> void:
 	# 触腕/翼などが伸びている側が進行方向。左右を取り違えると航海中に後ろ向きに泳ぐ。
 	check(bool(Database.lords["kraken_lord"].get("face_left", false)),
 		"オクトパスの絵は左向き(触腕が左)なので face_left が要る")
-	check(not bool(Database.combat_mobs["carabos"].get("face_left", false)),
-		"カーラボスの絵は右向き(頭が右)なので face_left は付けない")
+	# #239再8: 横向きの絵を再生成し、頭と触角が左を向く絵になった
+	check(bool(Database.combat_mobs["carabos"].get("face_left", false)),
+		"カーラボスの絵は左向き(頭と触角が左)なので face_left が要る")
 	# 実際に左右へ動かしたとき、反転が絵の向きと噛み合うこと
 	var pl2 := CharacterBody2D.new()
 	pl2.add_to_group("player")
 	add_child(pl2)
-	for spec3 in [["lord", "kraken_lord", true], ["mob", "carabos", false]]:
+	for spec3 in [["lord", "kraken_lord", true], ["mob", "carabos", true], ["lord", "wraith", true], ["lord", "griffon", true], ["lord", "night_emperor", true], ["lord", "night_bat_medium", false], ["lord", "night_bat_small", false]]:
 		var e3 := CharacterBody2D.new()
 		e3.set_script(Enemy)
 		e3.setup(str(spec3[0]), str(spec3[1]))
@@ -1604,9 +1644,111 @@ func _ready() -> void:
 	var m200: float = GameState.food_drain_mult()
 	check((m100 - m200) * 100.0 < (m20 - m100) * 100.0, "逓減が効かなくなっている")
 
+	# ---------------- #274/#277/#239再8: 横向き1枚のみ+左右反転 ----------------
+	var SideEnemy = preload("res://scripts2d/Enemy2D.gd")
+	for spec14 in [["lord", "ghost"], ["mob", "killer_shell"], ["mob", "moon_jelly"]]:
+		var k14 := str(spec14[0])
+		var i14 := str(spec14[1])
+		var d14: Dictionary = Database.enemy_def(k14, i14)
+		check(bool(d14.get("side_only", false)), "%s に side_only が付いていない" % i14)
+		# 正面/背面のドット絵は残っていない(残っていると再生成で復活してしまう)
+		for sfx14 in ["front", "back"]:
+			var pp14 := "res://assets/images/pixel/%s_%s_%s.png" % [k14, i14, sfx14]
+			check(not ResourceLoader.exists(pp14), "%s が残っている(横向き1枚のみのはず)" % pp14)
+		# 北へ動かしても横向きのまま。左右へ動かすと反転する
+		var en14 = SideEnemy.new()
+		en14.setup(k14, i14)
+		add_child(en14)
+		await get_tree().process_frame
+		var base_tex14: Texture2D = en14.sprite.texture
+		# 絵が再生成されて前後の画像が復活した状況を模す
+		en14._tex_front = load("res://assets/images/pixel/mob_narwhal.png")
+		en14._tex_back = load("res://assets/images/pixel/mob_narwhal.png")
+		en14._update_facing(Vector2.UP)
+		check(en14.sprite.texture == base_tex14, "%s が後ろ姿へ切り替わった" % i14)
+		en14._update_facing(Vector2.DOWN)
+		check(en14.sprite.texture == base_tex14, "%s が正面へ切り替わった" % i14)
+		en14._facing_cd = 0.0
+		en14._update_facing(Vector2.LEFT)
+		var flip_left14: bool = en14.sprite.flip_h
+		en14._facing_cd = 0.0
+		en14._update_facing(Vector2.RIGHT)
+		check(flip_left14 != en14.sprite.flip_h, "%s が左右で反転しない" % i14)
+		en14.queue_free()
+	# 比較対象: side_only でない敵は従来どおり後ろ姿へ切り替わる
+	var norm14 = SideEnemy.new()
+	norm14.setup("mob", "narwhal")
+	add_child(norm14)
+	await get_tree().process_frame
+	var nbase14: Texture2D = norm14.sprite.texture
+	norm14._facing_cd = 0.0
+	norm14._update_facing(Vector2.UP)
+	check(norm14.sprite.texture != nbase14, "通常の敵が後ろ姿へ切り替わらなくなっている")
+	norm14.queue_free()
+
+	# ---------------- #265再2: バッヂ画像は元画像の大きさに関わらず枠へ収まる ----------------
+	var oversized := 0
+	for a15 in Database.achievements:
+		var ic15 := str(a15.get("icon", ""))
+		if ic15 == "" or not ResourceLoader.exists(ic15):
+			continue
+		var w15 = port._badge_icon(a15, 44.0)
+		add_child(w15)
+		var ms15: Vector2 = w15.get_combined_minimum_size()
+		if ms15.x > 44.5 or ms15.y > 44.5:
+			oversized += 1
+			if oversized == 1:
+				check(false, "%s のバッヂが枠(44px)を超える(%.0fx%.0f)" % [str(a15.id), ms15.x, ms15.y])
+		w15.queue_free()
+	check(oversized == 0, "枠に収まらないバッヂが %d 件ある" % oversized)
+	# 未達成の「?」も同じ枠
+	var unk15 = port._unknown_badge(44.0)
+	add_child(unk15)
+	check(unk15.get_combined_minimum_size() == Vector2(44, 44), "未達成の枠が44px角でない")
+	unk15.queue_free()
+	# 航海中のHUDのバッヂも枠に収まる
+	var hud15 := CanvasLayer.new()
+	hud15.set_script(preload("res://scripts2d/HUD2D.gd"))
+	add_child(hud15)
+	await get_tree().process_frame
+	hud15.badge_icon.texture = load("res://assets/images/pixel/lord_undine.png")
+	var hms15: Vector2 = hud15.badge_icon.get_combined_minimum_size()
+	check(hms15.x <= 28.5 and hms15.y <= 28.5,
+		"名声の右のバッヂが枠(28px)を超える(%.0fx%.0f)" % [hms15.x, hms15.y])
+	hud15.queue_free()
+
+	# ---------------- #275/#276/#271再/#239再8: 再生成したドット絵 ----------------
+	# 高精細(長辺180px以上)・背景の透過・額縁の直線や体から離れた断片が無いこと
+	for rid in ["lord_griffon", "lord_griffon_front", "lord_griffon_back",
+		"lord_night_emperor", "lord_night_emperor_front", "lord_night_emperor_back",
+		"lord_night_bat_medium", "lord_night_bat_medium_front", "lord_night_bat_medium_back",
+		"lord_night_bat_small", "lord_night_bat_small_front", "lord_night_bat_small_back",
+		"lord_walrus", "lord_walrus_front", "lord_walrus_back",
+		"lord_wraith", "lord_wraith_front", "lord_wraith_back", "mob_carabos"]:
+		var rp := "res://assets/images/pixel/%s.png" % rid
+		check(ResourceLoader.exists(rp), "ドット絵が無い: " + rp)
+		if not ResourceLoader.exists(rp):
+			continue
+		var rimg := Image.load_from_file(rp)
+		check(maxi(rimg.get_width(), rimg.get_height()) >= 180,
+			"%s のドット絵が精細でない(%dx%d)" % [rid, rimg.get_width(), rimg.get_height()])
+		check(_edge_fill(rimg) < 0.5, "%s の背景が抜けていない(辺の%.0f%%が不透明)" % [rid, _edge_fill(rimg) * 100.0])
+		# 額縁の直線は本体から独立した細長い塊として残るので、面積で検出できる
+		var stray := _stray_blob_max(rimg)
+		check(stray < 30, "%s に体から離れた塊がある(面積%dpx)" % [rid, stray])
+
+	# 再生成した横向きの絵は左向き。反転の登録が絵と噛み合っていること
+	for lid in ["wraith", "griffon", "carabos", "night_emperor"]:
+		var ldef: Dictionary = Database.enemy_def("lord", lid)
+		if ldef.is_empty():
+			ldef = Database.combat_mobs.get(lid, {})
+		check(bool(ldef.get("face_left", false)), "%s の絵は左向きなのに face_left が付いていない" % lid)
+	for rid2 in ["night_bat_medium", "night_bat_small"]:
+		check(not bool(Database.lords[rid2].get("face_left", false)), "%s は右向きの絵なので face_left は不要" % rid2)
+
 	port.free()
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze/sunny_sea/facing/killer_shell/south_isle/streams/all_islands/bullet_shapes/cluster_range/torpedo_lock/pirate_dmg/ambient/hints2/bestiary/title_bg/flagship_label/broadside/los_toast/fuel_dist/fleet_speed/fx_art/new_fish/loop_sfx/no_debuff_toast/marlin/sweep_shots/idle_fuel/weapon_balance/dodge_text/ammo_guard/crosshair/hp_tuning/spawn_islands/fuel_avg/flotsam/achievements/ship_ui/kaisho/kite_face/badge_size/hi_res/fleet_hp")
+		print("MAINTENANCE_TEST_OK outer_isle/shop/tavern/reload/weapons/hints/undine/bossrush/king_escorts/legion_hitbox/king_range/siren_notes/wraith_lock/octopus_art/wraith_haze/sunny_sea/facing/killer_shell/south_isle/streams/all_islands/bullet_shapes/cluster_range/torpedo_lock/pirate_dmg/ambient/hints2/bestiary/title_bg/flagship_label/broadside/los_toast/fuel_dist/fleet_speed/fx_art/new_fish/loop_sfx/no_debuff_toast/marlin/sweep_shots/idle_fuel/weapon_balance/dodge_text/ammo_guard/crosshair/hp_tuning/spawn_islands/fuel_avg/flotsam/achievements/ship_ui/kaisho/kite_face/badge_size/hi_res/fleet_hp/side_only/badge_fit/regen_art")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)

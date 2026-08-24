@@ -1882,6 +1882,7 @@ func _maybe_screenshot() -> void:
 	var want_ach := false   # #265
 	var want_ach2 := false   # #265: 実績メニューを下までスクロールして撮る
 	var want_ach3 := false   # #265再: 未達成のまま撮る(「？」の揃いを見る)   # #241再2: ヒントログ
+	var want_ach4 := false   # #265再2: 近海の主の実績(バッヂの大きさが揃っているか)
 	for a in args:
 		if a.begins_with("--shot"):
 			want_shot = true
@@ -1905,6 +1906,7 @@ func _maybe_screenshot() -> void:
 			want_ach = a.find("ach") != -1   # #265: 実績メニュー
 			want_ach2 = a.find("ach2") != -1   # #265
 			want_ach3 = a.find("ach3") != -1   # #265再
+			want_ach4 = a.find("ach4") != -1   # #265再2
 			# #190: isle<N> で撮影する海域(島index)を指定(天候・障害物の確認用)
 			var ip := a.find("isle")
 			if ip != -1 and ip + 4 < a.length():
@@ -2048,13 +2050,14 @@ func _maybe_screenshot() -> void:
 			GameState.badge_id = "fame_max"
 			port_ui.show_achievements()
 			# #265: ach2 指定時は下(専用バッヂの並ぶ(3)〜(7))までスクロールする
-			if want_ach2:
+			if want_ach2 or want_ach4:
 				await get_tree().create_timer(0.3).timeout
 				var sc0: Node = port_ui.content.get_parent()
 				while sc0 != null and not (sc0 is ScrollContainer):
 					sc0 = sc0.get_parent()
 				if sc0 is ScrollContainer:
-					(sc0 as ScrollContainer).scroll_vertical = 100000
+					# #265再2: ach4 は「近海の主の討伐」のあたり(中ほど)で止める
+					(sc0 as ScrollContainer).scroll_vertical = 2450 if want_ach4 else 100000
 		if want_yard:
 			port_ui._shipyard_weapon_slot = 0   # #248: 武器一覧も写るようスロット1を開いておく
 			port_ui.show_shipyard()

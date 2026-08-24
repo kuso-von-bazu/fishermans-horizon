@@ -3,8 +3,12 @@
 """生成済みの透過スプライトをドット絵化する(#26)。
 縮小(長辺48px)+減色(32色)で assets/images/pixel/ に出力。
 Godot側は texture_filter=NEAREST で拡大表示し、くっきりしたドット絵として描画する。"""
-import os
+import os, sys
 from PIL import Image
+
+# 使い方: python ドット絵化.py                       # 全PNGを再生成
+#         python ドット絵化.py lord_griffon.png ...  # 指定ファイルのみ(他を巻き込まない)
+ONLY = set(a for a in sys.argv[1:] if a.lower().endswith('.png'))
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.normpath(os.path.join(HERE, "..", "assets", "images"))
@@ -31,6 +35,12 @@ LONG_OVERRIDE = {"lord_leviathan.png": 200, "lord_leviathan_front.png": 200, "lo
                  "lord_dumbo.png": 180, "lord_dumbo_front.png": 180, "lord_dumbo_back.png": 180,
                  # #265再: ムーンジェリー・海賊王・夜の帝王(横向きだけ粗かった)
                  "mob_moon_jelly.png": 180, "pirate_king.png": 180, "lord_night_emperor.png": 180,
+                 # #275/#276/#271再/#239再8: グリフォン・夜の帝王(正面/背面)・分裂後のコウモリ・カーラボス
+                 "lord_griffon.png": 180, "lord_griffon_front.png": 180, "lord_griffon_back.png": 180,
+                 "lord_night_emperor_front.png": 180, "lord_night_emperor_back.png": 180,
+                 "lord_night_bat_medium.png": 180, "lord_night_bat_medium_front.png": 180, "lord_night_bat_medium_back.png": 180,
+                 "lord_night_bat_small.png": 180, "lord_night_bat_small_front.png": 180, "lord_night_bat_small_back.png": 180,
+                 "mob_carabos.png": 180,
                  # #239再7: レイス(ぼろ布のほつれが細かい)
                  "lord_wraith.png": 180, "lord_wraith_front.png": 180, "lord_wraith_back.png": 180}
 # #81: レヴィアタンは色数も増やしてより詳細に。#173: ケツァルも増色。#81再: ヒュドラ増色・ケツァル64色
@@ -48,6 +58,12 @@ COLORS_OVERRIDE = {"lord_leviathan.png": 64, "lord_leviathan_front.png": 64, "lo
                    # #270/#271/#272 と #265再
                    "lord_sawshark.png": 64, "lord_walrus.png": 64, "lord_dumbo.png": 64,
                    "mob_moon_jelly.png": 64, "pirate_king.png": 64, "lord_night_emperor.png": 64,
+                   # #275/#276/#271再/#239再8
+                   "lord_griffon.png": 64, "lord_griffon_front.png": 64, "lord_griffon_back.png": 64,
+                   "lord_night_emperor_front.png": 64, "lord_night_emperor_back.png": 64,
+                   "lord_night_bat_medium.png": 64, "lord_night_bat_medium_front.png": 64, "lord_night_bat_medium_back.png": 64,
+                   "lord_night_bat_small.png": 64, "lord_night_bat_small_front.png": 64, "lord_night_bat_small_back.png": 64,
+                   "mob_carabos.png": 64,
                    # #239再7: レイス
                    "lord_wraith.png": 64, "lord_wraith_front.png": 64, "lord_wraith_back.png": 64}
 
@@ -56,6 +72,8 @@ for f in sorted(os.listdir(SRC)):
         continue
     if f.startswith("title") or f.startswith("logo") or f.endswith("_source.png"):
         continue   # #175: タイトルロゴはドット絵化しない(オープニングは高精細表示)
+    if ONLY and f not in ONLY:
+        continue
     p = os.path.join(SRC, f)
     im = Image.open(p).convert("RGBA")
     w, h = im.size

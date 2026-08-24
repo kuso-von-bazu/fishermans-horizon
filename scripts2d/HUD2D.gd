@@ -71,7 +71,11 @@ func _build() -> void:
 	badge_icon = TextureRect.new()
 	badge_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	badge_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	# #265再2: 元画像のサイズに引きずられて巨大化しないよう、28px角へ必ず収める
+	badge_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	badge_icon.custom_minimum_size = Vector2(28, 28)
+	badge_icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	badge_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	badge_icon.visible = false
 	fame_row.add_child(badge_icon)
 	vb.add_child(fame_row)

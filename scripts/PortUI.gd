@@ -451,7 +451,12 @@ func _badge_icon(a: Dictionary, h: float) -> Control:
 		tr.texture = load(path)
 		tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		# #265再2: EXPAND_KEEP_SIZE のままだと最小サイズが元画像(180px)になり枠を突き破る。
+		#   専用バッヂ画像(48px)を基準に、どの実績でも h×h の正方形へ必ず収める
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tr.custom_minimum_size = Vector2(h, h)
+		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		tr.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		return tr
 	return _unknown_portrait(h)
 

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ccejc5iceilan"
-path="res://.godot/imported/mob_moon_jelly_back.png-1eb3b9674f3c682f8dcdec3772aef24c.ctex"
+uid="uid://dfc4pi6o8aj22"
+path="res://.godot/imported/lord_night_bat_medium_back.png-9233781e1e9c15709b795de5d2fdfc19.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/images/pixel/mob_moon_jelly_back.png"
-dest_files=["res://.godot/imported/mob_moon_jelly_back.png-1eb3b9674f3c682f8dcdec3772aef24c.ctex"]
+source_file="res://assets/images/lord_night_bat_medium_back.png"
+dest_files=["res://.godot/imported/lord_night_bat_medium_back.png-9233781e1e9c15709b795de5d2fdfc19.ctex"]
 
 [params]
 

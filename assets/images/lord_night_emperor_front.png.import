@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cyg2pkl6xa82b"
-path="res://.godot/imported/mob_killer_shell_back.png-bafc4ba39580697df81cfd63a9990f61.ctex"
+uid="uid://dmjr6iowca2e7"
+path="res://.godot/imported/lord_night_emperor_front.png-9437310d9262e8d6387b2e348b79b028.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/images/pixel/mob_killer_shell_back.png"
-dest_files=["res://.godot/imported/mob_killer_shell_back.png-bafc4ba39580697df81cfd63a9990f61.ctex"]
+source_file="res://assets/images/lord_night_emperor_front.png"
+dest_files=["res://.godot/imported/lord_night_emperor_front.png-9437310d9262e8d6387b2e348b79b028.ctex"]
 
 [params]
 

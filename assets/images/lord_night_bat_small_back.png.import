@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dmuupm1wbwe2q"
-path="res://.godot/imported/lord_ghost_back.png-cf9ca66779a703ba6524dca99cda155f.ctex"
+uid="uid://bcgy8764gu0m"
+path="res://.godot/imported/lord_night_bat_small_back.png-8397faca8c08cf4219b112b37dace6d3.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/images/pixel/lord_ghost_back.png"
-dest_files=["res://.godot/imported/lord_ghost_back.png-cf9ca66779a703ba6524dca99cda155f.ctex"]
+source_file="res://assets/images/lord_night_bat_small_back.png"
+dest_files=["res://.godot/imported/lord_night_bat_small_back.png-8397faca8c08cf4219b112b37dace6d3.ctex"]
 
 [params]
 
