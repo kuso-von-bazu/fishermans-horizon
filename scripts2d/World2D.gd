@@ -440,7 +440,7 @@ func _on_title_continue() -> void:
 func _enter_dock(island_id: int, do_reset := true) -> void:
 	var was_at_sea := GameState.at_sea
 	if was_at_sea:
-		port_transition()   # #278(提案7-4): 入港の演出(起動時の初期化では鳴らさない)
+		port_transition(false)   # #278再4: 入港時は汽笛を鳴らさない(出港時のみ)
 	if was_at_sea and not GameState.crew.is_empty():
 		GameState.grow_crew()   # 航海を終えたクルーが成長(#39)
 	phase = "dock"

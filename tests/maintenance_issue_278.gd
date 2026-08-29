@@ -195,11 +195,42 @@ func _ready() -> void:
 	check(ResourceLoader.exists("res://assets/audio/汽笛.mp3"), "共有者提供の汽笛.mp3が無い")
 	var asrc := _src("res://scripts/Audio.gd")
 	check(asrc.contains('"sfx_horn": "res://assets/audio/汽笛.mp3"'), "汽笛が共有者提供のmp3に差し替わっていない")
-	check(hsrc.contains('lbl_guide = _label("", 12)'), "ソナー下のガイド文字がピクセルフォントのまま")
 	check(not hsrc.contains('lbl_guide = _pxlabel'), "ソナー下のガイド文字にピクセルフォントの指定が残っている")
 
+	# ---------------- #278再5: 入港時は汽笛を鳴らさない/ガイド文字拡大/HUD透過/ボタン統一 ----------------
+	check(w2.contains("port_transition(false)   # #278再4: 入港時は汽笛を鳴らさない"),
+		"入港時に汽笛を鳴らさない実装が無い")
+	# 出港側(_on_set_sail)は従来どおり汽笛つきで port_transition() を呼ぶ
+	var sail_idx := w2.find("func _on_set_sail(")
+	check(sail_idx != -1 and w2.substr(sail_idx, 300).contains("port_transition()"),
+		"出港時の汽笛つき演出が無い")
+	check(hsrc.contains('lbl_guide = _label("", 16)'), "ガイド文字が拡大されていない")
+	check(hsrc.contains("lbl_guide.offset_left = -420"), "ガイド文字の幅が広げられていない(見切れ対策)")
+	# 拡大後も最長の主の名前(ヒゲマッコウナガスクジラ)を含む文言がボックス幅に収まること
+	var guide_font := ThemeDB.fallback_font
+	var worst_guide := "ガイド: ヒゲマッコウナガスクジラ まで 約9990"
+	var guide_w: float = guide_font.get_string_size(worst_guide, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x
+	check(guide_w <= 404.0, "ガイド文字が最長ケースでボックス幅(404px)を超えて見切れる恐れがある(%.1fpx)" % guide_w)
+	check(hsrc.contains("const PANEL_BG_ALPHA := 0.35"), "HUDパネルの透過度が下がっていない")
+	check(hsrc.contains("func _style_btn("), "陣形・スキル・?ボタン用の共通スタイル関数が無い")
+	check(hsrc.contains("_style_btn(help_btn)"), "?ボタンが資金・名声ウインドウと同じ見た目になっていない")
+	check(hsrc.contains("_style_btn(b)   # #278再5"), "陣形ボタンが資金・名声ウインドウと同じ見た目になっていない")
+	check(hsrc.contains("_style_btn(_skill_btn)"), "スキルボタンの既定が資金・名声ウインドウと同じ見た目になっていない")
+	check(hsrc.contains("_style_btn(_skill_btn, Color(1.0, 0.2, 0.15))"), "スキルボタンの使用可能時の赤枠が無い")
+
+	# ---------------- #232再8: 「大漁!獲得量2倍」表示の短縮 ----------------
+	check(hsrc.contains("func show_catch_bonus(text: String, hold := 0.4)"), "大漁表示の保持時間が短縮されていない")
+	check(hsrc.contains('tw.tween_property(lbl_catch, "modulate:a", 0.0, 0.3)'), "大漁表示のフェード時間が短縮されていない")
+
+	# ---------------- #265再7: 実績「選択を解除」ボタンで横スクロールが出ないように ----------------
+	var portsrc := _src("res://scripts/PortUI.gd")
+	check(portsrc.contains("const ACH_BTN_W := 130.0"), "実績の選択ボタンの固定幅が無い")
+	check(portsrc.contains("info.custom_minimum_size = Vector2(420, 0)"), "実績の説明欄の幅が詰められていない")
+	check(portsrc.contains("b.custom_minimum_size = Vector2(ACH_BTN_W, 0)"),
+		"「選択」/「選択を解除」ボタンの幅が統一されていない")
+
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK griffon/ship_fuel/night_bgm/ghost_kite/fuel_taper/ach_toast/pixel_sea/pixel_island/pixel_font/juice/night_light/small_life")
+		print("MAINTENANCE_TEST_OK griffon/ship_fuel/night_bgm/ghost_kite/fuel_taper/ach_toast/pixel_sea/pixel_island/pixel_font/juice/night_light/small_life/no_horn_on_dock/guide_size/hud_transparency/btn_style/catch_toast_short/ach_btn_width")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)

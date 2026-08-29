@@ -410,6 +410,8 @@ HP:%d  賞金:%d  [%s]
 		content.add_child(row)
 
 # ---------------- 実績とバッヂ(#265) ----------------
+# #265再7: 「選択」/「選択を解除」ボタンの固定幅(長い方の文言でも収まる余裕を持たせる)
+const ACH_BTN_W := 130.0
 const ACH_GROUP_NAMES := {
 	"kill": "討伐",
 	"lord": "近海の主の討伐",
@@ -537,7 +539,10 @@ func _add_achievement_row(a: Dictionary) -> void:
 	else:
 		body = "まだ出会っていない"
 	var info := _rt("%s\n%s" % [title, body])
-	info.custom_minimum_size = Vector2(520, 0)
+	# #265再7: 「選択を解除」ボタン分の幅を常に確保しておくため、
+	# 「選択」表示時より少し詰める(520→420)。ボタン側の固定幅とあわせて
+	# 行全体の幅が選択の有無で変わらないようにし、横スクロールが出ないようにする。
+	info.custom_minimum_size = Vector2(420, 0)
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	# 未達成はグレーアウト
@@ -549,6 +554,8 @@ func _add_achievement_row(a: Dictionary) -> void:
 		var b := _btn("選択を解除" if picked else "選択", func():
 			GameState.select_badge(aid)
 			show_achievements())
+		# #265再7: 「選択」「選択を解除」どちらでも同じ幅にする(選択時に右へ伸びない)
+		b.custom_minimum_size = Vector2(ACH_BTN_W, 0)
 		if picked:
 			b.add_theme_color_override("font_color", Color(1.0, 0.92, 0.45))
 		row.add_child(b)

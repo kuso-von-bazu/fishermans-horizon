@@ -110,6 +110,7 @@ func _build() -> void:
 	help_btn.mouse_entered.connect(func(): pointer_on_ui = true)
 	help_btn.mouse_exited.connect(func(): pointer_on_ui = false)
 	help_btn.pressed.connect(func(): OverlayMenus.show_help(root))
+	_style_btn(help_btn)   # #278再5: 資金・名声ウインドウ等と同じ見た目に
 	root.add_child(help_btn)
 
 	# ソナー(右上)
@@ -125,13 +126,14 @@ func _build() -> void:
 	root.add_child(sonar)
 	# #232: 赤いガイド弧の直下に対象名と概算残距離を表示
 	# #278再3: ピクセルフォントにすると読みにくいとのことで、元のフォントに戻す
-	lbl_guide = _label("", 12)
+	# #278再5: 文字が小さいとの指摘で拡大(12→16)。長い主の名前でも見切れないよう横幅も広げる
+	lbl_guide = _label("", 16)
 	lbl_guide.anchor_left = 1.0
 	lbl_guide.anchor_right = 1.0
-	lbl_guide.offset_left = -350   # #232再: 下の[R]帰還ヒントと中心をそろえる
+	lbl_guide.offset_left = -420   # #232再: 下の[R]帰還ヒントと中心をそろえる
 	lbl_guide.offset_right = -16
-	lbl_guide.offset_top = 282
-	lbl_guide.offset_bottom = 308
+	lbl_guide.offset_top = 280
+	lbl_guide.offset_bottom = 312
 	lbl_guide.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl_guide.add_theme_color_override("font_color", Color(1.0, 0.72, 0.64))
 	lbl_guide.add_theme_constant_override("outline_size", 4)
@@ -307,9 +309,12 @@ func _build() -> void:
 
 # #278(提案3): HUDのパネルは角丸半透明黒から「ドットの枠線」へ。
 # 2pxの明るい縁を引き、その外側に2pxの暗い縁(shadow)を重ねて二重の枠にする。
+# #278再5: 奥の海・敵がある程度見えるよう背景をさらに透過(0.70→0.35)
+const PANEL_BG_ALPHA := 0.35
+
 func _style(p: PanelContainer) -> void:
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.02, 0.04, 0.08, 0.70)
+	sb.bg_color = Color(0.02, 0.04, 0.08, PANEL_BG_ALPHA)
 	sb.set_corner_radius_all(0)     # ドット絵に角丸はない
 	sb.set_border_width_all(2)
 	sb.border_color = Color(0.60, 0.76, 0.92, 0.95)   # 明縁
@@ -320,6 +325,23 @@ func _style(p: PanelContainer) -> void:
 	sb.set_content_margin_all(8)
 	p.add_theme_stylebox_override("panel", sb)
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+# #278再5: 陣形/スキル/「?」ボタンも資金・名声ウインドウ等と同じドット枠+透過にする
+func _style_btn(b: Button, border_color := Color(0.60, 0.76, 0.92, 0.95)) -> void:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.02, 0.04, 0.08, PANEL_BG_ALPHA)
+	sb.set_corner_radius_all(0)
+	sb.set_border_width_all(2)
+	sb.border_color = border_color
+	sb.shadow_size = 2
+	sb.shadow_offset = Vector2.ZERO
+	sb.shadow_color = Color(0, 0, 0, 0.85)
+	sb.anti_aliasing = false
+	sb.set_content_margin_all(6)
+	b.add_theme_stylebox_override("normal", sb)
+	b.add_theme_stylebox_override("hover", sb)
+	b.add_theme_stylebox_override("pressed", sb)
+	b.add_theme_stylebox_override("focus", sb)
 
 func _label(t: String, sz: int) -> Label:
 	var l := Label.new()
@@ -482,6 +504,7 @@ func build_formation_bar(on_pick: Callable, on_skill: Callable = Callable()) -> 
 			b.pressed.connect(func(): on_pick.call(idx))
 			b.mouse_entered.connect(func(): pointer_on_ui = true)
 			b.mouse_exited.connect(func(): pointer_on_ui = false)
+			_style_btn(b)   # #278再5: 資金・名声ウインドウ等と同じ見た目に
 			_form_box.add_child(b)
 			_form_btns.append(b)
 		set_formation(GameState.formation_slot)
@@ -499,6 +522,7 @@ func build_formation_bar(on_pick: Callable, on_skill: Callable = Callable()) -> 
 		_skill_btn.pressed.connect(func(): _on_skill.call())
 		_skill_btn.mouse_entered.connect(func(): pointer_on_ui = true)
 		_skill_btn.mouse_exited.connect(func(): pointer_on_ui = false)
+		_style_btn(_skill_btn)   # #278再5: 資金・名声ウインドウ等と同じ見た目に(既定/クールダウン中)
 		holder.add_child(_skill_btn)
 		# クールダウン中の覆い(右側に残り、左から解除される)
 		_skill_cover = ColorRect.new()
@@ -521,18 +545,11 @@ func set_skill_state(skill_name: String, progress: float, ready_now: bool) -> vo
 		# 左から解除=覆いの左端を右へずらす
 		_skill_cover.offset_left = w * clampf(progress, 0.0, 1.0)
 		_skill_cover.visible = not ready_now
-	# 使用可能なら赤囲み、クールダウン中は枠なし
+	# 使用可能なら赤囲み、クールダウン中は資金・名声ウインドウ等と同じ既定の枠
 	if ready_now:
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = Color(0.16, 0.18, 0.22, 0.92)
-		sb.set_corner_radius_all(4)
-		sb.set_border_width_all(3)
-		sb.border_color = Color(1.0, 0.2, 0.15)
-		_skill_btn.add_theme_stylebox_override("normal", sb)
-		_skill_btn.add_theme_stylebox_override("hover", sb)
+		_style_btn(_skill_btn, Color(1.0, 0.2, 0.15))
 	else:
-		_skill_btn.remove_theme_stylebox_override("normal")
-		_skill_btn.remove_theme_stylebox_override("hover")
+		_style_btn(_skill_btn)
 
 # 選択中の陣形を強調
 func set_formation(slot: int) -> void:
@@ -553,7 +570,8 @@ func show_departure_hint(text: String, hold := 5.0) -> void:   # #241再3: 3秒�
 	tw.tween_callback(func(): _hint_box.visible = false)
 
 # #232再4: 漁ゲージがあった位置に「大漁!」を出す
-func show_catch_bonus(text: String, hold := 1.2) -> void:
+# #232再8: 表示時間を短縮(保持1.2秒→0.4秒、フェード0.5秒→0.3秒)
+func show_catch_bonus(text: String, hold := 0.4) -> void:
 	if lbl_catch == null:
 		return
 	lbl_catch.text = text
@@ -561,7 +579,7 @@ func show_catch_bonus(text: String, hold := 1.2) -> void:
 	lbl_catch.modulate.a = 1.0
 	var tw := create_tween()
 	tw.tween_interval(hold)
-	tw.tween_property(lbl_catch, "modulate:a", 0.0, 0.5)
+	tw.tween_property(lbl_catch, "modulate:a", 0.0, 0.3)
 	tw.tween_callback(func(): lbl_catch.visible = false)
 
 func set_prompt(text: String) -> void:
