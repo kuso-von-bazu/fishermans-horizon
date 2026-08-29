@@ -449,6 +449,7 @@ func _enter_dock(island_id: int, do_reset := true) -> void:
 	_skill_cd_max = 1.0
 	_dock_target = -1
 	_returning = false
+	_clear_return_hold()   # #280: 帰還長押しの進捗とHUD表示を寄港時に必ず戻す
 	GameState.current_island = island_id
 	if not GameState.visited_islands.has(island_id):
 		GameState.visited_islands.append(island_id)   # 到達記録(#19)
@@ -523,7 +524,7 @@ func _on_set_sail() -> void:
 	GameState.notice.emit("船団速度: %.1f (%s が律速)" % [GameState.fleet_speed(), GameState.slowest_ship_name()])
 	Audio.ambient_enabled = true   # #253: 波の音
 	_boss_bgm_on = ""
-	_return_hold = 0.0
+	_clear_return_hold()   # #280: 「帰還まで○秒」を持ち越さない
 	_dock_grace = 2.0
 	_dock_target = -1
 	_food_choice_shown = false
@@ -562,6 +563,15 @@ func _update_docking() -> bool:
 		GameState.notice.emit("%s に帰港" % Database.island(_dock_target).name)
 		_enter_dock(_dock_target, true)
 	return true
+
+# #280: 帰還長押し(R)の進捗と、HUDの「帰還まで○秒」表示をまとめて戻す。
+#   長押し中に燃料半減のダイアログが出るとゲームがポーズし、
+#   _physics_process の解除処理が走らないまま入港できてしまうため、
+#   寄港・出港・ダイアログ表示のそれぞれで確実に消す。
+func _clear_return_hold() -> void:
+	_return_hold = 0.0
+	if hud and hud.has_method("set_return_progress"):
+		hud.set_return_progress(0.0)
 
 func _forced_return(reason: String, wrecked: bool = false) -> void:
 	if _returning:
@@ -644,8 +654,7 @@ func _physics_process(delta: float) -> void:
 			_enter_dock(GameState.current_island, true)
 			return
 	elif _return_hold > 0.0:
-		_return_hold = 0.0
-		hud.set_return_progress(0.0)
+		_clear_return_hold()
 	if not _update_docking():
 		_update_fishing(delta)
 	_update_spawns(delta)
@@ -1894,6 +1903,7 @@ func _onward_island_name() -> String:
 
 func _show_food_choice() -> void:
 	_food_dialog_open = true
+	_clear_return_hold()   # #280: 長押し中にダイアログが出たら、その場で進捗を捨てる
 	if player:
 		player.control_enabled = false
 	if _food_dialog == null:
@@ -2009,6 +2019,8 @@ func _maybe_screenshot() -> void:
 	var want_achtoast := false   # #265再3: 達成トースト(バッヂ絵がドンと出る演出)
 	var want_nightfx := false    # #278(提案6): 夜の海域の光(目の光・炎上の灯り)
 	var want_debris := false     # #278(提案4): 撃破の破片
+	var want_retbug := false     # #280: 帰還長押し中に燃料半減→帰港→再出港
+	var want_ach5 := false       # #265再4: 実績メニューの先頭(説明文と「討伐」の見出し)
 	for a in args:
 		if a.begins_with("--shot"):
 			want_shot = true
@@ -2036,6 +2048,8 @@ func _maybe_screenshot() -> void:
 			want_achtoast = a.find("achtoast") != -1   # #265再3
 			want_nightfx = a.find("nightfx") != -1     # #278(提案6)
 			want_debris = a.find("debris") != -1       # #278(提案4)
+			want_retbug = a.find("retbug") != -1       # #280
+			want_ach5 = a.find("ach5") != -1           # #265再4
 			# #190: isle<N> で撮影する海域(島index)を指定(天候・障害物の確認用)
 			var ip := a.find("isle")
 			if ip != -1 and ip + 4 < a.length():
@@ -2131,6 +2145,23 @@ func _maybe_screenshot() -> void:
 			GameState.visited_islands = [0]
 			_show_food_choice()
 			await get_tree().create_timer(0.5).timeout
+		if want_retbug:
+			# #280: R長押しの途中で燃料が半分を切り、「直近の島へ帰港する」を
+			#   選んだあと再出港したときに「帰還まで○秒」が残らないかを撮る。
+			GameState.unlocked_islands = [0, 1]
+			GameState.visited_islands = [0]
+			_return_hold = 1.8
+			hud.set_return_progress(_return_hold / 3.0)
+			await get_tree().create_timer(0.2).timeout
+			_show_food_choice()
+			await get_tree().create_timer(0.3).timeout
+			for b in _food_dialog.find_children("", "Button", true, false):
+				if str(b.text).begins_with("直近の島"):
+					b.pressed.emit()
+					break
+			await get_tree().create_timer(0.4).timeout
+			_on_set_sail()
+			await get_tree().create_timer(0.5).timeout
 		if want_nightfx:
 			# #278(提案6): 常闇の海で「夜の帝王(大・中・小)の目」と「炎上する海賊」を並べる
 			player.control_enabled = false
@@ -2200,14 +2231,15 @@ func _maybe_screenshot() -> void:
 			GameState.badge_id = "fame_max"
 			port_ui.show_achievements()
 			# #265: ach2 指定時は下(専用バッヂの並ぶ(3)〜(7))までスクロールする
-			if want_ach2 or want_ach4:
+			if want_ach2 or want_ach4 or want_ach5:
 				await get_tree().create_timer(0.3).timeout
 				var sc0: Node = port_ui.content.get_parent()
 				while sc0 != null and not (sc0 is ScrollContainer):
 					sc0 = sc0.get_parent()
 				if sc0 is ScrollContainer:
 					# #265再2: ach4 は「近海の主の討伐」のあたり(中ほど)で止める
-					(sc0 as ScrollContainer).scroll_vertical = 2450 if want_ach4 else 100000
+					# #265再4: ach5 は先頭(説明文と「討伐」の見出し)を写す
+					(sc0 as ScrollContainer).scroll_vertical = 0 if want_ach5 else (2450 if want_ach4 else 100000)
 		if want_yard:
 			port_ui._shipyard_weapon_slot = 0   # #248: 武器一覧も写るようスロット1を開いておく
 			port_ui.show_shipyard()

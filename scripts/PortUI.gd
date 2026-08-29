@@ -411,7 +411,7 @@ HP:%d  賞金:%d  [%s]
 
 # ---------------- 実績とバッヂ(#265) ----------------
 const ACH_GROUP_NAMES := {
-	"kill": "討伐(戦闘能力があるモブ・海賊)",
+	"kill": "討伐",
 	"lord": "近海の主の討伐",
 	"fleet": "編成",
 	"crew": "クルーの育成",
@@ -491,7 +491,7 @@ func show_achievements() -> void:
 		if GameState.is_achieved(str(a0.id)):
 			done += 1
 	content.add_child(_p("達成: %d / %d" % [done, Database.achievements.size()]))
-	content.add_child(_p("達成した実績を選ぶと、航海中に名声の右へバッヂが出て小さなバフが付く(選び直しで解除)。"))
+	content.add_child(_p("達成した実績を選択するとバフ効果を得られる。"))
 	var cur := ""
 	if GameState.badge_id != "":
 		var ca := Database.achievement(GameState.badge_id)
