@@ -1167,6 +1167,7 @@ func _on_boss_rush() -> void:
 		return
 	_boss_rush = true
 	GameState.boss_rush = true
+	GameState.mark_boss_rush_played()   # #265再5: 実績「真の海の王者」の表示解禁用
 	_victory_shown = false
 	_returning = false
 	_br_index = 0

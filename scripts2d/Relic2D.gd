@@ -4,6 +4,7 @@ extends Area2D
 var value: int = 300
 var _t: float = 0.0
 var _collected := false
+var _sprite: Sprite2D = null   # #281: ドット絵があればこちらを表示
 
 func setup(v: int) -> void:
 	value = v
@@ -15,6 +16,16 @@ func _ready() -> void:
 	sh.radius = 44.0
 	col.shape = sh
 	add_child(col)
+	# #281: ドット絵があれば使う。無ければ_drawの金の箱で代用する
+	var pixel := "res://assets/images/pixel/fx_relic.png"
+	if ResourceLoader.exists(pixel):
+		_sprite = Sprite2D.new()
+		_sprite.texture = load(pixel)
+		_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		var tex: Texture2D = _sprite.texture
+		var longest: float = maxf(float(tex.get_width()), float(tex.get_height()))
+		_sprite.scale = Vector2.ONE * (36.0 / maxf(longest, 1.0))
+		add_child(_sprite)
 	var lbl := Label.new()
 	lbl.text = "旧文明の遺産"
 	lbl.add_theme_font_size_override("font_size", 13)
@@ -32,14 +43,16 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 func _draw() -> void:
-	# 金の遺物+回転する光輪
+	# 光る輪+周回する光点(ドット絵の有無に関わらず出す)
 	var pulse := 0.7 + sin(_t * 3.0) * 0.3
 	draw_circle(Vector2.ZERO, 26 + sin(_t * 2.0) * 3.0, Color(0.5, 0.8, 1.0, 0.18 * pulse))
-	draw_rect(Rect2(-11, -8, 22, 16), Color(0.85, 0.72, 0.3))
-	draw_rect(Rect2(-11, -8, 22, 5), Color(0.95, 0.85, 0.45))
 	for i in 6:
 		var a := _t * 1.2 + TAU * i / 6.0
 		draw_circle(Vector2(cos(a), sin(a)) * 20.0, 2.2, Color(0.6, 0.85, 1.0, 0.8))
+	if _sprite == null:
+		# ドット絵が無いときの代用: 金の箱
+		draw_rect(Rect2(-11, -8, 22, 16), Color(0.85, 0.72, 0.3))
+		draw_rect(Rect2(-11, -8, 22, 5), Color(0.95, 0.85, 0.45))
 
 func _on_enter(body: Node) -> void:
 	if _collected or not body.is_in_group("player"):

@@ -1499,8 +1499,8 @@ func _ready() -> void:
 	check(total_cargo > 0, "漂流貨物から何も得られない")
 	check(GameState.used_hold() <= GameState.max_hold(), "漂流貨物で魚倉があふれた")
 
-	# #265: 実績
-	check(Database.achievements.size() == 47, "実績の数が47でない(%d)" % Database.achievements.size())
+	# #265: 実績(#265再6で「真の海の王者」「アルティメットプレーヤー」の2件を追加し49件)
+	check(Database.achievements.size() == 49, "実績の数が49でない(%d)" % Database.achievements.size())
 	check(GameState.FAME_MAX == 999, "名声のカンストが999でない")
 	GameState.reset_all()
 	GameState.add_fame(99999)

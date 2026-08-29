@@ -613,6 +613,18 @@ func mark_boss_rush_cleared() -> void:
 		f.store_string("1")
 		f.close()
 
+# #265再5: ボスラッシュを1度でもプレイしたか(実績「真の海の王者」の表示解禁用)。
+const BR_PLAYED_PATH := "user://boss_rush_played.dat"
+
+func has_played_boss_rush() -> bool:
+	return FileAccess.file_exists(BR_PLAYED_PATH)
+
+func mark_boss_rush_played() -> void:
+	var f := FileAccess.open(BR_PLAYED_PATH, FileAccess.WRITE)
+	if f:
+		f.store_string("1")
+		f.close()
+
 # #209再2: ボスを1体倒すごとに船団の全艦が最大装甲の5%回復する
 func heal_fleet_percent(pct: float) -> void:
 	for i in fleet.size():
@@ -902,6 +914,8 @@ func achievement_revealed(a: Dictionary) -> bool:
 			return defeated_lords.has(str(a.target)) or claimed_lords.has(str(a.target))
 		"pirate_all":
 			return kill_count("pirate", "raider") + kill_count("pirate", "corsair") + kill_count("pirate", "dread") > 0
+		"boss_rush":
+			return has_played_boss_rush()
 	return true
 
 func check_achievements() -> Array:
@@ -941,6 +955,13 @@ func _achievement_met(a: Dictionary) -> bool:
 			return _crew_achievement(str(a.id))
 		"fleet":
 			return _fleet_achievement(str(a.id))
+		"boss_rush":
+			return has_cleared_boss_rush()
+		"all":
+			for other in Database.achievements:
+				if str(other.id) != str(a.id) and not is_achieved(str(other.id)):
+					return false
+			return true
 	return false
 
 # パラメータのカンストは既存の STAT_MAX(=50)を使う

@@ -418,30 +418,34 @@ const ACH_GROUP_NAMES := {
 	"wealth": "資金と名声",
 	"fish": "漁",
 	"relic": "旧文明の遺物",
+	"other": "その他",   # #265再5: ボスラッシュ制覇・全実績制覇(一番下)
 }
 
-# バッヂの効果を日本語にする
+# バッヂの効果を日本語にする(#265再5: 複数キーを持つバフはすべて列挙して連結)
 func badge_text(a: Dictionary) -> String:
 	var buff: Dictionary = a.get("buff", {})
+	var parts: Array = []
 	for k in buff:
 		var v := float(buff[k])
 		var pct: float = absf(v - 1.0) * 100.0
 		match str(k):
 			"reload":
-				return "船団のリロード時間 -%.1f%%" % pct
+				parts.append("船団のリロード時間 -%.1f%%" % pct)
 			"speed":
-				return "前進最高速 +%.1f%%" % pct
+				parts.append("前進最高速 +%.1f%%" % pct)
 			"ram":
-				return "衝角・体当たりダメージ +%.1f%%" % pct
+				parts.append("衝角・体当たりダメージ +%.1f%%" % pct)
 			"shot_dmg":
-				return "遠隔攻撃ダメージ +%.1f%%" % pct
+				parts.append("遠隔攻撃ダメージ +%.1f%%" % pct)
 			"shot_speed":
-				return "弾速 +%.1f%%" % pct
+				parts.append("弾速 +%.1f%%" % pct)
 			"flag_dmg_taken":
-				return "旗艦の被ダメージ -%.1f%%" % pct
+				parts.append("旗艦の被ダメージ -%.1f%%" % pct)
 			"fleet_dmg_taken":
-				return "船団の被ダメージ -%.1f%%" % pct
-	return "-"
+				parts.append("船団の被ダメージ -%.1f%%" % pct)
+	if parts.is_empty():
+		return "-"
+	return "、".join(parts)
 
 # バッヂの絵。討伐系は敵のドット絵、それ以外は専用の絵
 func _badge_icon(a: Dictionary, h: float) -> Control:
@@ -497,7 +501,7 @@ func show_achievements() -> void:
 		var ca := Database.achievement(GameState.badge_id)
 		if not ca.is_empty():
 			cur = "%s(%s)" % [str(ca.name), badge_text(ca)]
-	content.add_child(_p("選択中のバッヂ: %s" % ("なし" if cur == "" else cur)))
+	content.add_child(_p("選択中のバフ: %s" % ("なし" if cur == "" else cur)))
 	var shown := {}
 	for g in ACH_GROUP_NAMES:
 		var first := true
@@ -524,7 +528,7 @@ func _add_achievement_row(a: Dictionary) -> void:
 	var title := str(a.name) if seen else "？？？？？"
 	var body := ""
 	if got:
-		body = "%s\n達成済み  バッヂ効果: %s" % [str(a.desc), badge_text(a)]
+		body = "%s\n達成済み  バフ効果: %s" % [str(a.desc), badge_text(a)]
 	elif seen:
 		if int(pr[1]) > 1:
 			body = "%s\n進捗 %d / %d" % [str(a.desc), int(pr[0]), int(pr[1])]

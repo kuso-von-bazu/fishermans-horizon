@@ -42,7 +42,9 @@ LONG_OVERRIDE = {"lord_leviathan.png": 200, "lord_leviathan_front.png": 200, "lo
                  "lord_night_bat_small.png": 180, "lord_night_bat_small_front.png": 180, "lord_night_bat_small_back.png": 180,
                  "mob_carabos.png": 180,
                  # #239再7: レイス(ぼろ布のほつれが細かい)
-                 "lord_wraith.png": 180, "lord_wraith_front.png": 180, "lord_wraith_back.png": 180}
+                 "lord_wraith.png": 180, "lord_wraith_front.png": 180, "lord_wraith_back.png": 180,
+                 # #193再5: 障害物(岩礁・流氷)は最大200px近くまで拡大表示されるので高精細に
+                 "obs_reef.png": 120, "obs_ice.png": 120}
 # #278(提案2): 島は画面のランドマークなので大きめ(256px/64色)
 for _i in range(10):
     LONG_OVERRIDE["island_%d.png" % _i] = 256
@@ -68,7 +70,9 @@ COLORS_OVERRIDE = {"lord_leviathan.png": 64, "lord_leviathan_front.png": 64, "lo
                    "lord_night_bat_small.png": 64, "lord_night_bat_small_front.png": 64, "lord_night_bat_small_back.png": 64,
                    "mob_carabos.png": 64,
                    # #239再7: レイス
-                   "lord_wraith.png": 64, "lord_wraith_front.png": 64, "lord_wraith_back.png": 64}
+                   "lord_wraith.png": 64, "lord_wraith_front.png": 64, "lord_wraith_back.png": 64,
+                   # #193再5: 障害物
+                   "obs_reef.png": 48, "obs_ice.png": 48}
 for _i in range(10):
     COLORS_OVERRIDE["island_%d.png" % _i] = 64
 

@@ -374,6 +374,13 @@ var achievements := [
 	{"id": "rich", "group": "wealth", "name": "錦衣玉食", "desc": "資金500000に到達", "check": "wealth", "target": "", "need": 0, "buff": {"flag_dmg_taken": 0.9800}, "icon": "res://assets/images/pixel/badge_rich.png"},
 	{"id": "all_fish", "group": "fish", "name": "渭川漁父", "desc": "すべての種類の魚を漁獲", "check": "fish", "target": "", "need": 0, "buff": {"speed": 1.0060}, "icon": "res://assets/images/pixel/badge_fish.png"},
 	{"id": "relic100", "group": "relic", "name": "考古学者", "desc": "旧文明の遺産を100個入手", "check": "relic", "target": "", "need": 100, "buff": {"reload": 0.9960}, "icon": "res://assets/images/pixel/badge_relic.png"},
+	# #265再5: ボスラッシュ制覇と全実績制覇。「その他」の見出しで一番下に配置
+	{"id": "true_sea_ruler", "group": "other", "name": "真の海の王者", "desc": "ボスラッシュモードをクリア", "check": "boss_rush", "target": "", "need": 0,
+		"buff": {"reload": 0.9850, "speed": 1.0150, "ram": 1.0150, "shot_dmg": 1.0200, "shot_speed": 1.0200, "flag_dmg_taken": 0.9800, "fleet_dmg_taken": 0.9850},
+		"icon": "res://assets/images/pixel/badge_sea_ruler.png"},
+	{"id": "ultimate_player", "group": "other", "name": "アルティメットプレーヤー", "desc": "他のすべての実績を達成", "check": "all", "target": "", "need": 0,
+		"buff": {"reload": 0.9800, "speed": 1.0200, "ram": 1.0210, "shot_dmg": 1.0300, "shot_speed": 1.0230, "flag_dmg_taken": 0.9760, "fleet_dmg_taken": 0.9820},
+		"icon": "res://assets/images/pixel/badge_ultimate.png"},
 ]
 
 func achievement(aid: String) -> Dictionary:

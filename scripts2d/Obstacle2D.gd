@@ -9,6 +9,7 @@ var radius: float = 46.0
 var drift: Vector2 = Vector2.ZERO   # #193: 流氷だけ低速で漂う
 var _shape: PackedVector2Array = PackedVector2Array()
 var _bumps: Array = []              # 表面の起伏(岩の頭/氷の割れ目)
+var _sprite: Sprite2D = null        # #193再5: ドット絵があればこちらを表示
 
 func setup(p_kind: String) -> void:
 	kind = p_kind
@@ -40,6 +41,18 @@ func _ready() -> void:
 	sh.radius = radius * 0.80   # 見た目よりやや小さめ(輪郭の尖りで理不尽に当たらないように)
 	col.shape = sh
 	add_child(col)
+	# #193再5: ドット絵があれば使う。無ければ従来通り_drawのベクター図形で代用する
+	var pixel := "res://assets/images/pixel/obs_%s.png" % kind
+	if ResourceLoader.exists(pixel):
+		_sprite = Sprite2D.new()
+		_sprite.texture = load(pixel)
+		_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		var tex: Texture2D = _sprite.texture
+		var longest: float = maxf(float(tex.get_width()), float(tex.get_height()))
+		_sprite.scale = Vector2.ONE * (radius * 2.1 / maxf(longest, 1.0))
+		_sprite.rotation = rng.randf() * TAU   # 個体ごとに向きを変えて単調な繰り返しを防ぐ
+		_sprite.flip_h = rng.randf() < 0.5
+		add_child(_sprite)
 	queue_redraw()
 
 func _physics_process(delta: float) -> void:
@@ -48,19 +61,23 @@ func _physics_process(delta: float) -> void:
 
 func _draw() -> void:
 	if kind == "ice":
-		# 流氷: 白〜淡青の板氷。縁を明るく、上面に割れ目
-		draw_colored_polygon(_scaled(_shape, 1.06), Color(0.62, 0.78, 0.86, 0.55))   # 水中に沈む縁
-		draw_colored_polygon(_shape, Color(0.88, 0.93, 0.97))
-		for b in _bumps:
-			draw_circle(b.pos, b.r, Color(0.97, 0.99, 1.0))
-		draw_polyline(_scaled(_shape, 1.0) + PackedVector2Array([_shape[0]]), Color(0.55, 0.70, 0.82), 2.0)
+		# 流氷: 水中に沈む縁の色付け(ドット絵の有無に関わらず出す)
+		draw_colored_polygon(_scaled(_shape, 1.06), Color(0.62, 0.78, 0.86, 0.55))
+		if _sprite == null:
+			# ドット絵が無いときの代用: 白〜淡青の板氷。縁を明るく、上面に割れ目
+			draw_colored_polygon(_shape, Color(0.88, 0.93, 0.97))
+			for b in _bumps:
+				draw_circle(b.pos, b.r, Color(0.97, 0.99, 1.0))
+			draw_polyline(_scaled(_shape, 1.0) + PackedVector2Array([_shape[0]]), Color(0.55, 0.70, 0.82), 2.0)
 	else:
-		# 岩礁: 濡れた暗い岩+白い波しぶきの輪
+		# 岩礁: 白い波しぶきの輪+水面下の影(ドット絵の有無に関わらず出す)
 		draw_arc(Vector2.ZERO, radius * 1.12, 0, TAU, 30, Color(0.95, 0.98, 1.0, 0.45), 5.0)
-		draw_colored_polygon(_scaled(_shape, 1.05), Color(0.16, 0.22, 0.26, 0.6))    # 水面下の影
-		draw_colored_polygon(_shape, Color(0.34, 0.32, 0.30))
-		for b in _bumps:
-			draw_circle(b.pos, b.r, Color(0.46, 0.44, 0.41))
+		draw_colored_polygon(_scaled(_shape, 1.05), Color(0.16, 0.22, 0.26, 0.6))
+		if _sprite == null:
+			# ドット絵が無いときの代用: 濡れた暗い岩
+			draw_colored_polygon(_shape, Color(0.34, 0.32, 0.30))
+			for b in _bumps:
+				draw_circle(b.pos, b.r, Color(0.46, 0.44, 0.41))
 
 func _scaled(poly: PackedVector2Array, s: float) -> PackedVector2Array:
 	var out := PackedVector2Array()
