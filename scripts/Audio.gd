@@ -72,6 +72,8 @@ const SFX_FILES := {
 	"sfx_lord_roar": "res://assets/audio/近海の主の鳴き声.mp3",   # #79再: 主・レヴィアタン出現時
 	# #233再2: 共有者提供の効果音。無ければ音声生成.py の合成wavへフォールバック
 	"sfx_crit": "res://assets/audio/クリティカル.mp3",
+	# #278再3: 入港・出港の汽笛を共有者提供のmp3に差し替え(従来は合成音)
+	"sfx_horn": "res://assets/audio/汽笛.mp3",
 }
 
 func _stream_of(name: String) -> AudioStream:

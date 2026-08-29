@@ -191,6 +191,13 @@ func _ready() -> void:
 	check(w2.contains("func port_transition("), "入港・出港のフェードが無い")
 	check(w2.contains('Audio.play("sfx_horn"'), "入港・出港で汽笛が鳴らない")
 
+	# ---------------- #278再3: 汽笛を提供のmp3に差し替え/ガイド文字のフォントを戻す ----------------
+	check(ResourceLoader.exists("res://assets/audio/汽笛.mp3"), "共有者提供の汽笛.mp3が無い")
+	var asrc := _src("res://scripts/Audio.gd")
+	check(asrc.contains('"sfx_horn": "res://assets/audio/汽笛.mp3"'), "汽笛が共有者提供のmp3に差し替わっていない")
+	check(hsrc.contains('lbl_guide = _label("", 12)'), "ソナー下のガイド文字がピクセルフォントのまま")
+	check(not hsrc.contains('lbl_guide = _pxlabel'), "ソナー下のガイド文字にピクセルフォントの指定が残っている")
+
 	if failures.is_empty():
 		print("MAINTENANCE_TEST_OK griffon/ship_fuel/night_bgm/ghost_kite/fuel_taper/ach_toast/pixel_sea/pixel_island/pixel_font/juice/night_light/small_life")
 		get_tree().quit(0)
