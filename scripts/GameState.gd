@@ -563,16 +563,16 @@ func reset_all() -> void:
 
 # ---------------- オートセーブ(#93) ----------------
 # ---------------------------------------------------------------------------
-# #278(提案4): 画面シェイクの設定。酔いへの配慮として既定はOFFにし、
-# 歯車アイコンの設定メニューから切り替える。音量と同じくファイルへ即保存する。
+# #278(提案4): 画面シェイクの設定。打撃感を既定で味わえるよう既定はONで、
+# 酔う場合は歯車アイコンの設定メニューから切れる。音量と同じくファイルへ即保存する。
 # ---------------------------------------------------------------------------
 const DISPLAY_SETTINGS_PATH := "user://display_settings.cfg"
-var screen_shake: bool = false
+var screen_shake: bool = true
 
 func load_display_settings() -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(DISPLAY_SETTINGS_PATH) == OK:
-		screen_shake = bool(cfg.get_value("display", "screen_shake", false))
+		screen_shake = bool(cfg.get_value("display", "screen_shake", true))
 
 func set_screen_shake(on: bool) -> void:
 	screen_shake = on

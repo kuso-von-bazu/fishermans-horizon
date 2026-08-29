@@ -148,6 +148,7 @@ func _ready() -> void:
 	check(w2.contains("zoom_punch(1.1, 0.2)"), "一斉射撃の演出ズームが無い")
 	check(esrc.contains("w0.hit_stop(0.05, 0.05)"), "撃破時のヒットストップが無い")
 	check(esrc.contains("Juice.debris("), "撃破の破片が無い")
+	var shake_was := GameState.screen_shake
 	GameState.set_screen_shake(true)
 	GameState.screen_shake = false
 	GameState.load_display_settings()
@@ -156,6 +157,11 @@ func _ready() -> void:
 	GameState.screen_shake = true
 	GameState.load_display_settings()
 	check(GameState.screen_shake == false, "画面シェイクのOFFが保存されない")
+	GameState.set_screen_shake(shake_was)   # テストで遊ぶ側の設定を書き換えない
+	# #278 追加要望: 一度も触っていないとき(設定ファイル/項目が無いとき)の既定はON
+	check(gsrc.contains("var screen_shake: bool = true"), "画面シェイクの既定がONでない")
+	check(gsrc.contains('cfg.get_value("display", "screen_shake", true)'),
+		"設定ファイルに項目が無いときの既定がONでない")
 	check(_src("res://scripts/OverlayMenus.gd").contains("画面シェイク"), "設定メニューに画面シェイクが無い")
 	var cols := Juice.sample_colors(load("res://assets/images/pixel/lord_leviathan.png"))
 	check(cols.size() >= 3, "破片の色を拾えていない")

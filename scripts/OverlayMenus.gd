@@ -179,7 +179,7 @@ static func show_settings(parent: Control) -> void:
 			setter.call(value)
 			val.text = "%d%%" % int(round(value * 100.0)))
 		box.add_child(row)
-	# #278(提案4): 画面シェイク。酔いへの配慮として既定はOFF
+	# #278(提案4): 画面シェイク。既定はONで、酔う場合はここで切れる
 	var shake_row := HBoxContainer.new()
 	shake_row.add_theme_constant_override("separation", 18)
 	var shake_label := Label.new()
