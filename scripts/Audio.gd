@@ -31,6 +31,8 @@ const BGM_FILES := {
 	"bgm_leviathan": "res://assets/audio/レヴイアタン.mp3",
 	"bgm_king":      "res://assets/audio/海賊王.mp3",
 	"bgm_ending":    "res://assets/audio/エンディング.mp3",
+	# #279: 夜の海域(月下・星霜・常闇)専用の航海BGM
+	"bgm_night":     "res://assets/audio/夜.mp3",
 }
 
 func _ready() -> void:
@@ -118,6 +120,9 @@ func _bgm_stream(name: String) -> AudioStream:
 		s = load(BGM_FILES[name])
 	if s == null:
 		s = _stream_of(name)
+	# #279: 専用曲が見つからないときは通常の航海BGMへ退避する(無音にしない)
+	if s == null and name != "bgm_sea":
+		s = _bgm_stream("bgm_sea")
 	# MP3/Vorbis/wavそれぞれのループ指定(ギャップレス)
 	if s is AudioStreamMP3 or s is AudioStreamOggVorbis:
 		s.loop = true

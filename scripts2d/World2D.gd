@@ -80,6 +80,8 @@ func island_pos(idx: int) -> Vector2:
 	return Vector2(p.x, p.z) * K
 
 func _ready() -> void:
+	add_to_group("world2d")   # #278(提案6): 効果側から夜の海域かどうかを引くため
+	GameState.load_display_settings()   # #278(提案4): 画面シェイクのON/OFF
 	_build_ocean()
 	_build_weather()
 	_build_islands()
@@ -89,6 +91,7 @@ func _ready() -> void:
 	_los_overlay.set_script(preload("res://scripts2d/LosOverlay2D.gd"))
 	_los_overlay.z_index = 5
 	add_child(_los_overlay)
+	_build_fade()   # #278(提案7-4): 入港・出港のフェード
 	hud = HUDScript.new()
 	add_child(hud)
 	port_ui = PortUIScript.new()
@@ -128,6 +131,51 @@ func _build_ocean() -> void:
 		ipos.append(Vector2(1e9, 1e9))
 	ocean_mat.set_shader_parameter("islands", ipos)
 	ocean_mat.set_shader_parameter("island_count", mini(Database.islands.size(), 10))
+	# #278(提案7-1): 海岸の白波。浅瀬の縁は Island2D._coast(132*small, wob, seed_off=1)。
+	# シェーダ側で同じ式を再現できるよう、半径・ゆらぎ・位相を渡す。
+	var irad := PackedFloat32Array()
+	var iwob := PackedFloat32Array()
+	var iseed := PackedFloat32Array()
+	for i in 10:
+		if i < Database.islands.size() and i < IslandScript.PALETTES.size():
+			var pal: Dictionary = IslandScript.PALETTES[i]
+			irad.append(132.0 * float(pal.get("small", 1.0)))
+			iwob.append(float(pal.get("wob", 0.16)))
+			iseed.append(float(i * 7 + 1))
+		else:
+			irad.append(0.0)
+			iwob.append(0.0)
+			iseed.append(0.0)
+	ocean_mat.set_shader_parameter("island_r", irad)
+	ocean_mat.set_shader_parameter("island_wob", iwob)
+	ocean_mat.set_shader_parameter("island_seed", iseed)
+
+# #278(提案7-4): 入港・出港の切り替えに0.3秒のフェード+汽笛を挟む。
+# 画面の差し替え自体は従来どおり即座に行い、その上を暗幕が晴れていく形にする
+# (切り替えを await にすると、寄港・出港を呼ぶ箇所すべてに影響が及ぶため)。
+var _fade: ColorRect
+var _shot_mode: bool = false   # --shot での撮影中はフェードを出さない
+var _debris_targets: Array = []   # --shot:debris で撮影直前に倒す敵
+
+func _build_fade() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 30   # 港UI(20)より前、実績トースト(40)より後ろ
+	add_child(layer)
+	_fade = ColorRect.new()
+	_fade.color = Color(0, 0, 0, 1)
+	_fade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fade.modulate.a = 0.0
+	layer.add_child(_fade)
+
+func port_transition(with_horn := true) -> void:
+	if _fade == null or _shot_mode:
+		return
+	_fade.modulate.a = 1.0
+	var tw := create_tween()
+	tw.tween_property(_fade, "modulate:a", 0.0, 0.3)
+	if with_horn:
+		Audio.play("sfx_horn", -10.0)
 
 # #190/#191/#192: 天候オーバーレイ(夜/大雨/吹雪)。海の上・HUDの下に全画面で重ねる
 func _build_weather() -> void:
@@ -145,6 +193,13 @@ func _build_weather() -> void:
 
 # #191再: 天候は current_island でなく「実際にいる海域(最寄りの島)」に追従させる。
 # 別の島を目指して航行中でも、近づいた海域の天候になる。
+# #279: 夜の海域(月下=night / 星霜=starry / 常闇=dark)は専用の航海BGM「夜」を鳴らす
+const NIGHT_SEA_WEATHERS := ["night", "starry", "dark"]
+
+func _sea_bgm() -> String:
+	var w := str(Database.island(GameState.current_island).get("weather", ""))
+	return "bgm_night" if NIGHT_SEA_WEATHERS.has(w) else "bgm_sea"
+
 func _nearest_island_weather() -> String:
 	if not is_instance_valid(player):
 		return ""
@@ -207,6 +262,10 @@ func _apply_weather(w: String, instant := true) -> void:
 	if instant:
 		_weather_cur = _weather_target.duplicate()
 	_push_weather()
+
+# #278(提案6): 夜の海域(月下・星霜・常闇)か。砲口炎・爆発・炎上の光はここでだけ出す
+func is_night_sea() -> bool:
+	return phase == "sea" and float(_weather_cur.get("night", 0.0)) > 0.5
 
 # 現在値をシェーダへ流し込む
 func _push_weather() -> void:
@@ -293,13 +352,68 @@ func _click_lock(pos: Vector2) -> void:
 	if best != null:
 		_set_lock(best)
 
+# ---------------- #278(提案4/5): 打撃感の演出 ----------------
+# 画面シェイク(設定でON/OFF・既定OFF)・ヒットストップ・演出ズーム。
+# カメラは World 直下にあるので、追従位置へ揺れの分だけオフセットを足す。
+var _shake_t: float = 0.0
+var _shake_dur: float = 0.0
+var _shake_amp: float = 0.0
+var _zoom_t: float = 0.0
+var _zoom_dur: float = 0.0
+var _zoom_mult: float = 1.0
+var _hitstop_on: bool = false
+
+func screen_shake(amp: float, dur: float) -> void:
+	if not GameState.screen_shake or phase != "sea":
+		return
+	if _shake_t > 0.0 and amp <= _shake_amp:
+		return   # 弱い揺れで強い揺れを上書きしない
+	_shake_amp = amp
+	_shake_dur = dur
+	_shake_t = dur
+
+# 敵撃破の瞬間だけ時間を止める。戻すタイマーは ignore_time_scale=true にしないと
+# 止めた倍率のまま待つことになり、0.05秒が1秒になってしまう。
+func hit_stop(dur := 0.05, scale := 0.05) -> void:
+	if _hitstop_on or phase != "sea":
+		return
+	_hitstop_on = true
+	Engine.time_scale = scale
+	var t := get_tree().create_timer(dur, true, false, true)
+	t.timeout.connect(func():
+		Engine.time_scale = 1.0
+		_hitstop_on = false)
+
+# 一斉射撃の発動時・主の登場時に少しだけ寄って戻る(索敵範囲は変えないので
+# プレイ感には影響しない)
+func zoom_punch(mult := 1.1, dur := 0.2) -> void:
+	if phase != "sea":
+		return
+	_zoom_mult = mult
+	_zoom_dur = dur
+	_zoom_t = dur
+
 func _process(_d: float) -> void:
 	# カメラ追従 + 海シェーダにカメラ左上のワールド座標を渡す
 	if camera and player:
-		camera.global_position = player.global_position
+		var off := Vector2.ZERO
+		if _shake_t > 0.0:
+			_shake_t = maxf(_shake_t - _d, 0.0)
+			var k := _shake_t / maxf(_shake_dur, 0.001)   # 減衰
+			off = Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * _shake_amp * k
+		camera.global_position = player.global_position + off
+		var z := 1.0
+		if _zoom_t > 0.0:
+			_zoom_t = maxf(_zoom_t - _d, 0.0)
+			var u := 1.0 - _zoom_t / maxf(_zoom_dur, 0.001)   # 0→1
+			z = 1.0 + (_zoom_mult - 1.0) * sin(u * PI)        # 寄って戻る
+		camera.zoom = Vector2(z, z)
 	if ocean_mat and player:
-		var vp := get_viewport_rect().size
-		ocean_mat.set_shader_parameter("cam_pos", player.global_position - vp * 0.5)
+		var zoom := camera.zoom.x if camera else 1.0
+		var cpos := camera.global_position if camera else player.global_position
+		var vp := get_viewport_rect().size / maxf(zoom, 0.01)
+		ocean_mat.set_shader_parameter("cam_pos", cpos - vp * 0.5)
+		ocean_mat.set_shader_parameter("cam_zoom", zoom)
 	_update_weather(_d)   # #191再: 航行中は最寄りの海域の天候へ追従
 
 # ---------------- フェーズ ----------------
@@ -325,6 +439,8 @@ func _on_title_continue() -> void:
 
 func _enter_dock(island_id: int, do_reset := true) -> void:
 	var was_at_sea := GameState.at_sea
+	if was_at_sea:
+		port_transition()   # #278(提案7-4): 入港の演出(起動時の初期化では鳴らさない)
 	if was_at_sea and not GameState.crew.is_empty():
 		GameState.grow_crew()   # 航海を終えたクルーが成長(#39)
 	phase = "dock"
@@ -356,6 +472,7 @@ func _enter_dock(island_id: int, do_reset := true) -> void:
 
 func _on_set_sail() -> void:
 	port_ui.close()
+	port_transition()   # #278(提案7-4): 出港の演出
 	# #93再: 出港時もオートセーブ。航海中に終了しても港での買い物が失われないようにする。
 	# 燃料費・賃金・修理費を引く「前」に保存するので、再開時は出港直前の状態に戻る
 	# (再開後に出港すればそこで改めて徴収されるため、二重取りにならない)。
@@ -401,7 +518,7 @@ func _on_set_sail() -> void:
 	# #241: 出港時のワンポイントヒント(ボスラッシュは対象外)
 	if not _boss_rush and hud and hud.has_method("show_departure_hint"):
 		hud.show_departure_hint(GameState.next_departure_hint())
-	Audio.play_bgm("bgm_sea")
+	Audio.play_bgm(_sea_bgm())
 	# #259: 出港時に船団速度と、それを決めている船を知らせる
 	GameState.notice.emit("船団速度: %.1f (%s が律速)" % [GameState.fleet_speed(), GameState.slowest_ship_name()])
 	Audio.ambient_enabled = true   # #253: 波の音
@@ -1259,6 +1376,8 @@ func _use_skill() -> void:
 	_skill_cd_max = float(sk.cd)
 	GameState.notice.emit("%s!" % str(sk.name))
 	Audio.play("sfx_skill", -5.0, 1.0)   # #224再3: スキル発動の専用効果音
+	if str(sk.kind) == "volley" or str(sk.kind) == "encircle":
+		zoom_punch(1.1, 0.2)   # #278(提案5): 一斉射撃の発動時に0.2秒だけ寄る
 
 # クールダウンを進め、HUDへ進捗を渡す
 # #224再2: 鶴翼陣「包囲射撃」。ロック対象へ各艦が0.5秒間隔で斉射し、
@@ -1676,14 +1795,18 @@ func _update_boss_bgm() -> void:
 		# #79再: 主・レヴィアタンのBGMへ切り替わる時だけ鳴き声を重ねる(海賊王では鳴らさない)
 		if want == "bgm_boss" or want == "bgm_leviathan":
 			Audio.play("sfx_lord_roar", -2.0)
+			# #278(提案4/5): 主の登場は大きめのシェイク1回＋演出ズーム
+			screen_shake(9.0, 0.5)
+			zoom_punch(1.12, 0.35)
 	elif want == "" and _boss_bgm_on != "":
 		_boss_bgm_on = ""
-		Audio.play_bgm("bgm_sea")
+		Audio.play_bgm(_sea_bgm())
 
 # #233: 敵弾の発生位置から被弾方向をHUDへ渡す。
 func show_damage_direction(source_pos: Vector2) -> void:
 	if hud and is_instance_valid(player):
 		hud.show_damage_direction(source_pos - player.global_position)
+	screen_shake(3.0, 0.15)   # #278(提案4): 被弾で2〜4px・0.15秒
 
 # ---------------- ソナー ----------------
 func _update_sonar() -> void:
@@ -1883,6 +2006,9 @@ func _maybe_screenshot() -> void:
 	var want_ach2 := false   # #265: 実績メニューを下までスクロールして撮る
 	var want_ach3 := false   # #265再: 未達成のまま撮る(「？」の揃いを見る)   # #241再2: ヒントログ
 	var want_ach4 := false   # #265再2: 近海の主の実績(バッヂの大きさが揃っているか)
+	var want_achtoast := false   # #265再3: 達成トースト(バッヂ絵がドンと出る演出)
+	var want_nightfx := false    # #278(提案6): 夜の海域の光(目の光・炎上の灯り)
+	var want_debris := false     # #278(提案4): 撃破の破片
 	for a in args:
 		if a.begins_with("--shot"):
 			want_shot = true
@@ -1907,6 +2033,9 @@ func _maybe_screenshot() -> void:
 			want_ach2 = a.find("ach2") != -1   # #265
 			want_ach3 = a.find("ach3") != -1   # #265再
 			want_ach4 = a.find("ach4") != -1   # #265再2
+			want_achtoast = a.find("achtoast") != -1   # #265再3
+			want_nightfx = a.find("nightfx") != -1     # #278(提案6)
+			want_debris = a.find("debris") != -1       # #278(提案4)
 			# #190: isle<N> で撮影する海域(島index)を指定(天候・障害物の確認用)
 			var ip := a.find("isle")
 			if ip != -1 and ip + 4 < a.length():
@@ -1915,6 +2044,7 @@ func _maybe_screenshot() -> void:
 					want_isle = clampi(int(n), 0, Database.islands.size() - 1)
 	if not want_shot:
 		return
+	_shot_mode = true   # #278(提案7-4): 撮影中はフェードの暗幕を写さない
 	await get_tree().create_timer(0.6).timeout
 	if want_title:   # #209再: クリア済み+セーブありでBoss Rushボタンを出したタイトル
 		GameState.money = 12345
@@ -2001,6 +2131,26 @@ func _maybe_screenshot() -> void:
 			GameState.visited_islands = [0]
 			_show_food_choice()
 			await get_tree().create_timer(0.5).timeout
+		if want_nightfx:
+			# #278(提案6): 常闇の海で「夜の帝王(大・中・小)の目」と「炎上する海賊」を並べる
+			player.control_enabled = false
+			var night_line := [["lord", "night_emperor"], ["lord", "night_bat_medium"],
+				["lord", "night_bat_small"], ["pirate", "dread"]]
+			for i in night_line.size():
+				var e := _make_enemy(night_line[i][0], night_line[i][1],
+					player.global_position + Vector2((float(i) - 1.5) * 340.0, -140.0))
+				if e != null and night_line[i][0] == "pirate" and e.has_method("ignite_slip"):
+					e.ignite_slip(40.0)   # 炎上させて灯りを確認する
+			await get_tree().create_timer(0.5).timeout
+			GameState.run_armor = 999999.0   # 撮影中に沈まないように
+		if want_debris:
+			# #278(提案4): 撃破の破片(その敵のドット絵の色を拾った矩形の粒)を撮る。
+			# 破片は0.55秒で消えるので、敵を並べておいて撮影の直前に倒す。
+			player.control_enabled = false
+			GameState.run_armor = 999999.0
+			for i in 3:
+				_debris_targets.append(_make_enemy("mob", "kraken",
+					player.global_position + Vector2((float(i) - 1.0) * 360.0, -220.0)))
 		if want_boss:
 			player.control_enabled = false
 			player.global_position = Vector2(0, 24000)
@@ -2095,6 +2245,17 @@ func _maybe_screenshot() -> void:
 			else:
 				OverlayMenusScript.show_help(host)
 		await get_tree().create_timer(0.35).timeout
+	if want_debris:
+		for e in _debris_targets:
+			if is_instance_valid(e):
+				e._die()
+		await get_tree().create_timer(0.14).timeout
+	if want_achtoast:
+		# #265再3: 実績達成トースト(バッヂ絵がドンと出る0.8秒の演出)の見せ場を撮る
+		port_ui.close()
+		GameState.achieved.clear()
+		GameState.achievement_unlocked.emit("lord_leviathan")
+		await get_tree().create_timer(0.25).timeout
 	await RenderingServer.frame_post_draw
 	var img := get_viewport().get_texture().get_image()
 	var out := "user://shot.png"

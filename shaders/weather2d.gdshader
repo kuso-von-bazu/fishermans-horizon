@@ -6,13 +6,16 @@ shader_type canvas_item;
 uniform vec4 tint : source_color = vec4(0.0);
 uniform float rain = 0.0;
 uniform float snow = 0.0;
+// #278(提案1): 海と同じ仮想ピクセルの格子に載せ、雨・雪もドット絵の粒にする
+uniform float px_size = 3.0;
 
 float hash(vec2 p) {
 	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
 }
 
 void fragment() {
-	vec2 uv = SCREEN_UV;
+	float pxs = max(px_size, 1.0);
+	vec2 uv = floor(SCREEN_UV / SCREEN_PIXEL_SIZE / pxs) * pxs * SCREEN_PIXEL_SIZE;
 	float pa = 0.0;              // 降水そのものの不透明度
 	vec3 pc = vec3(0.86, 0.92, 1.0);
 

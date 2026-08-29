@@ -155,7 +155,7 @@ func _build() -> void:
 	# 全画面の CenterContainer(PASS)がクリックを受け取ると、そのまま親の
 	# _root(STOP)が消費してしまい、より前にある兄弟のボタンは一度も
 	# 判定されない。Boss Rush ボタンが押せて歯車が押せなかったのはこの差。
-	var settings_btn := _icon_button("gear", "音量設定", Vector2(24, 24))
+	var settings_btn := _icon_button("gear", "設定", Vector2(24, 24))
 	settings_btn.pressed.connect(func(): OverlayMenus.show_settings(_root))
 	_root.add_child(settings_btn)
 	var help_btn := _icon_button("help", "操作・武器 早見表", Vector2(86, 24))

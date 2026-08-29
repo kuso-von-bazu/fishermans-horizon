@@ -146,7 +146,8 @@ static func _close_button(ui: Dictionary, overlay: Control) -> void:
 
 static func show_settings(parent: Control) -> void:
 	# #235再: 中身が2行しかないので、パネルは低めにして間延びを防ぐ
-	var ui := _base(parent, "音量設定", 340.0)
+	# #278(提案4): 画面シェイクのON/OFFを足したので少し高くする
+	var ui := _base(parent, "設定", 400.0)
 	var box: VBoxContainer = ui.box
 	for setting in [["BGM", Audio.bgm_volume(), Audio.set_bgm_volume], ["効果音", Audio.sfx_volume(), Audio.set_sfx_volume]]:
 		var row := HBoxContainer.new()
@@ -178,6 +179,22 @@ static func show_settings(parent: Control) -> void:
 			setter.call(value)
 			val.text = "%d%%" % int(round(value * 100.0)))
 		box.add_child(row)
+	# #278(提案4): 画面シェイク。酔いへの配慮として既定はOFF
+	var shake_row := HBoxContainer.new()
+	shake_row.add_theme_constant_override("separation", 18)
+	var shake_label := Label.new()
+	shake_label.text = "画面シェイク"
+	shake_label.custom_minimum_size = Vector2(180, 42)
+	shake_label.add_theme_font_size_override("font_size", 22)
+	shake_row.add_child(shake_label)
+	var shake_check := CheckBox.new()
+	shake_check.text = "被弾・撃破で画面を揺らす"
+	shake_check.button_pressed = GameState.screen_shake
+	shake_check.add_theme_font_size_override("font_size", 20)
+	shake_check.toggled.connect(func(on: bool): GameState.set_screen_shake(on))
+	shake_row.add_child(shake_check)
+	box.add_child(shake_row)
+
 	var note := Label.new()
 	note.text = "設定は自動保存され、次回起動時にも引き継がれます。"
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

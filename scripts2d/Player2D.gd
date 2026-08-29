@@ -24,6 +24,9 @@ var _half_w: float = 30.0    # #132/#144: 船の見た目の半幅(px)
 var _half_h: float = 42.0    # #164: 船の見た目の半高(px)。航跡を船尾に隙間なく出すため
 var _body_pts: PackedVector2Array
 var _label: Label   # #212再: 「旗艦」表示(船と一緒に回らないよう毎フレーム逆回転)
+# #278(提案7-2): 航行中の船のロール(±1.5°)。敵の _bob と同じ流儀で船体だけを揺らす
+var _hull: Sprite2D
+var _roll: float = 0.0
 # #224: 陣形スキル
 var charge_t: float = 0.0        # 突撃の残り秒。>0の間は3倍速で直進し敵を貫く
 var _charge_hit: Array = []      # 1回の突撃で同じ敵に多重ヒットしないための記録
@@ -425,6 +428,7 @@ func _build_visual() -> void:
 	sprite.scale = Vector2.ONE * PIX_SCALE * sc
 	sprite.z_index = 2   # #164再: 船体を航跡・煙より前面に描画し、重なりの不自然さをなくす
 	add_child(sprite)
+	_hull = sprite   # #278(提案7-2): ロールで揺らす対象
 	# 衝突形状
 	var col := CollisionShape2D.new()
 	var cap := CapsuleShape2D.new()
@@ -658,6 +662,11 @@ func add_entangler(e: Node) -> void:
 		GameState.notice.emit("触腕に絡めとられた! 討伐するまで速度低下")
 
 func _physics_process(delta: float) -> void:
+	# #278(提案7-2): 船のロール。速いほど大きく、停船中はほぼ揺れない
+	if is_instance_valid(_hull):
+		_roll += delta * 2.2
+		var amp: float = deg_to_rad(1.5) * clampf(velocity.length() / maxf(max_speed, 1.0), 0.15, 1.0)
+		_hull.rotation = sin(_roll) * amp
 	if _ram_cd > 0.0:
 		_ram_cd -= delta
 	if _bump_cd > 0.0:

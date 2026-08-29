@@ -154,6 +154,19 @@ def sfx_sell():  # 売却/コイン
         s[st:] += seg
     return s
 
+def sfx_horn():  # #278(提案7-4): 入港・出港の汽笛。低い基音+倍音でゆっくり立ち上げて伸ばす
+    n = int(1.6 * SR)
+    s = np.zeros(n)
+    base = 116.0
+    for k, amp in [(1.0, 0.55), (1.5, 0.22), (2.0, 0.18), (3.0, 0.08)]:
+        s += tone(base * k, n, "sine") * amp
+    # わずかにうねらせて汽笛らしい厚みを出す
+    t = np.arange(n) / SR
+    s *= 1.0 + 0.06 * np.sin(2 * np.pi * 5.5 * t)
+    s *= env(n, 0.18, 0.25, sl=0.8, r=0.6)
+    s += lowpass(noise(n), 0.02) * env(n, 0.2, 0.3, sl=0.25, r=0.6) * 0.10   # 蒸気のかすれ
+    return s * 0.8
+
 # ---------------- BGM(ループ) ----------------
 
 def synth_chord(freqs, n, kind="tri", amp=0.2):
@@ -278,6 +291,7 @@ if __name__ == "__main__":
     save("sfx_lock.wav", sfx_lock())
     save("sfx_wreck.wav", sfx_wreck())
     save("sfx_sell.wav", sfx_sell())
+    save("sfx_horn.wav", sfx_horn())   # #278(提案7-4)
     save("bgm_sea.wav", bgm_sea(), loop=True)
     save("bgm_port.wav", bgm_port(), loop=True)
     save("bgm_boss.wav", bgm_boss(), loop=True)

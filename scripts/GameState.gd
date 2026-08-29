@@ -6,6 +6,8 @@ signal stats_changed
 signal money_changed(amount: int)
 signal fame_changed(amount: int)
 signal notice(text: String)
+# #265再3: 実績を達成した瞬間にバッヂ絵を大きく見せるための通知(HUDが受ける)
+signal achievement_unlocked(aid: String)
 
 var money: int = 200
 var fame: int = 0
@@ -368,11 +370,14 @@ func food_drain_mult() -> float:   # 体力+料理人: 燃料(食料)減少を�
 	#   旗艦のみ(合計20〜28程度)から船団全体(60〜140程度)へ変わるので、
 	#   従来の式のままだと増えたぶんがほとんど効かない(20→100で2.6ptしか動かない)。
 	#   線形の範囲を10→20へ広げ、log側も8倍に伸ばして効き続けるようにする。
+	# #258再4: 逓減の効き方を少しだけ強くする(線形20→18、log側8.0→7.0)。
+	#   体力の合計が多い船団ほど削れ幅が大きくなる(合計20で-0.3pt、100で-2.2pt、
+	#   280で-2.4pt)。低体力の序盤はほぼ据え置きで、伸ばしたときの頭打ちだけが早まる。
 	var h := 0.0
 	for i in sailing_ships():
 		for c in fleet[i].crew:
 			h += float(c.get("hp", 0))
-	var eff := h if h <= 20.0 else 20.0 + 8.0 * log(1.0 + (h - 20.0) / 8.0)
+	var eff := h if h <= 18.0 else 18.0 + 7.0 * log(1.0 + (h - 18.0) / 7.0)
 	var m := 1.0 / (1.0 + 0.02 * eff)
 	# #258再2: 料理人は船団全体で数える。1人目0.85、2人目以降は効果が逓減する
 	#   (0.85 → 0.90 → 0.94 …)。多数積んでも頭打ちになるようにしている。
@@ -557,6 +562,24 @@ func reset_all() -> void:
 	dock_reset()
 
 # ---------------- オートセーブ(#93) ----------------
+# ---------------------------------------------------------------------------
+# #278(提案4): 画面シェイクの設定。酔いへの配慮として既定はOFFにし、
+# 歯車アイコンの設定メニューから切り替える。音量と同じくファイルへ即保存する。
+# ---------------------------------------------------------------------------
+const DISPLAY_SETTINGS_PATH := "user://display_settings.cfg"
+var screen_shake: bool = false
+
+func load_display_settings() -> void:
+	var cfg := ConfigFile.new()
+	if cfg.load(DISPLAY_SETTINGS_PATH) == OK:
+		screen_shake = bool(cfg.get_value("display", "screen_shake", false))
+
+func set_screen_shake(on: bool) -> void:
+	screen_shake = on
+	var cfg := ConfigFile.new()
+	cfg.set_value("display", "screen_shake", screen_shake)
+	cfg.save(DISPLAY_SETTINGS_PATH)
+
 const SAVE_PATH := "user://save.json"
 # #190: 月下の島を index2 に挿入したので、それ以前(world未設定)のセーブは島indexを1つ後ろへずらす
 const WORLD_VERSION := 190
@@ -892,6 +915,7 @@ func check_achievements() -> Array:
 			newly.append(aid)
 			if not boss_rush:
 				notice.emit("実績達成: %s" % str(a.name))   # #209: ボスラッシュ中は出さない
+				achievement_unlocked.emit(aid)              # #265再3: バッヂ絵の演出
 	if not newly.is_empty():
 		_save_achievements()   # レヴィアタン討伐で即エンディングでも残るよう即保存
 	return newly

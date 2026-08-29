@@ -80,7 +80,7 @@ func _build() -> void:
 	tab_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tabs.add_child(tab_spacer)
 	# #235再: 「⚙」は環境によって豆腐になるので生成した歯車画像を使う
-	var settings_btn := OverlayMenus.icon_button("gear", "音量設定")
+	var settings_btn := OverlayMenus.icon_button("gear", "設定")
 	settings_btn.custom_minimum_size = Vector2(52, 38)
 	settings_btn.pressed.connect(func(): OverlayMenus.show_settings(_root))
 	tabs.add_child(settings_btn)

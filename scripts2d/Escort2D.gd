@@ -29,6 +29,9 @@ var _burn_dps: float = 0.0
 var _poison_t: float = 0.0    # #215: 毒のスリップ
 var _poison_dps: float = 0.0
 var _flame: CPUParticles2D
+# #278(提案7-2): 航行中の船のロール(旗艦と同じ流儀)
+var _hull: Sprite2D
+var _roll: float = 0.0
 # #224: 陣形スキル(僚艦も発動する)
 var charge_t: float = 0.0
 var _charge_hit: Array = []
@@ -75,6 +78,8 @@ func _build_visual() -> void:
 	spr.scale = Vector2.ONE * PlayerScript.PIX_SCALE * sc
 	spr.z_index = 2
 	add_child(spr)
+	_hull = spr   # #278(提案7-2): ロールで揺らす対象
+	_roll = randf() * TAU   # 船ごとに揺れの位相をずらす
 	# 当たり判定(障害物・島用)
 	var col := CollisionShape2D.new()
 	var cap := CapsuleShape2D.new()
@@ -438,6 +443,11 @@ func _detach() -> void:
 	queue_free()
 
 func _physics_process(delta: float) -> void:
+	# #278(提案7-2): 船のロール(±1.5°)
+	if is_instance_valid(_hull):
+		_roll += delta * 2.2
+		var amp: float = deg_to_rad(1.5) * clampf(velocity.length() / maxf(max_speed, 1.0), 0.15, 1.0)
+		_hull.rotation = sin(_roll) * amp
 	if not is_instance_valid(player):
 		return
 	for i in _cooldowns.size():

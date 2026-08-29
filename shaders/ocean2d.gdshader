@@ -3,6 +3,8 @@ shader_type canvas_item;
 // ドメインワーピングで自然な波+深浅+雲影+きらめきを描く。全画面ColorRect(背面レイヤー)用。
 
 uniform vec2 cam_pos = vec2(0.0);
+// #278(提案5): 演出ズーム中もワールド座標がずれないよう、カメラの倍率を受け取る
+uniform float cam_zoom = 1.0;
 uniform vec3 shallow_color : source_color = vec3(0.26, 0.62, 0.76);
 uniform vec3 deep_color : source_color = vec3(0.04, 0.20, 0.36);
 uniform vec3 crest_color : source_color = vec3(0.80, 0.92, 0.97);
@@ -22,6 +24,20 @@ uniform float stars = 0.0;
 //   sunlight = 強い日射し(潮鳴り=1)。海面を明るくし、太陽の反射を落とす
 uniform float sunlight = 0.0;
 uniform float rough = 0.0;
+// #278(提案1): 海のドット絵化。
+//   px_size      … ワールド/画面座標を切り捨てる仮想ピクセルの大きさ(1.0で従来表示)
+//   color_levels … 出力色の段階数(0で段階化しない)
+// 波・きらめき・雲影・月/星の反射といった既存の演出はそのまま生きたまま、
+// 質感だけがドット絵になる。
+uniform float px_size = 3.0;
+uniform float color_levels = 9.0;
+// #278(提案7-1): 海岸の白波。島の浅瀬の縁(Island2D._coast と同じ式)に沿って白い帯を出す。
+//   island_r    … 浅瀬の外縁の半径(ワールド単位。0以下でその島は白波なし)
+//   island_wob  … 海岸線のゆらぎ(PALETTES.wob)
+//   island_seed … ゆらぎの位相(Island2D の s1 と同じ値)
+uniform float island_r[10];
+uniform float island_wob[10];
+uniform float island_seed[10];
 
 // 2D擬似ノイズ
 float hash(vec2 p) {
@@ -40,7 +56,12 @@ float noise(vec2 p) {
 
 void fragment() {
 	vec2 px = SCREEN_UV / SCREEN_PIXEL_SIZE;      // 画面ピクセル座標
-	vec2 world = px + cam_pos;                     // ワールド座標(平行投影)
+	vec2 world = px / max(cam_zoom, 0.01) + cam_pos;   // ワールド座標(平行投影)
+	// #278(提案1): 仮想ピクセルの格子へ載せてから波・ノイズを計算する。
+	// 画面座標(quv)も同じ格子に載せ、月・太陽・星の反射までドット単位にする。
+	float pxs = max(px_size, 1.0);
+	world = floor(world / pxs) * pxs;
+	vec2 quv = floor(px / pxs) * pxs * SCREEN_PIXEL_SIZE;
 	vec2 p = world * wave_scale;
 	float t = TIME * wave_speed;
 
@@ -83,7 +104,7 @@ void fragment() {
 	col *= 1.0 - shadow * (0.20 + rough * 0.28);   // #191/#192: 荒天は雲が厚く海面が暗い
 
 	// 画面右上からの太陽光(暖色のグラデーション)
-	float sun = max(0.0, 1.0 - length(SCREEN_UV - vec2(0.82, 0.12)) * 1.4);
+	float sun = max(0.0, 1.0 - length(quv - vec2(0.82, 0.12)) * 1.4);
 	col += vec3(0.95, 0.85, 0.6) * sun * sun * 0.10 * (1.0 - night);
 
 	// #250: 潮鳴りの島の近海は日射しが強い。海面全体を明るくし、
@@ -91,36 +112,36 @@ void fragment() {
 	if (sunlight > 0.001) {
 		col *= 1.0 + sunlight * 0.26;
 		col += vec3(1.0, 0.95, 0.78) * sparkle * 0.95 * sunlight;   // 波間のきらめきも強める
-		vec2 sun_uv = SCREEN_UV - vec2(0.70, 0.26);
-		sun_uv.x += sin(SCREEN_UV.y * 88.0 + t * 2.0) * 0.008;
+		vec2 sun_uv = quv - vec2(0.70, 0.26);
+		sun_uv.x += sin(quv.y * 88.0 + t * 2.0) * 0.008;
 		float sun_disc = 1.0 - smoothstep(0.030, 0.044, length(vec2(sun_uv.x, sun_uv.y * 0.72)));
-		float spath_w = 0.016 + SCREEN_UV.y * 0.070;
-		float sun_path = exp(-pow(abs(SCREEN_UV.x - 0.70) / spath_w, 2.0));
-		sun_path *= smoothstep(0.22, 0.32, SCREEN_UV.y) * (1.0 - smoothstep(0.32, 0.98, SCREEN_UV.y));
-		float sbroken = pow(max(sin(SCREEN_UV.y * 190.0 + h * 3.2 + t * 2.1), 0.0), 5.0);
+		float spath_w = 0.016 + quv.y * 0.070;
+		float sun_path = exp(-pow(abs(quv.x - 0.70) / spath_w, 2.0));
+		sun_path *= smoothstep(0.22, 0.32, quv.y) * (1.0 - smoothstep(0.32, 0.98, quv.y));
+		float sbroken = pow(max(sin(quv.y * 190.0 + h * 3.2 + t * 2.1), 0.0), 5.0);
 		col += vec3(1.0, 0.94, 0.74) * (sun_disc * 0.85 + sun_path * sbroken * 0.85) * sunlight;
 	}
 
 	// #190: 月下の島の近海は常に夜。全体を暗い藍へ沈め、左上からの月光を落とす
 	col = mix(col, col * vec3(0.30, 0.36, 0.60) + vec3(0.015, 0.025, 0.055), night);
-	float moon_glow = max(0.0, 1.0 - length(SCREEN_UV - vec2(0.18, 0.13)) * 1.5);
+	float moon_glow = max(0.0, 1.0 - length(quv - vec2(0.18, 0.13)) * 1.5);
 	col += vec3(0.62, 0.70, 0.95) * moon_glow * moon_glow * 0.16 * night * moon;
 
 	// #190再3: 月下の海面に映る満月。波で輪郭が揺れる月影と、縦に伸びる細かな反射を重ねる。
-	vec2 moon_uv = SCREEN_UV - vec2(0.18, 0.27);
-	moon_uv.x += sin(SCREEN_UV.y * 92.0 + t * 2.2) * 0.006;
+	vec2 moon_uv = quv - vec2(0.18, 0.27);
+	moon_uv.x += sin(quv.y * 92.0 + t * 2.2) * 0.006;
 	float moon_disc = 1.0 - smoothstep(0.040, 0.052, length(vec2(moon_uv.x, moon_uv.y * 0.78)));
-	float path_width = 0.018 + SCREEN_UV.y * 0.085;
-	float moon_path = exp(-pow(abs(SCREEN_UV.x - 0.18) / path_width, 2.0));
-	moon_path *= smoothstep(0.25, 0.34, SCREEN_UV.y) * (1.0 - smoothstep(0.34, 0.94, SCREEN_UV.y));
-	float broken = pow(max(sin(SCREEN_UV.y * 185.0 + h * 2.8 + t * 1.7), 0.0), 7.0);
+	float path_width = 0.018 + quv.y * 0.085;
+	float moon_path = exp(-pow(abs(quv.x - 0.18) / path_width, 2.0));
+	moon_path *= smoothstep(0.25, 0.34, quv.y) * (1.0 - smoothstep(0.34, 0.94, quv.y));
+	float broken = pow(max(sin(quv.y * 185.0 + h * 2.8 + t * 1.7), 0.0), 7.0);
 	float reflection = moon_disc * 0.80 + moon_path * broken * 0.42;
 	col += vec3(0.72, 0.80, 1.0) * reflection * night * moon;   // #239: moon=0 の海域では月の反射を出さない
 
 	// #239: 星霜の島の近海。海面いっぱいに星の反射がきらめく(月の道は出さない)
 	if (stars > 0.001) {
 		// 粒が四角く目立たないよう、細かい格子でセル内の中心からの距離で丸く落とす
-		vec2 suv = SCREEN_UV * vec2(430.0, 260.0);
+		vec2 suv = quv * vec2(430.0, 260.0);
 		vec2 sc = floor(suv);
 		vec2 sf = fract(suv) - 0.5;
 		float rnd = fract(sin(sc.x * 12.9898 + sc.y * 78.233) * 43758.5453);
@@ -130,8 +151,30 @@ void fragment() {
 		float twinkle = 0.72 + 0.28 * sin(t * 1.6 + rnd * 24.0);
 		float star = step(0.975, rnd) * twinkle * dot_mask;
 		// 波で上下に揺らして「映り込み」らしく見せる
-		float sway = 0.55 + 0.45 * sin(SCREEN_UV.y * 60.0 + h * 3.0 + t * 1.1);
+		float sway = 0.55 + 0.45 * sin(quv.y * 60.0 + h * 3.0 + t * 1.1);
 		col += vec3(0.82, 0.90, 1.0) * star * sway * 0.95 * night * stars;
+	}
+	// #278(提案7-1): 海岸の白波。浅瀬の縁に沿って明滅する白いドットの縁取りを重ねる
+	for (int i = 0; i < island_count; i++) {
+		float r0 = island_r[i];
+		if (r0 > 0.0) {
+			vec2 dv = world - islands[i];
+			float d = length(dv);
+			if (d < r0 * 1.8) {
+				float a = atan(dv.y, dv.x);
+				float sd = island_seed[i];
+				float wb = island_wob[i];
+				float rr = r0 * (1.0 + wb * sin(3.0 * a + sd) + wb * 0.6 * sin(7.0 * a + sd * 2.3));
+				float band = 1.0 - smoothstep(0.0, 20.0, abs(d - rr));
+				float flick = 0.50 + 0.50 * sin(t * 2.0 + a * 4.0 + float(i));
+				col = mix(col, crest_color, clamp(band * flick * 0.6, 0.0, 1.0));
+			}
+		}
+	}
+
+	// #278(提案1): 出力色の段階化。ここまでの計算を「ドット絵の色数」に丸める
+	if (color_levels > 1.5) {
+		col = floor(col * color_levels + 0.5) / color_levels;
 	}
 	COLOR = vec4(col, 1.0);
 }

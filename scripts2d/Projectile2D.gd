@@ -2,6 +2,8 @@ extends Area2D
 ## Projectile2D — 弾(ガトリング/大砲/銛/魚雷/敵弾)。魚雷は target を追尾。
 
 const K := 6.0
+const Juice := preload("res://scripts2d/Juice2D.gd")   # #278(提案6): 砲口炎・爆発の光
+const PixelFont := preload("res://scripts/PixelFont.gd")   # #278(提案3): ダメージ表示
 
 var speed: float = 480.0
 var dmg: float = 5.0
@@ -50,6 +52,9 @@ var home_delay: float = 0.0   # #248再2: この秒数は追尾せず直進(広�
 func setup(p_dir: Vector2, w: Dictionary, p_target: Node2D = null) -> void:
 	# #149再3/#196: レイヤー1(自機/島/障害物)+2(敵)+4(僚艦) をすべて見る
 	collision_mask = 7
+	# #278(提案6): 夜の海域では砲口炎が海面と船を照らす。
+	# 1発ごとに光を付けると重くなるので Juice2D 側で数と間隔を絞っている。
+	Juice.glow(get_parent(), global_position, Color(1.0, 0.85, 0.55), 1.1, 130.0, 0.12)
 	dmg = float(w.get("dmg", 5))
 	speed = (70.0 + float(w.get("dmg", 5)) * 0.3) * K * float(w.get("speed_mult", 1.0))   # #65: 弾速倍率
 	if from_player:
@@ -413,6 +418,7 @@ static func _spawn_float_text(world: Node, pos: Vector2, text: String, col: Colo
 	var l := Label.new()
 	l.text = text
 	l.add_theme_font_size_override("font_size", 24)
+	PixelFont.apply(l, 24)   # #278(提案3): 命中時の数値・文字はピクセルフォント
 	l.add_theme_color_override("font_color", col)
 	l.add_theme_constant_override("outline_size", 6)
 	l.add_theme_color_override("font_outline_color", Color(0.25, 0.1, 0.0, 0.95))
@@ -531,6 +537,9 @@ func _spawn_effect(kind: String, pos: Vector2) -> void:
 	p.lifetime = 0.5
 	get_parent().add_child(p)
 	p.global_position = pos
+	# #278(提案6): 夜の海域では爆発が周囲を照らす(着弾は数が少ないので間引かない)
+	if kind == "explosion":
+		Juice.glow(get_parent(), pos, Color(1.0, 0.65, 0.25), 2.0, 260.0, 0.30, false)
 	match kind:
 		"explosion":
 			p.amount = 24

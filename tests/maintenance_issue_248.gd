@@ -1629,7 +1629,9 @@ func _ready() -> void:
 	check(fleet_m < flag_m, "2番艦の体力が燃料節約に効いていない")
 	# 逓減が緩んでいること: 体力20→100 で節約が大きく伸びる(従来は2.6ptしか動かなかった)
 	var gsrc6 := FileAccess.get_file_as_string("res://scripts/GameState.gd")
-	check(gsrc6.contains("20.0 + 8.0 * log(1.0 + (h - 20.0) / 8.0)"), "逓減の式が緩められていない")
+	# #258再4: 逓減を少しだけ強めた式になっていること
+	check(gsrc6.contains("18.0 + 7.0 * log(1.0 + (h - 18.0) / 7.0)"), "逓減の式が#258再4のものでない")
+	check(not gsrc6.contains("20.0 + 8.0 * log(1.0 + (h - 20.0) / 8.0)"), "#258再3の逓減の式が残っている")
 	check(not gsrc6.contains("10.0 + log(1.0 + (h - 10.0))"), "従来の逓減の式が残っている")
 	# 実測: 体力20と体力100の差が10ポイント以上あること
 	GameState.reset_all()

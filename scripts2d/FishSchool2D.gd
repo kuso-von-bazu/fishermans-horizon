@@ -1,4 +1,5 @@
 extends Node2D
+const PixelFont = preload("res://scripts/PixelFont.gd")   # #278(提案3): 魚群名
 ## FishSchool2D — 魚群(見下ろし2D)。生成スプライトの魚が回遊。E長押しで漁獲。
 
 var fish_id: String = "sardine"
@@ -10,6 +11,7 @@ var _fishes: Array = []   # {node, base:Vector2, phase:float}
 var _t: float = 0.0
 var _splash: CPUParticles2D   # #213: 網縄漁の水しぶき
 var _splash_t: float = 0.0    # 漁をしている間だけ噴かせるための残り時間
+var _jump_t: float = 0.0      # #278(提案7-3): 次に魚が跳ねるまでの残り時間
 
 func setup(id: String, count: int) -> void:
 	fish_id = id
@@ -41,6 +43,7 @@ func _ready() -> void:
 	label = Label.new()
 	label.text = "%s 群れ" % def.get("name", fish_id)
 	label.add_theme_font_size_override("font_size", 14)
+	PixelFont.apply(label, 12)   # #278(提案3)
 	label.add_theme_color_override("font_color", Color(0.85, 1, 1))
 	label.add_theme_constant_override("outline_size", 5)
 	label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
@@ -70,6 +73,12 @@ func _placeholder(c: Color) -> Texture2D:
 
 func _process(delta: float) -> void:
 	_t += delta
+	# #278(提案7-3): たまに魚が跳ねる。漁場が「生きている海」に見えるようにする
+	if remaining > 0:
+		_jump_t -= delta
+		if _jump_t <= 0.0:
+			_jump_t = randf_range(2.2, 5.5)
+			_fish_jump()
 	# #213: 漁をしている間だけ水しぶきを出す(やめたら少し余韻を残して止める)
 	if _splash_t > 0.0:
 		_splash_t -= delta
@@ -108,6 +117,59 @@ func _build_splash() -> void:
 	_splash.color_ramp = g
 	_splash.z_index = -1   # #213再2: 船(z=2)より後ろに描いて重ならないようにする
 	add_child(_splash)
+
+# #278(提案7-3): 魚群の位置から小さな魚のドットが跳ね、落ちた所に水しぶきが立つ。
+func _fish_jump() -> void:
+	var tex := _load_tex()
+	if tex == null:
+		return
+	var f := Sprite2D.new()
+	f.texture = tex
+	f.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	f.scale = Vector2.ONE * (18.0 / maxf(float(tex.get_width()), 1.0))   # 群れの魚より小さく
+	f.z_index = 3
+	var from := Vector2(randf_range(-40, 40), randf_range(-30, 30))
+	var to := from + Vector2(randf_range(-30, 30), randf_range(18, 40))
+	f.position = from
+	f.rotation = randf_range(-0.5, 0.5)
+	add_child(f)
+	# 上へ跳ねて落ちる(高さは position.y を引いて表す)
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(f, "position", from + (to - from) * 0.5 + Vector2(0, -26.0), 0.26)		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(f, "rotation", f.rotation + 1.1, 0.26)
+	tw.chain().tween_property(f, "position", to, 0.24).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.chain().tween_callback(func():
+		_splash_at(to)
+		if is_instance_valid(f):
+			f.queue_free())
+
+# 着水の小さな水しぶき
+func _splash_at(pos: Vector2) -> void:
+	var p := CPUParticles2D.new()
+	p.emitting = true
+	p.one_shot = true
+	p.explosiveness = 1.0
+	p.amount = 8
+	p.lifetime = 0.4
+	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
+	p.emission_sphere_radius = 4.0
+	p.direction = Vector2(0, -1)
+	p.spread = 60.0
+	p.gravity = Vector2(0, 200.0)
+	p.initial_velocity_min = 30.0
+	p.initial_velocity_max = 70.0
+	p.scale_amount_min = 2.0
+	p.scale_amount_max = 4.0
+	var g := Gradient.new()
+	g.set_color(0, Color(0.75, 0.92, 1.0, 0.9))
+	g.set_color(1, Color(0.5, 0.8, 1.0, 0.0))
+	p.color_ramp = g
+	p.z_index = 1
+	p.position = pos
+	add_child(p)
+	var t := get_tree().create_timer(0.9)
+	t.timeout.connect(func(): if is_instance_valid(p): p.queue_free())
 
 func try_fish(delta: float) -> String:
 	if remaining <= 0:

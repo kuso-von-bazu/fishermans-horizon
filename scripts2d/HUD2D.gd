@@ -1,4 +1,5 @@
 extends CanvasLayer
+const PixelFont = preload("res://scripts/PixelFont.gd")   # #278(提案3): 数値・見出し用
 ## HUD2D — 2D版の航海HUD。資金/名声/食料/魚倉/装甲(数値付き#2#4#6)/漁獲物アイコン/
 ## ソナー(東西南北#18)/武器/通知/大破メッセージ(#8)。3D版HUDの移植。
 
@@ -61,8 +62,8 @@ func _build() -> void:
 	tl.position = Vector2(16, 16)
 	var vb := VBoxContainer.new()
 	tl.add_child(vb)
-	lbl_money = _label("資金: 0", 22)
-	lbl_fame = _label("名声: 0", 22)
+	lbl_money = _pxlabel("資金: 0", 24)
+	lbl_fame = _pxlabel("名声: 0", 24)
 	vb.add_child(lbl_money)
 	# #265: 名声の右へ、選択中のバッヂを出す
 	var fame_row := HBoxContainer.new()
@@ -86,11 +87,12 @@ func _build() -> void:
 	root.add_child(tr)
 	tr.anchor_left = 1.0
 	tr.anchor_right = 1.0
-	tr.offset_left = -270
+	# #278(提案3): ピクセルフォントは字幅が広いので枠を広げる(はみ出し防止)
+	tr.offset_left = -450
 	tr.offset_right = -16
 	tr.offset_top = 16
-	tr.offset_bottom = 56
-	lbl_loc = _label("航海中", 20)
+	tr.offset_bottom = 60
+	lbl_loc = _pxlabel("航海中", 24)
 	tr.add_child(lbl_loc)
 
 	# #236: 航海中も操作・武器一覧へ戻れる早見表ボタン。
@@ -100,8 +102,8 @@ func _build() -> void:
 	help_btn.add_theme_font_size_override("font_size", 22)
 	help_btn.anchor_left = 1.0
 	help_btn.anchor_right = 1.0
-	help_btn.offset_left = -326
-	help_btn.offset_right = -278
+	help_btn.offset_left = -506   # #278(提案3): 場所パネルを広げたぶん左へ
+	help_btn.offset_right = -458
 	help_btn.offset_top = 16
 	help_btn.offset_bottom = 56
 	help_btn.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -122,7 +124,7 @@ func _build() -> void:
 	sonar.draw.connect(_draw_sonar)
 	root.add_child(sonar)
 	# #232: 赤いガイド弧の直下に対象名と概算残距離を表示
-	lbl_guide = _label("", 17)
+	lbl_guide = _pxlabel("", 12)
 	lbl_guide.anchor_left = 1.0
 	lbl_guide.anchor_right = 1.0
 	lbl_guide.offset_left = -350   # #232再: 下の[R]帰還ヒントと中心をそろえる
@@ -192,9 +194,9 @@ func _build() -> void:
 	bar_food = _bar(Color(0.4, 0.85, 0.4))
 	bar_hold = _bar(Color(0.4, 0.6, 0.95))
 	bar_armor = _bar(Color(0.95, 0.75, 0.3))
-	lbl_food_val = _label("", 15)
-	lbl_hold_val = _label("", 15)
-	lbl_armor_val = _label("", 15)
+	lbl_food_val = _pxlabel("", 24)
+	lbl_hold_val = _pxlabel("", 24)
+	lbl_armor_val = _pxlabel("", 24)
 	bv.add_child(_bar_row("燃料", bar_food, lbl_food_val))
 	bv.add_child(_bar_row("魚倉", bar_hold, lbl_hold_val))
 	bv.add_child(_bar_row("装甲", bar_armor, lbl_armor_val))
@@ -269,7 +271,7 @@ func _build() -> void:
 	_fishing_meter.draw.connect(_draw_fishing_meter)
 	root.add_child(_fishing_meter)
 	# #232再4: 「大漁!」は漁ゲージが出ていたその場所に表示する
-	lbl_catch = _label("", 22)
+	lbl_catch = _pxlabel("", 24)
 	lbl_catch.anchor_left = 0.5
 	lbl_catch.anchor_right = 0.5
 	lbl_catch.anchor_top = 1.0
@@ -302,10 +304,18 @@ func _build() -> void:
 	rebuild_cargo()
 	refresh_money_fame()
 
+# #278(提案3): HUDのパネルは角丸半透明黒から「ドットの枠線」へ。
+# 2pxの明るい縁を引き、その外側に2pxの暗い縁(shadow)を重ねて二重の枠にする。
 func _style(p: PanelContainer) -> void:
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0, 0, 0, 0.45)
-	sb.set_corner_radius_all(8)
+	sb.bg_color = Color(0.02, 0.04, 0.08, 0.70)
+	sb.set_corner_radius_all(0)     # ドット絵に角丸はない
+	sb.set_border_width_all(2)
+	sb.border_color = Color(0.60, 0.76, 0.92, 0.95)   # 明縁
+	sb.shadow_size = 2
+	sb.shadow_offset = Vector2.ZERO
+	sb.shadow_color = Color(0, 0, 0, 0.85)            # その外側の暗縁
+	sb.anti_aliasing = false
 	sb.set_content_margin_all(8)
 	p.add_theme_stylebox_override("panel", sb)
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -315,6 +325,13 @@ func _label(t: String, sz: int) -> Label:
 	l.text = t
 	l.add_theme_font_size_override("font_size", sz)
 	l.add_theme_color_override("font_color", Color.WHITE)
+	return l
+
+# #278(提案3): 資金・名声・燃料・弾数などの「ゲーム内の数値」用。
+# 説明文・ヒントは可読性優先で _label(Noto)のままにする。
+func _pxlabel(t: String, sz: int) -> Label:
+	var l := _label(t, sz)
+	PixelFont.apply(l, sz)
 	return l
 
 func _bar(col: Color) -> ProgressBar:
@@ -586,8 +603,8 @@ func rebuild_weapons() -> void:
 			nm = Database.weapons[wid].name
 		var vbx := VBoxContainer.new()
 		vbx.add_theme_constant_override("separation", 0)
-		vbx.add_child(_label("%d:%s" % [i + 1, nm], 15))
-		var ammo := _label("", 13)
+		vbx.add_child(_pxlabel("%d:%s" % [i + 1, nm], 12))
+		var ammo := _pxlabel("", 12)
 		ammo.add_theme_color_override("font_color", Color(0.8, 0.9, 1.0))
 		vbx.add_child(ammo)
 		_weapon_labels.append(ammo)

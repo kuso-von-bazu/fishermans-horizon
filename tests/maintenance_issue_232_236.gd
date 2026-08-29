@@ -232,7 +232,7 @@ func _ready() -> void:
 	await get_tree().process_frame
 	var gear_btn: Button = null
 	for n in title._root.get_children():
-		if n is Button and n.tooltip_text == "音量設定":
+		if n is Button and n.tooltip_text == "設定":   # #278(提案4): 画面シェイクを足して「設定」へ改称
 			gear_btn = n
 	check(gear_btn != null, "タイトルに歯車ボタンが無い")
 	# 実際のマウス操作の模擬は Godot 側で成立しない(ヘッドレス/実ウィンドウとも

@@ -1,5 +1,7 @@
 extends CharacterBody2D
 const ProjectileScript = preload("res://scripts2d/Projectile2D.gd")
+const Juice = preload("res://scripts2d/Juice2D.gd")   # #278(提案4/6): 破片・夜の光
+const PixelFont = preload("res://scripts/PixelFont.gd")   # #278(提案3): 敵名
 ## Enemy2D — 主/戦闘モブ/海賊(見下ろし2D)。Codex生成の透過スプライトを本体に使用。
 ## 円形HPゲージ(#21)は _draw で描画。挙動は3D版Enemyを踏襲:
 ## 海賊=遠隔+近接(#9)、ヒュドラ=回復する炎、レヴィアタン=津波/薙ぎ払い、番い(#5相当は討伐管理)。
@@ -31,6 +33,8 @@ var _wander_t: float = 0.0
 var sprite: Sprite2D
 var _shadow: Sprite2D
 var _flame: CPUParticles2D    # #136: 炎上(海賊)
+var _eye_light: PointLight2D  # #278(提案6): 夜の帝王の目だけを光らせる
+var _flame_light: PointLight2D   # #278(提案6): 炎上スリップ中の敵が周囲を照らす
 var _debuff_fx: CPUParticles2D # #137: デバフ表示
 var _debuff_fx_kind: String = ""
 var _dead: bool = false        # #148: 撃破処理の多重実行防止
@@ -143,6 +147,7 @@ func _ready() -> void:
 	var lbl := Label.new()
 	lbl.text = def.name
 	lbl.add_theme_font_size_override("font_size", 15)
+	PixelFont.apply(lbl, 12)   # #278(提案3): 敵名はピクセルフォント
 	lbl.add_theme_color_override("font_color", Color(1, 0.75, 0.75) if kind != "mob" else Color(0.8, 1, 0.8))
 	lbl.add_theme_constant_override("outline_size", 5)
 	lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
@@ -166,6 +171,15 @@ func _ready() -> void:
 	# #136: 海賊の炎上 / #137: デバフのエフェクト用パーティクル
 	_flame = _make_particles(Color(1.0, 0.85, 0.35, 0.9), Color(0.7, 0.15, 0.05, 0.0))
 	add_child(_flame)
+	# #278(提案6): 炎上スリップ中の敵は夜の海域で周囲を照らす(点灯は _process 側)
+	_flame_light = Juice.make_light(Color(1.0, 0.6, 0.25), 0.0, 150.0)
+	add_child(_flame_light)
+	# #278(提案6): 夜の帝王(大・中・小)は目だけが光る。
+	# eye_glow はドット絵の中心から見た目の位置(横=幅の割合 / 縦=高さの割合)。
+	if def.has("eye_glow"):
+		_eye_light = Juice.make_light(Color(1.0, 0.34, 0.24), 2.6, maxf(_radius * 0.5, 24.0))
+		_eye_light.z_index = 7
+		add_child(_eye_light)
 	_debuff_fx = _make_particles(Color(0.4, 0.9, 0.4, 0.9), Color(0.4, 0.9, 0.4, 0.0))
 	add_child(_debuff_fx)
 
@@ -516,6 +530,20 @@ func _physics_process(delta: float) -> void:
 	# #136: 海賊の炎上表示(スリップ被害中)
 	if _flame:
 		_flame.emitting = kind == "pirate" and _slip > 0.5
+	# #278(提案6): 炎上中の敵の灯り。夜の海域でだけ点け、炎に合わせて揺らす
+	if _flame_light:
+		var lit: bool = _flame != null and _flame.emitting and Juice.night_sea(self)
+		_flame_light.energy = (1.0 + 0.35 * sin(_bob * 5.0)) if lit else 0.0
+	# #278(提案6): 夜の帝王の目。ドット絵の反転に合わせて左右へ付け替える
+	if _eye_light and sprite and sprite.texture:
+		# 正面/後ろ姿では頭の位置が変わるので、向きごとの目の位置を使う
+		var eg: Vector2 = def.get("eye_glow", Vector2.ZERO)
+		if _facing == "front" or _facing == "back":
+			eg = def.get("eye_glow_fb", Vector2(0.0, -0.30))
+		var sz: Vector2 = sprite.texture.get_size() * sprite.scale
+		var ex: float = eg.x * sz.x * (-1.0 if sprite.flip_h else 1.0)
+		_eye_light.position = sprite.position + Vector2(ex, eg.y * sz.y)
+		_eye_light.energy = 1.2 + 0.45 * sin(_bob * 3.2)
 	# #137: デバフ種別に応じたエフェクト
 	if _debuff_fx:
 		var want_fx := _debuff_kind if _debuff_t > 0.0 else ""
@@ -586,7 +614,9 @@ func _physics_process(delta: float) -> void:
 			move_dir = -to.normalized()
 			# #273: 引き撃ち中は後退しつつも、見た目は船団の側を向いたままにする
 			#   (撃ちながら下がる絵にするため。進行方向ではなく敵→自機の向きで固定)
-			face_dir = to.normalized()
+			# #273再: kite_face_move の敵(幽霊船)だけは従来どおり進行方向=逃げる向きを向く
+			if not bool(def.get("kite_face_move", false)):
+				face_dir = to.normalized()
 		# #149再: ティアマット等はプレイヤーを追いつつさらに大きくジグザグに移動
 		elif bool(def.get("zigzag", false)):
 			var perp := move_dir.rotated(PI / 2)
@@ -1156,6 +1186,12 @@ func _die() -> void:
 	if _dead:
 		return   # #148: 同一フレームの多重ヒットで名声/首を重複取得しないよう1回だけ
 	_dead = true
+	# #278(提案4): 撃破の瞬間だけ時間を止め、ドット絵の色を拾った破片を飛ばす
+	var w0 := get_parent()
+	if w0 and w0.has_method("hit_stop"):
+		w0.hit_stop(0.05, 0.05)
+		w0.screen_shake(6.0 if kind == "lord" else 3.5, 0.22)
+	Juice.debris(get_parent(), global_position, sprite.texture if sprite else null, _radius)
 	_fire_death_shot()   # #190再2/#71再: 撃墜された瞬間の打ち返し弾
 	GameState.record_kill(kind, id)   # #177: 討伐記録(モブ・海賊のみ加算)
 	match kind:

@@ -8,6 +8,10 @@ const DOCK_RADIUS := 190.0
 var island_id: int = 0
 var _player_inside := false
 var _warned := false
+# #278(提案2): 島のドット絵(assets/images/pixel/island_<id>.png)。
+# 用意されている島はベクター描画をやめ、この1枚絵を使う(浅瀬のにじみと
+# 入港圏の破線は海との接続・記号としての役割があるので従来どおり描く)。
+var _art: Sprite2D
 
 func setup(id: int) -> void:
 	island_id = id
@@ -15,6 +19,18 @@ func setup(id: int) -> void:
 func _ready() -> void:
 	add_to_group("island_body")
 	var def: Dictionary = Database.island(island_id)
+	# #278(提案2): ドット絵があれば1枚絵で描く
+	var art_path := "res://assets/images/pixel/island_%d.png" % island_id
+	if ResourceLoader.exists(art_path):
+		var tex: Texture2D = load(art_path)
+		var sc0: float = float(PALETTES[clampi(island_id, 0, PALETTES.size() - 1)].get("small", 1.0))
+		_art = Sprite2D.new()
+		_art.texture = tex
+		_art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST   # ドット絵をくっきり
+		# 陸地の直径が従来のベクター島(砂浜=112*sc)と同じ見た目になるよう合わせる
+		_art.scale = Vector2.ONE * (236.0 * sc0 / maxf(float(maxi(tex.get_width(), tex.get_height())), 1.0))
+		_art.z_index = 1   # 浅瀬のにじみ(_draw)より前
+		add_child(_art)
 	# 見た目は _draw で描画
 	queue_redraw()
 	# 衝突(陸地)
@@ -81,6 +97,10 @@ func _draw() -> void:
 	var sc: float = float(p.get("small", 1.0))   # #248: 北の孤島は一回り小さく描く
 	# 浅瀬(にじみ)→砂浜→緑地→深緑→山 …すべて不規則な海岸線(#41)。#172: 島ごとに配色・輪郭のゆらぎを変える
 	draw_colored_polygon(_coast(132 * sc, wob, 1), p.shallow)
+	# #278(提案2): ドット絵の1枚絵がある島は、陸地・樹木・港町をそちらに任せる
+	if _art != null:
+		_draw_dock_ring()
+		return
 	draw_colored_polygon(_coast(112 * sc, wob * 0.9, 1), p.sand)
 	draw_colored_polygon(_coast(86 * sc, wob, 3), p.grass)
 	if bool(p.get("oasis", false)):
@@ -123,7 +143,10 @@ func _draw() -> void:
 		var hx := (46 + h * 16) * sc
 		draw_rect(Rect2(hx, -24, 12, 12), Color(0.78, 0.42, 0.32))
 		draw_rect(Rect2(hx + 1, -28, 10, 5), Color(0.55, 0.30, 0.22))
-	# 入港圏の破線円
+	_draw_dock_ring()
+
+# 入港圏の破線円
+func _draw_dock_ring() -> void:
 	var seg := 40
 	for i in seg:
 		if i % 2 == 0:

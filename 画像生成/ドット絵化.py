@@ -43,6 +43,9 @@ LONG_OVERRIDE = {"lord_leviathan.png": 200, "lord_leviathan_front.png": 200, "lo
                  "mob_carabos.png": 180,
                  # #239再7: レイス(ぼろ布のほつれが細かい)
                  "lord_wraith.png": 180, "lord_wraith_front.png": 180, "lord_wraith_back.png": 180}
+# #278(提案2): 島は画面のランドマークなので大きめ(256px/64色)
+for _i in range(10):
+    LONG_OVERRIDE["island_%d.png" % _i] = 256
 # #81: レヴィアタンは色数も増やしてより詳細に。#173: ケツァルも増色。#81再: ヒュドラ増色・ケツァル64色
 COLORS_OVERRIDE = {"lord_leviathan.png": 64, "lord_leviathan_front.png": 64, "lord_leviathan_back.png": 64, "lord_hydra.png": 64, "lord_hydra_front.png": 64, "lord_hydra_back.png": 64, "lord_quetzal.png": 64, "lord_quetzal_front.png": 64, "lord_quetzal_back.png": 64,
                    # #187: 幽霊船
@@ -66,6 +69,8 @@ COLORS_OVERRIDE = {"lord_leviathan.png": 64, "lord_leviathan_front.png": 64, "lo
                    "mob_carabos.png": 64,
                    # #239再7: レイス
                    "lord_wraith.png": 64, "lord_wraith_front.png": 64, "lord_wraith_back.png": 64}
+for _i in range(10):
+    COLORS_OVERRIDE["island_%d.png" % _i] = 64
 
 for f in sorted(os.listdir(SRC)):
     if not f.lower().endswith(".png"):
