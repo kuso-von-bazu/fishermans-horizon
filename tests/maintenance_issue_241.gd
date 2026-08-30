@@ -118,7 +118,8 @@ func _ready() -> void:
 		check(sb is StyleBoxFlat, "ヒントの枠に背景スタイルが無い")
 		if sb is StyleBoxFlat:
 			var bg: Color = (sb as StyleBoxFlat).bg_color
-			check(bg.a > 0.2 and bg.a < 0.9, "ヒントの枠が半透明でない(a=%.2f)" % bg.a)
+			# #278再7: HUDパネルの透過度をさらに上げたため下限を引き下げ(0.2→0.05)
+			check(bg.a > 0.05 and bg.a < 0.9, "ヒントの枠が半透明でない(a=%.2f)" % bg.a)
 	check(hud.lbl_hint.text == "ヒント：テスト", "ヒントの書式が「ヒント：〇〇」でない(%s)" % hud.lbl_hint.text)
 	hud.show_departure_hint("")   # 空なら何もしない
 	check(hud.lbl_hint.text == "ヒント：テスト", "空文字でヒントが上書きされた")

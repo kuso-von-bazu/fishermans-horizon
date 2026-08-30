@@ -47,7 +47,14 @@ func _ready() -> void:
 	var world := preload("res://scripts2d/World2D.gd").new()
 	for isle in Database.islands.size():
 		GameState.current_island = isle
-		var want := "bgm_night" if (isle == 2 or isle == 5 or isle == 6) else "bgm_sea"
+		# #282: 嵐越えの島(3)・海嘯の島(7)は bgm_storm、果ての島(4)は bgm_blizzard
+		var want := "bgm_sea"
+		if isle == 2 or isle == 5 or isle == 6:
+			want = "bgm_night"
+		elif isle == 3 or isle == 7:
+			want = "bgm_storm"
+		elif isle == 4:
+			want = "bgm_blizzard"
 		check(world._sea_bgm() == want,
 			"島%d の航海BGMが違う(期待:%s / 実際:%s)" % [isle, want, world._sea_bgm()])
 	world.free()
@@ -218,7 +225,7 @@ func _ready() -> void:
 	check(hsrc.contains("_style_btn(_skill_btn, Color(1.0, 0.2, 0.15))"), "スキルボタンの使用可能時の赤枠が無い")
 
 	# ---------------- #278再6: HUD透過度をさらに上げる/陣形・スキル・?ボタンをピクセルフォントに ----------------
-	check(hsrc.contains("const PANEL_BG_ALPHA := 0.22"), "HUDパネルの透過度がさらに下がっていない(0.35→0.22)")
+	check(hsrc.contains("const PANEL_BG_ALPHA := 0.14"), "HUDパネルの透過度がさらに下がっていない(0.22→0.14)")
 	check(hsrc.contains("PixelFont.apply(help_btn)"), "?ボタンがピクセルフォントになっていない")
 	check(hsrc.contains("PixelFont.apply(b)   # #278再6"), "陣形ボタンがピクセルフォントになっていない")
 	check(hsrc.contains("PixelFont.apply(_skill_btn)"), "スキルボタンがピクセルフォントになっていない")

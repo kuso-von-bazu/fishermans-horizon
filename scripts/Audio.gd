@@ -33,6 +33,9 @@ const BGM_FILES := {
 	"bgm_ending":    "res://assets/audio/エンディング.mp3",
 	# #279: 夜の海域(月下・星霜・常闇)専用の航海BGM
 	"bgm_night":     "res://assets/audio/夜.mp3",
+	# #282: 嵐越えの島・海嘯の島(共有の専用曲)/ 果ての島 専用の航海BGM
+	"bgm_storm":     "res://assets/audio/嵐越えの島海域・海嘯の島海域.mp3",
+	"bgm_blizzard":  "res://assets/audio/果ての島海域.mp3",
 }
 
 func _ready() -> void:

@@ -195,10 +195,19 @@ func _build_weather() -> void:
 # 別の島を目指して航行中でも、近づいた海域の天候になる。
 # #279: 夜の海域(月下=night / 星霜=starry / 常闇=dark)は専用の航海BGM「夜」を鳴らす
 const NIGHT_SEA_WEATHERS := ["night", "starry", "dark"]
+# #282: 嵐越えの島(storm)・海嘯の島(surge)は共有の専用曲、果ての島(blizzard)は単独の専用曲
+const STORM_SEA_WEATHERS := ["storm", "surge"]
+const BLIZZARD_SEA_WEATHERS := ["blizzard"]
 
 func _sea_bgm() -> String:
 	var w := str(Database.island(GameState.current_island).get("weather", ""))
-	return "bgm_night" if NIGHT_SEA_WEATHERS.has(w) else "bgm_sea"
+	if NIGHT_SEA_WEATHERS.has(w):
+		return "bgm_night"
+	if STORM_SEA_WEATHERS.has(w):
+		return "bgm_storm"
+	if BLIZZARD_SEA_WEATHERS.has(w):
+		return "bgm_blizzard"
+	return "bgm_sea"
 
 func _nearest_island_weather() -> String:
 	if not is_instance_valid(player):
@@ -438,6 +447,10 @@ func _on_title_continue() -> void:
 	_enter_dock(GameState.current_island, false)
 
 func _enter_dock(island_id: int, do_reset := true) -> void:
+	# #237再3: 自主的な寄港(Eキー)は _forced_return と違い docking_locked を
+	# 立てていなかったため、寄港確定の瞬間に飛来していた弾・近接攻撃の被弾音が
+	# 素通りしていた(「たまに鳴る」の残り原因)。寄港処理の先頭で必ず立てる。
+	GameState.docking_locked = true
 	var was_at_sea := GameState.at_sea
 	if was_at_sea:
 		port_transition(false)   # #278再4: 入港時は汽笛を鳴らさない(出港時のみ)
@@ -729,7 +742,8 @@ func _update_fishing(delta: float) -> void:
 		hud.set_fishing_meter(_fishing_value, true, _fishing_band)
 	elif Input.is_action_just_released("interact") and is_instance_valid(_fishing_target):
 		var bonus := _fishing_in_band()
-		var caught: Array = _fishing_target.catch_fish(2 if bonus else 1)
+		# #232再8: 大漁(帯当たり)は獲得2尾でも群れの残り数は1尾しか減らさない
+		var caught: Array = _fishing_target.catch_fish(2 if bonus else 1, 1)
 		for got in caught:
 			if not GameState.add_cargo(str(got)):
 				break

@@ -191,15 +191,19 @@ func try_fish(delta: float) -> String:
 	return ""
 
 # #232: ゲージを離した時点で1尾、光る帯なら最大2尾をまとめて獲得する。
-func catch_fish(amount: int) -> Array:
+# deplete は群れの残り数から実際に引く数。省略時は amount と同じ(従来どおり)。
+# #232再8: 大漁(帯当たり)は獲得量2尾でも群れの減りは1尾にする。
+func catch_fish(amount: int, deplete: int = -1) -> Array:
 	var out: Array = []
 	if remaining <= 0:
 		return out
 	_splash_t = 0.28
-	var n := mini(maxi(amount, 1), remaining)
+	var n := maxi(amount, 1)
+	var dep := mini(maxi(deplete if deplete >= 0 else amount, 1), remaining)
 	for _i in n:
-		remaining -= 1
 		out.append(fish_id)
+	for _i in dep:
+		remaining -= 1
 		if not _fishes.is_empty():
 			var last = _fishes.pop_back()
 			if is_instance_valid(last.node):

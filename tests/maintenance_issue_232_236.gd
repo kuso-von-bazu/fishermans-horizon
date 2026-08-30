@@ -10,6 +10,9 @@ func check(ok: bool, message: String) -> void:
 		failures.append(message)
 		push_error(message)
 
+func _src(path: String) -> String:
+	return FileAccess.get_file_as_string(path)
+
 func _ready() -> void:
 	await get_tree().process_frame
 	GameState.reset_all()
@@ -362,8 +365,53 @@ func _ready() -> void:
 	check(evaded > 0, "回避無効を解除しても回避が起きない(判定が壊れている)")
 	dodger.free()
 
+	# --- #232再9: 大漁(帯当たり)は獲得2尾でも群れの残り数は1尾しか減らさない ---
+	var FishSchool = preload("res://scripts2d/FishSchool2D.gd")
+	var school := Node2D.new()
+	school.set_script(FishSchool)
+	school.setup("sardine", 5)
+	add_child(school)
+	await get_tree().process_frame
+	var bonus_catch: Array = school.catch_fish(2, 1)   # World2D と同じ呼び出し(帯当たり)
+	check(bonus_catch.size() == 2, "大漁なのに獲得数が2でない(実際%d)" % bonus_catch.size())
+	check(school.remaining == 4, "大漁で群れの残り数が1しか減っていない(実際%d、期待4)" % school.remaining)
+	var normal_catch: Array = school.catch_fish(1, 1)   # 通常(帯外れ)
+	check(normal_catch.size() == 1, "通常の漁獲数が1でない(実際%d)" % normal_catch.size())
+	check(school.remaining == 3, "通常の漁で残り数が1減っていない(実際%d、期待3)" % school.remaining)
+	# 残り1でも大漁は2尾獲得できる(枯渇未満まで減らない)
+	school.remaining = 1
+	var edge_catch: Array = school.catch_fish(2, 1)
+	check(edge_catch.size() == 2, "残り1での大漁が2尾にならない(実際%d)" % edge_catch.size())
+	check(school.remaining == 0, "残り1での大漁後に残り数が0でない(実際%d)" % school.remaining)
+	school.free()
+
+	# --- #237再3: 自主的な寄港(Eキー)でも寄港確定の瞬間に docking_locked を立てる ---
+	# 従来 docking_locked は _forced_return/_br_fail (強制帰還)でしか true にならず、
+	# 通常の任意寄港(_enter_dock)は関数の最後で false にするだけで、一度も true に
+	# していなかった。寄港確定の瞬間に飛来していた弾・近接攻撃の被弾音が
+	# 素通りしていた残りの原因はここ。_enter_dock の先頭付近(他の副作用より前)で
+	# docking_locked を true にし、末尾で false に戻していることをソースで確認する。
+	var w2src := _src("res://scripts2d/World2D.gd")
+	var dock_head := w2src.find("func _enter_dock(")
+	check(dock_head != -1, "_enter_dock が見つからない")
+	if dock_head != -1:
+		var dock_tail := w2src.find("\nfunc ", dock_head)
+		var dock_body: String = w2src.substr(dock_head, (dock_tail - dock_head) if dock_tail != -1 else 2000)
+		var lock_true_at := dock_body.find("GameState.docking_locked = true")
+		var lock_false_at := dock_body.find("GameState.docking_locked = false")
+		var clear_actors_at := dock_body.find("_clear_sea_actors()")
+		var transition_at := dock_body.find("port_transition(")
+		check(lock_true_at != -1, "_enter_dock が docking_locked を true にしていない(任意寄港が無防備)")
+		check(lock_false_at != -1, "_enter_dock が docking_locked を false に戻していない")
+		if lock_true_at != -1 and clear_actors_at != -1:
+			check(lock_true_at < clear_actors_at, "docking_locked=true が敵/弾のクリアより後(被弾音が漏れる)")
+		if lock_true_at != -1 and transition_at != -1:
+			check(lock_true_at < transition_at, "docking_locked=true が入港演出より後(その間の被弾で音が鳴る)")
+		if lock_true_at != -1 and lock_false_at != -1:
+			check(lock_true_at < lock_false_at, "docking_locked の true/false の順序が逆")
+
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK crit_sfx/melee_direction/dock_silence/fishing_band/pause/icons/title_click/enemy_wpn_sfx/formation")
+		print("MAINTENANCE_TEST_OK crit_sfx/melee_direction/dock_silence/fishing_band/pause/icons/title_click/enemy_wpn_sfx/formation/voluntary_dock_lock/bonus_catch_deplete")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)
