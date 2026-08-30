@@ -111,6 +111,7 @@ func _build() -> void:
 	help_btn.mouse_exited.connect(func(): pointer_on_ui = false)
 	help_btn.pressed.connect(func(): OverlayMenus.show_help(root))
 	_style_btn(help_btn)   # #278再5: 資金・名声ウインドウ等と同じ見た目に
+	PixelFont.apply(help_btn)   # #278再6: 陣形・スキル・?ボタンをピクセルフォントに
 	root.add_child(help_btn)
 
 	# ソナー(右上)
@@ -310,7 +311,9 @@ func _build() -> void:
 # #278(提案3): HUDのパネルは角丸半透明黒から「ドットの枠線」へ。
 # 2pxの明るい縁を引き、その外側に2pxの暗い縁(shadow)を重ねて二重の枠にする。
 # #278再5: 奥の海・敵がある程度見えるよう背景をさらに透過(0.70→0.35)
-const PANEL_BG_ALPHA := 0.35
+# #278再6: さらに透過してほしいとの要望で追加で下げる(0.35→0.22)
+# (0.2以下にすると出港ヒント枠が「半透明の枠」として判別できなくなるため下限0.22)
+const PANEL_BG_ALPHA := 0.22
 
 func _style(p: PanelContainer) -> void:
 	var sb := StyleBoxFlat.new()
@@ -505,6 +508,7 @@ func build_formation_bar(on_pick: Callable, on_skill: Callable = Callable()) -> 
 			b.mouse_entered.connect(func(): pointer_on_ui = true)
 			b.mouse_exited.connect(func(): pointer_on_ui = false)
 			_style_btn(b)   # #278再5: 資金・名声ウインドウ等と同じ見た目に
+			PixelFont.apply(b)   # #278再6: 陣形・スキル・?ボタンをピクセルフォントに
 			_form_box.add_child(b)
 			_form_btns.append(b)
 		set_formation(GameState.formation_slot)
@@ -523,6 +527,7 @@ func build_formation_bar(on_pick: Callable, on_skill: Callable = Callable()) -> 
 		_skill_btn.mouse_entered.connect(func(): pointer_on_ui = true)
 		_skill_btn.mouse_exited.connect(func(): pointer_on_ui = false)
 		_style_btn(_skill_btn)   # #278再5: 資金・名声ウインドウ等と同じ見た目に(既定/クールダウン中)
+		PixelFont.apply(_skill_btn)   # #278再6: 陣形・スキル・?ボタンをピクセルフォントに
 		holder.add_child(_skill_btn)
 		# クールダウン中の覆い(右側に残り、左から解除される)
 		_skill_cover = ColorRect.new()

@@ -211,12 +211,17 @@ func _ready() -> void:
 	var worst_guide := "ガイド: ヒゲマッコウナガスクジラ まで 約9990"
 	var guide_w: float = guide_font.get_string_size(worst_guide, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x
 	check(guide_w <= 404.0, "ガイド文字が最長ケースでボックス幅(404px)を超えて見切れる恐れがある(%.1fpx)" % guide_w)
-	check(hsrc.contains("const PANEL_BG_ALPHA := 0.35"), "HUDパネルの透過度が下がっていない")
 	check(hsrc.contains("func _style_btn("), "陣形・スキル・?ボタン用の共通スタイル関数が無い")
 	check(hsrc.contains("_style_btn(help_btn)"), "?ボタンが資金・名声ウインドウと同じ見た目になっていない")
 	check(hsrc.contains("_style_btn(b)   # #278再5"), "陣形ボタンが資金・名声ウインドウと同じ見た目になっていない")
 	check(hsrc.contains("_style_btn(_skill_btn)"), "スキルボタンの既定が資金・名声ウインドウと同じ見た目になっていない")
 	check(hsrc.contains("_style_btn(_skill_btn, Color(1.0, 0.2, 0.15))"), "スキルボタンの使用可能時の赤枠が無い")
+
+	# ---------------- #278再6: HUD透過度をさらに上げる/陣形・スキル・?ボタンをピクセルフォントに ----------------
+	check(hsrc.contains("const PANEL_BG_ALPHA := 0.22"), "HUDパネルの透過度がさらに下がっていない(0.35→0.22)")
+	check(hsrc.contains("PixelFont.apply(help_btn)"), "?ボタンがピクセルフォントになっていない")
+	check(hsrc.contains("PixelFont.apply(b)   # #278再6"), "陣形ボタンがピクセルフォントになっていない")
+	check(hsrc.contains("PixelFont.apply(_skill_btn)"), "スキルボタンがピクセルフォントになっていない")
 
 	# ---------------- #232再8: 「大漁!獲得量2倍」表示の短縮 ----------------
 	check(hsrc.contains("func show_catch_bonus(text: String, hold := 0.4)"), "大漁表示の保持時間が短縮されていない")
@@ -230,7 +235,7 @@ func _ready() -> void:
 		"「選択」/「選択を解除」ボタンの幅が統一されていない")
 
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK griffon/ship_fuel/night_bgm/ghost_kite/fuel_taper/ach_toast/pixel_sea/pixel_island/pixel_font/juice/night_light/small_life/no_horn_on_dock/guide_size/hud_transparency/btn_style/catch_toast_short/ach_btn_width")
+		print("MAINTENANCE_TEST_OK griffon/ship_fuel/night_bgm/ghost_kite/fuel_taper/ach_toast/pixel_sea/pixel_island/pixel_font/juice/night_light/small_life/no_horn_on_dock/guide_size/hud_transparency/btn_style/catch_toast_short/ach_btn_width/hud_transparency2/btn_pixel_font")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)
