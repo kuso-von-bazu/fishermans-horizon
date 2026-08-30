@@ -62,6 +62,7 @@ var _br_active: bool = false   # ボスが出現中(解放済み参照は null �
 var _br_boss2: Node = null     # #209再4: 番いの主(ギガントセイウチ)の2体目
 var _br_pair: bool = false     # 番いかどうか(解放済み参照の null 比較を避けるためフラグで持つ)
 var _br_wait: float = 0.0
+var _br_won: bool = false      # #284: レヴィアタン討伐の瞬間から旗艦を無敵にし、_br_fail()を封じる
 var _skill_cd: float = 0.0        # #224: スキルのクールダウン残り
 var _skill_cd_max: float = 1.0
 var _fishing_target: Node = null     # #232: 漁ゲージの対象魚群
@@ -641,7 +642,7 @@ func _physics_process(delta: float) -> void:
 		_tick_skill(delta)   # #224
 		if hud:
 			hud.update_bars()
-		if GameState.run_armor <= 0.0:
+		if GameState.run_armor <= 0.0 and not _br_won:   # #284: 討伐と同時の大破を無効化
 			_br_fail()
 		return
 	if _dock_grace > 0.0:
@@ -679,6 +680,8 @@ func _physics_process(delta: float) -> void:
 	if hud:
 		hud.update_bars()
 	_check_victory()   # #159: 画面外でレヴィアタンを倒しても確実に毎フレーム勝利判定
+	if _victory_shown:
+		return   # #284: レヴィアタン討伐と同時の旗艦大破を無効化(旗艦は討伐の瞬間から無敵)
 	# 強制帰還・食料選択(#17/#23)
 	if GameState.run_armor <= 0.0:
 		_forced_return("船が大破!", true)
@@ -1188,6 +1191,7 @@ func _on_boss_rush() -> void:
 	_br_boss = null
 	_br_active = false
 	_br_wait = 0.0
+	_br_won = false
 	# 討伐済みの記録は持ち込まない(勝利判定が即座に走らないように)
 	GameState.defeated_lords.clear()
 	GameState.claimed_lords.clear()
@@ -1300,6 +1304,9 @@ func _br_update(delta: float) -> void:
 			var heal_pct: float = 0.10 if _br_index >= BR_HEAL_BIG_FROM else 0.05   # #209再9
 			GameState.heal_fleet_percent(heal_pct)
 			GameState.notice.emit("船団の装甲が回復した(最大値の%d%%)" % int(heal_pct * 100.0))
+		else:
+			# #284: レヴィアタン討伐の瞬間から旗艦を無敵にする(制覇画面へ進むまでの間、大破扱いにしない)
+			_br_won = true
 
 func _br_finish() -> void:
 	if _victory_shown:
@@ -1314,7 +1321,7 @@ func _br_finish() -> void:
 	title.show_victory(true)   # #209: 夜の背景+専用メッセージ
 
 func _br_fail() -> void:
-	if _returning:
+	if _returning or _br_won:   # #284: レヴィアタン討伐後は旗艦無敵につき大破処理を行わない
 		return
 	_returning = true
 	GameState.docking_locked = true
