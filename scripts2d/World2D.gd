@@ -808,8 +808,8 @@ func _update_spawns(delta: float) -> void:
 		_spawn_enemy()
 	if relics_world.size() < 2 and randf() < 0.12:
 		_spawn_relic()
-	# #267: 漂流者・漂流貨物のレアスポーン(遺産よりさらに珍しい)
-	if not _boss_rush and flotsam_world.size() < 1 and randf() < 0.035:
+	# #267再: 漂流者・漂流貨物のレアスポーン(遺産よりさらに珍しい)。出現率を下げてほしいとの要望で0.035→0.015
+	if not _boss_rush and flotsam_world.size() < 1 and randf() < 0.015:
 		_spawn_flotsam()
 	# #193: 障害物は地形に近いので、1tickに複数出して早めに規定数まで満たす
 	for i in 3:

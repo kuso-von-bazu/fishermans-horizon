@@ -50,9 +50,23 @@ func _root() -> Control:
 		_ui_root = Control.new()
 		_ui_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 		_ui_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_ui_root.theme = _text_theme()   # #278再8: 透過した分、文字は縁取りで読ませる
 		add_child(_ui_root)
 	return _ui_root
 
+# #278再8: パネルをほぼ素通しにすると、明るい海の上では白い文字が読めなくなる。
+#   文字の下に暗幕を敷く代わりに、文字自体へ暗い縁取りを付けて読ませる。
+#   _ui_root に載せるので、あとから作るラベル・ボタンにも自動で効く。
+func _text_theme() -> Theme:
+	var th := Theme.new()
+	var oc := Color(0, 0, 0, 0.85)
+	for cls in ["Label", "RichTextLabel", "Button"]:
+		th.set_color("font_outline_color", cls, oc)
+		th.set_constant("outline_size", cls, 6)
+	# RichTextLabel は影の指定が別系統なので、そちらにも同じ暗さを入れる
+	th.set_color("font_shadow_color", "RichTextLabel", oc)
+	th.set_constant("shadow_outline_size", "RichTextLabel", 6)
+	return th
 func _build() -> void:
 	var root := _root()
 	# 左上: 資金/名声
@@ -308,14 +322,11 @@ func _build() -> void:
 	rebuild_cargo()
 	refresh_money_fame()
 
-# #278(提案3): HUDのパネルは角丸半透明黒から「ドットの枠線」へ。
-# 2pxの明るい縁を引き、その外側に2pxの暗い縁(shadow)を重ねて二重の枠にする。
-# #278再5: 奥の海・敵がある程度見えるよう背景をさらに透過(0.70→0.35)
-# #278再6: さらに透過してほしいとの要望で追加で下げる(0.35→0.22)
-# #278再7: なお透過してほしいとの要望で追加で下げる(0.22→0.14)。
-# #278再8: 3度目のご要望。ほぼ素通しの 0.06 まで下げる。
-# 枠線(2pxの明縁+暗縁)は不透明のまま残るので、0近くまで下げても
-# パネルの位置・境界は判別できる。
+# #278(提案3): HUDのパネルは角丸半透明黒から「ドットの枠線」へ。2pxの明るい縁を引く。
+# #278再5〜再7: 透過のご要望で 0.70→0.35→0.22→0.14 と下げてきたが、
+#   実際には shadow の塗りに隠れて見た目が変わっていなかった(下の _style 参照)。
+# #278再8: その塗りをやめたうえで 0.06 まで下げ、ほぼ素通しにする。
+#   枠線(2pxの明縁)は不透明のまま残るので、パネルの位置・境界は判別できる。
 const PANEL_BG_ALPHA := 0.06
 
 func _style(p: PanelContainer) -> void:
@@ -324,9 +335,10 @@ func _style(p: PanelContainer) -> void:
 	sb.set_corner_radius_all(0)     # ドット絵に角丸はない
 	sb.set_border_width_all(2)
 	sb.border_color = Color(0.60, 0.76, 0.92, 0.95)   # 明縁
-	sb.shadow_size = 2
-	sb.shadow_offset = Vector2.ZERO
-	sb.shadow_color = Color(0, 0, 0, 0.85)            # その外側の暗縁
+	# #278再8: StyleBoxFlat の shadow は輪郭線ではなく「パネル全面の塗り」として描かれる。
+	#   そのため bg の不透明度をいくら下げても 0.85 の黒が残り、
+	#   透過のご要望(0.35→0.22→0.14)が見た目に反映されていなかった。暗縁は使わない。
+	sb.shadow_size = 0
 	sb.anti_aliasing = false
 	sb.set_content_margin_all(8)
 	p.add_theme_stylebox_override("panel", sb)
@@ -339,9 +351,7 @@ func _style_btn(b: Button, border_color := Color(0.60, 0.76, 0.92, 0.95)) -> voi
 	sb.set_corner_radius_all(0)
 	sb.set_border_width_all(2)
 	sb.border_color = border_color
-	sb.shadow_size = 2
-	sb.shadow_offset = Vector2.ZERO
-	sb.shadow_color = Color(0, 0, 0, 0.85)
+	sb.shadow_size = 0   # #278再8: 上と同じ理由で暗縁は使わない
 	sb.anti_aliasing = false
 	sb.set_content_margin_all(6)
 	b.add_theme_stylebox_override("normal", sb)

@@ -141,7 +141,7 @@ func _ready() -> void:
 	check(hsrc.contains("lbl_food_val = _pxlabel"), "燃料の数値がピクセルフォントでない")
 	check(hsrc.contains("var ammo := _pxlabel"), "残弾がピクセルフォントでない")
 	check(hsrc.contains("lbl_hint = _label"), "長文のヒントまでピクセルフォントになっている")
-	check(hsrc.contains("sb.set_corner_radius_all(0)") and hsrc.contains("sb.shadow_size = 2"),
+	check(hsrc.contains("sb.set_corner_radius_all(0)") and hsrc.contains("sb.set_border_width_all(2)"),
 		"HUDパネルがドットの枠線になっていない")
 
 	# ---------------- #278 提案4/5: 打撃感・演出ズーム ----------------
@@ -290,8 +290,45 @@ func _ready() -> void:
 		en.queue_free()
 	GameState.current_island = 0
 
+	# ---------------- #267再: 漂流者・漂流貨物の出現率を下げる ----------------
+	check(w2.contains("flotsam_world.size() < 1 and randf() < 0.015"),
+		"漂流物の出現率が下がっていない(0.035→0.015)")
+	check(not w2.contains("randf() < 0.035"), "漂流物の出現率が旧い値(0.035)のまま残っている")
+
+
+	# ---------------- #278再8: HUDの透過が実際に効いていること ----------------
+	# StyleBoxFlat の shadow は輪郭線ではなくパネル全面の塗りとして描かれる。
+	# これが残っていると bg の不透明度を下げても見た目が変わらない(再5〜再7で実際に起きた)。
+	var hud8 := preload("res://scripts2d/HUD2D.gd").new()
+	add_child(hud8)
+	await get_tree().process_frame
+	for pth in ["res://scripts2d/HUD2D.gd"]:
+		var t8 := FileAccess.get_file_as_string(pth)
+		check(not t8.contains("sb.shadow_size = 2"),
+			"HUDパネルに全面を塗るshadowが残っている(透過が効かない)")
+	# 実際のスタイルで確かめる(コードの見た目ではなく描画に使われる値)
+	var panel8 := PanelContainer.new()
+	hud8._style(panel8)
+	var sb8: StyleBoxFlat = panel8.get_theme_stylebox("panel")
+	check(sb8 != null, "HUDパネルのスタイルが取れない")
+	if sb8 != null:
+		check(sb8.shadow_size == 0, "パネル背後の塗り(shadow)が残っている(%d)" % sb8.shadow_size)
+		check(sb8.bg_color.a <= 0.08, "パネル背景が透過しきっていない(a=%.2f)" % sb8.bg_color.a)
+		check(sb8.border_color.a > 0.5, "枠線まで透過してしまい位置が分からない")
+	panel8.free()
+	# 透過した分は文字の縁取りで読ませる。あとから作る文字にも効くよう _ui_root のテーマで持つ。
+	var root8: Control = hud8._root()
+	check(root8.theme != null, "HUDに文字の縁取りテーマが無い")
+	if root8.theme != null:
+		for cls8 in ["Label", "RichTextLabel", "Button"]:
+			check(root8.theme.get_constant("outline_size", cls8) >= 4,
+				"%s の文字に縁取りが無い(透過した海の上で読めない)" % cls8)
+			check(root8.theme.get_color("font_outline_color", cls8).a > 0.5,
+				"%s の縁取りが薄すぎる" % cls8)
+	hud8.queue_free()
+
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK griffon/ship_fuel/night_bgm/ghost_kite/fuel_taper/ach_toast/pixel_sea/pixel_island/pixel_font/juice/night_light/small_life/no_horn_on_dock/guide_size/hud_transparency/btn_style/catch_toast_short/ach_btn_width/hud_transparency2/btn_pixel_font/mob_balance/lord_balance")
+		print("MAINTENANCE_TEST_OK griffon/ship_fuel/night_bgm/ghost_kite/fuel_taper/ach_toast/pixel_sea/pixel_island/pixel_font/juice/night_light/small_life/no_horn_on_dock/guide_size/hud_transparency/btn_style/catch_toast_short/ach_btn_width/hud_transparency2/btn_pixel_font/mob_balance/lord_balance/hud_see_through/flotsam_rate")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)
