@@ -262,16 +262,16 @@ func _ready() -> void:
 		check(int(Database.lords[lid2].dmg) == int(spec2[1]),
 			"%s の攻撃力が%dでない(%d)" % [lid2, int(spec2[1]), int(Database.lords[lid2].dmg)])
 	# HP(自分の島での値)
-	for spec3 in [["walrus", 1700], ["undine", 10500], ["siren", 10000], ["aspidochelone", 8000], ["kraken_lord", 20000], ["griffon", 18000], ["ghost", 36000], ["leviathan", 48000]]:
+	for spec3 in [["walrus", 1700], ["undine", 11000], ["siren", 10000], ["aspidochelone", 8000], ["kraken_lord", 20000], ["griffon", 18000], ["ghost", 36000], ["leviathan", 48000]]:
 		var lid3: String = str(spec3[0])
 		var isle3: int = int(Database.lords[lid3].island)
 		var hp3: int = Database.lord_hp(lid3, isle3)
 		check(hp3 == int(spec3[1]), "%s のHPが%dでない(%d)" % [lid3, int(spec3[1]), hp3])
 
-	# 5桁のHPは1000の倍数へ丸められるため、10500 は基礎HPからは作れない。
+	# 基礎HPをそのまま星霜の島で倍率計算すると 11000 にはならない(hp_exact なしでは作れない値)。
 	# hp_exact がその island でだけ効き、他の海域(ボスラッシュ=果ての島)では倍率で決まること。
-	check(Database.scaled_hp(float(Database.lords["undine"].hp), 5) != 10500,
-		"丸めの都合で10500が作れる状態になっている(hp_exact の検査が意味を失う)")
+	check(Database.scaled_hp(float(Database.lords["undine"].hp), 5) != 11000,
+		"丸めの都合で基礎HPから11000が作れる状態になっている(hp_exact の検査が意味を失う)")
 	check(Database.lord_hp("undine", 4) == Database.scaled_hp(float(Database.lords["undine"].hp), 4),
 		"別の海域でも hp_exact が使われている(ボスラッシュのHPが固定になる)")
 	check(Database.lord_hp("griffon", 7) == Database.scaled_hp(float(Database.lords["griffon"].hp), 7),
@@ -279,7 +279,7 @@ func _ready() -> void:
 
 	# 実際に敵を出したときのHPも指定どおりであること(表示だけ直っていても意味がない)
 	var EnemyS = preload("res://scripts2d/Enemy2D.gd")
-	for spec4 in [["undine", 5, 10500], ["siren", 5, 10000], ["walrus", 1, 1700], ["kraken_lord", 7, 20000], ["griffon", 7, 18000], ["ghost", 4, 36000], ["leviathan", 4, 48000]]:
+	for spec4 in [["undine", 5, 11000], ["siren", 5, 10000], ["walrus", 1, 1700], ["kraken_lord", 7, 20000], ["griffon", 7, 18000], ["ghost", 4, 36000], ["leviathan", 4, 48000]]:
 		GameState.current_island = int(spec4[1])
 		var en := CharacterBody2D.new()
 		en.set_script(EnemyS)

@@ -246,7 +246,7 @@ func _ready() -> void:
 	# 表示HPの丸めがあるので、base値ではなく scaled_hp の結果で検証する
 	# #263再2: ウンディーネのように丸めでは作れない値は hp_exact で指定するため、
 	#   scaled_hp ではなく lord_hp(実際に使われる値)で検証する。
-	for spec in [["whale", 2600], ["walrus", 1700], ["undine", 10500], ["siren", 10000], ["aspidochelone", 8000], ["kraken_lord", 20000], ["griffon", 18000], ["ghost", 36000], ["leviathan", 48000]]:
+	for spec in [["whale", 2600], ["walrus", 1700], ["undine", 11000], ["siren", 10000], ["aspidochelone", 8000], ["kraken_lord", 20000], ["griffon", 18000], ["ghost", 36000], ["leviathan", 48000]]:
 		var lid3: String = str(spec[0])
 		var want_hp: int = int(spec[1])
 		var isl: int = int(Database.lords[lid3].island)
