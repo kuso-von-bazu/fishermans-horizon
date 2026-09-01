@@ -68,7 +68,11 @@ func setup(p_kind: String, p_id: String) -> void:
 		"lord": def = Database.lords[id]
 	# #202: 出現する海域に応じて敵(主・戦闘モブ・海賊・海賊王)のHPを一律で引き上げる。
 	# 1の位は切り上げ(=10の倍数へ繰り上げ)。
-	hp = float(Database.scaled_hp(float(def.hp), GameState.current_island))
+	# #263再2: 主は「その島でのHP」を直接指定できるので lord_hp を通す。
+	if kind == "lord":
+		hp = float(Database.lord_hp(id, GameState.current_island))
+	else:
+		hp = float(Database.scaled_hp(float(def.hp), GameState.current_island))
 	max_hp = hp
 	dmg = float(def.dmg)
 	ranged = bool(def.get("ranged", false))

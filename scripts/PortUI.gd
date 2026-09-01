@@ -388,7 +388,7 @@ func show_tavern() -> void:
 		var info := _rt("%s
 HP:%d  賞金:%d  [%s]
 情報: 港の【%s】の沖にいるらしい
-%s" % [ld.name, Database.scaled_hp(float(ld.hp), isle), ld.bounty, st, compass, str(ld.get("lore", ""))])
+%s" % [ld.name, Database.lord_hp(lid, isle), ld.bounty, st, compass, str(ld.get("lore", ""))])
 		# #231再2: autowrap付きの Label は行間が大きく開いてしまい、
 		# 「項目ごとに1行あいている」ように見える。早見表(#236再)と同じく
 		# RichTextLabel + fit_content にすると内容ぴったりの行間になる。
@@ -579,7 +579,12 @@ func show_bestiary() -> void:
 		if cnt > 0:
 			row.add_child(_portrait(e.id, 72))
 			# #202: 今いる海域のHP倍率を反映した値を表示
-			var stat := "HP:%d  攻撃:%d" % [Database.scaled_hp(float(d.get("hp", 0)), GameState.current_island), int(d.get("dmg", 0))]
+			var shown_hp: int = 0
+			if e.kind == "lord":
+				shown_hp = Database.lord_hp(str(e.id), GameState.current_island)
+			else:
+				shown_hp = Database.scaled_hp(float(d.get("hp", 0)), GameState.current_island)
+			var stat := "HP:%d  攻撃:%d" % [shown_hp, int(d.get("dmg", 0))]
 			if d.has("speed"):
 				stat += "  速度:%d" % int(d.get("speed", 0))
 			if e.kind == "pirate":

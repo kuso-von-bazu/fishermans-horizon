@@ -225,7 +225,7 @@ func _ready() -> void:
 	check(hsrc.contains("_style_btn(_skill_btn, Color(1.0, 0.2, 0.15))"), "スキルボタンの使用可能時の赤枠が無い")
 
 	# ---------------- #278再6: HUD透過度をさらに上げる/陣形・スキル・?ボタンをピクセルフォントに ----------------
-	check(hsrc.contains("const PANEL_BG_ALPHA := 0.14"), "HUDパネルの透過度がさらに下がっていない(0.22→0.14)")
+	check(hsrc.contains("const PANEL_BG_ALPHA := 0.06"), "HUDパネルの透過度がさらに下がっていない(0.14→0.06)")
 	check(hsrc.contains("PixelFont.apply(help_btn)"), "?ボタンがピクセルフォントになっていない")
 	check(hsrc.contains("PixelFont.apply(b)   # #278再6"), "陣形ボタンがピクセルフォントになっていない")
 	check(hsrc.contains("PixelFont.apply(_skill_btn)"), "スキルボタンがピクセルフォントになっていない")
@@ -241,8 +241,57 @@ func _ready() -> void:
 	check(portsrc.contains("b.custom_minimum_size = Vector2(ACH_BTN_W, 0)"),
 		"「選択」/「選択を解除」ボタンの幅が統一されていない")
 
+
+	# ---------------- #262再: 戦闘能力があるモブの能力調整 ----------------
+	# HPは「その島で出現した際の値」の指定なので、島の倍率と丸めを通した実値で見る。
+	for spec in [["moon_jelly", 6, 1800], ["mermaid", 5, 1300], ["lamia", 5, 1400]]:
+		var mid: String = str(spec[0])
+		var got: int = Database.scaled_hp(float(Database.combat_mobs[mid].hp), int(spec[1]))
+		check(got == int(spec[2]), "%s のHPが%dでない(%d)" % [mid, int(spec[2]), got])
+	check(is_equal_approx(float(Database.combat_mobs["zaratan"].atk_cd), 1.40),
+		"ザラタンの攻撃間隔が1.40でない(%.2f)" % float(Database.combat_mobs["zaratan"].atk_cd))
+	check(int(Database.combat_mobs["carabos"].dmg) == 29,
+		"カーラボスの攻撃力が29でない(%d)" % int(Database.combat_mobs["carabos"].dmg))
+	check(is_equal_approx(float(Database.combat_mobs["carabos"].speed), 12.0),
+		"カーラボスの速度が12.0でない(%.1f)" % float(Database.combat_mobs["carabos"].speed))
+
+	# ---------------- #263再: 近海の主の能力調整 ----------------
+	# 攻撃力
+	for spec2 in [["whale", 25], ["walrus", 22], ["kraken_lord", 42], ["griffon", 44]]:
+		var lid2: String = str(spec2[0])
+		check(int(Database.lords[lid2].dmg) == int(spec2[1]),
+			"%s の攻撃力が%dでない(%d)" % [lid2, int(spec2[1]), int(Database.lords[lid2].dmg)])
+	# HP(自分の島での値)
+	for spec3 in [["walrus", 1700], ["undine", 10500], ["siren", 10000], ["aspidochelone", 8000], ["kraken_lord", 20000], ["griffon", 18000], ["ghost", 36000], ["leviathan", 48000]]:
+		var lid3: String = str(spec3[0])
+		var isle3: int = int(Database.lords[lid3].island)
+		var hp3: int = Database.lord_hp(lid3, isle3)
+		check(hp3 == int(spec3[1]), "%s のHPが%dでない(%d)" % [lid3, int(spec3[1]), hp3])
+
+	# 5桁のHPは1000の倍数へ丸められるため、10500 は基礎HPからは作れない。
+	# hp_exact がその island でだけ効き、他の海域(ボスラッシュ=果ての島)では倍率で決まること。
+	check(Database.scaled_hp(float(Database.lords["undine"].hp), 5) != 10500,
+		"丸めの都合で10500が作れる状態になっている(hp_exact の検査が意味を失う)")
+	check(Database.lord_hp("undine", 4) == Database.scaled_hp(float(Database.lords["undine"].hp), 4),
+		"別の海域でも hp_exact が使われている(ボスラッシュのHPが固定になる)")
+	check(Database.lord_hp("griffon", 7) == Database.scaled_hp(float(Database.lords["griffon"].hp), 7),
+		"hp_exact を持たない主で lord_hp が scaled_hp と食い違う")
+
+	# 実際に敵を出したときのHPも指定どおりであること(表示だけ直っていても意味がない)
+	var EnemyS = preload("res://scripts2d/Enemy2D.gd")
+	for spec4 in [["undine", 5, 10500], ["siren", 5, 10000], ["walrus", 1, 1700], ["kraken_lord", 7, 20000], ["griffon", 7, 18000], ["ghost", 4, 36000], ["leviathan", 4, 48000]]:
+		GameState.current_island = int(spec4[1])
+		var en := CharacterBody2D.new()
+		en.set_script(EnemyS)
+		en.setup("lord", str(spec4[0]))
+		add_child(en)
+		check(int(en.max_hp) == int(spec4[2]),
+			"%s の実HPが%dでない(%d)" % [str(spec4[0]), int(spec4[2]), int(en.max_hp)])
+		en.queue_free()
+	GameState.current_island = 0
+
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK griffon/ship_fuel/night_bgm/ghost_kite/fuel_taper/ach_toast/pixel_sea/pixel_island/pixel_font/juice/night_light/small_life/no_horn_on_dock/guide_size/hud_transparency/btn_style/catch_toast_short/ach_btn_width/hud_transparency2/btn_pixel_font")
+		print("MAINTENANCE_TEST_OK griffon/ship_fuel/night_bgm/ghost_kite/fuel_taper/ach_toast/pixel_sea/pixel_island/pixel_font/juice/night_light/small_life/no_horn_on_dock/guide_size/hud_transparency/btn_style/catch_toast_short/ach_btn_width/hud_transparency2/btn_pixel_font/mob_balance/lord_balance")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)

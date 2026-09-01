@@ -244,11 +244,13 @@ func _ready() -> void:
 
 	# --- #244/#239再5: 指定された「実際に出現する海域でのHP」になっていること ---
 	# 表示HPの丸めがあるので、base値ではなく scaled_hp の結果で検証する
-	for spec in [["whale", 2600], ["walrus", 1600], ["undine", 9000], ["siren", 8000]]:
+	# #263再2: ウンディーネのように丸めでは作れない値は hp_exact で指定するため、
+	#   scaled_hp ではなく lord_hp(実際に使われる値)で検証する。
+	for spec in [["whale", 2600], ["walrus", 1700], ["undine", 10500], ["siren", 10000], ["aspidochelone", 8000], ["kraken_lord", 20000], ["griffon", 18000], ["ghost", 36000], ["leviathan", 48000]]:
 		var lid3: String = str(spec[0])
 		var want_hp: int = int(spec[1])
 		var isl: int = int(Database.lords[lid3].island)
-		var got_hp: int = Database.scaled_hp(float(Database.lords[lid3].hp), isl)
+		var got_hp: int = Database.lord_hp(lid3, isl)
 		check(got_hp == want_hp, "%s の海域HPが %d でない(%d)" % [str(Database.lords[lid3].name), want_hp, got_hp])
 
 	# --- #239再6: 敵のIDと画像ファイル名が一致していること ---

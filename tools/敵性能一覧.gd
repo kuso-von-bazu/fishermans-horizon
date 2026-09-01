@@ -112,7 +112,7 @@ func _ready() -> void:
 				extra = " (番いで2体)"
 			out += "| %s%s | %s | %d | %d | %.2f | %.1f | %s |\n" % [
 				str(ld.name), extra, str(isle4.name),
-				Database.scaled_hp(float(ld.hp), idx4), int(ld.dmg),
+				Database.lord_hp(str(lid), idx4), int(ld.dmg),
 				atk_interval(ld, "lord"), float(ld.get("speed", 10.0)), esc]
 	out += "\n## 島ごとの戦闘能力があるモブの出現割合(#75)\n\n"
 	for isle5 in Database.islands_in_order():
