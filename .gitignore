@@ -17,3 +17,6 @@ export_presets.cfg
 Thumbs.db
 desktop.ini
 __pycache__/
+
+# 手動対応中に自動バッチを止めるための一時ファイル(#278再9)
+見張り停止.flag

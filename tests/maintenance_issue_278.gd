@@ -225,7 +225,7 @@ func _ready() -> void:
 	check(hsrc.contains("_style_btn(_skill_btn, Color(1.0, 0.2, 0.15))"), "スキルボタンの使用可能時の赤枠が無い")
 
 	# ---------------- #278再6: HUD透過度をさらに上げる/陣形・スキル・?ボタンをピクセルフォントに ----------------
-	check(hsrc.contains("const PANEL_BG_ALPHA := 0.06"), "HUDパネルの透過度がさらに下がっていない(0.14→0.06)")
+	check(hsrc.contains("const PANEL_BG_ALPHA := 0.18"), "HUDパネルの透過度が指定値(0.18)でない")
 	check(hsrc.contains("PixelFont.apply(help_btn)"), "?ボタンがピクセルフォントになっていない")
 	check(hsrc.contains("PixelFont.apply(b)   # #278再6"), "陣形ボタンがピクセルフォントになっていない")
 	check(hsrc.contains("PixelFont.apply(_skill_btn)"), "スキルボタンがピクセルフォントになっていない")
@@ -313,7 +313,10 @@ func _ready() -> void:
 	check(sb8 != null, "HUDパネルのスタイルが取れない")
 	if sb8 != null:
 		check(sb8.shadow_size == 0, "パネル背後の塗り(shadow)が残っている(%d)" % sb8.shadow_size)
-		check(sb8.bg_color.a <= 0.08, "パネル背景が透過しきっていない(a=%.2f)" % sb8.bg_color.a)
+		# #278再9: 0.06(ほぼ素通し)から少し戻して 0.18。
+		#   下限は「パネルの形が分かる」、上限は「奥の海が透ける」を守るための幅。
+		check(sb8.bg_color.a >= 0.10 and sb8.bg_color.a <= 0.30,
+			"パネル背景の濃さが想定の幅(0.10〜0.30)から外れている(a=%.2f)" % sb8.bg_color.a)
 		check(sb8.border_color.a > 0.5, "枠線まで透過してしまい位置が分からない")
 	panel8.free()
 	# 透過した分は文字の縁取りで読ませる。あとから作る文字にも効くよう _ui_root のテーマで持つ。
