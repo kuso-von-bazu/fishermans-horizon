@@ -247,6 +247,11 @@ func _update_fuel_estimate() -> void:
 
 func _clear() -> void:
 	_close_image_popup()   # #211再2
+	# #265再10: 実績の選択/解除直後にスクロール位置を補正する間、_scroll を
+	# 一時的に透明にしている。補正前に別画面へ切り替えられても透明のまま
+	# 残らないよう、画面を切り替えるたびに必ず不透明へ戻す。
+	if is_instance_valid(_scroll):
+		_scroll.modulate.a = 1.0
 	for c in content.get_children():
 		c.queue_free()
 
@@ -384,7 +389,7 @@ func show_tavern() -> void:
 		var st := "討伐済" if (GameState.claimed_lords.has(lid) or GameState.defeated_lords.has(lid)) else "未討伐"
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 12)
-		row.add_child(_portrait(lid, 72))
+		row.add_child(_portrait(lid, 72, st == "討伐済"))
 		var compass: String = Database.compass(float(ld.get("dir", 0)))
 		var info := _rt("%s
 HP:%d  賞金:%d  [%s]
@@ -563,9 +568,15 @@ func _add_achievement_row(a: Dictionary) -> void:
 			# 上の「選択中のバフ」行の折り返し行数が変わり、それより下の行がすべて
 			# ずれて上下スクロールしたように見えていた。押した行がビューポート内で
 			# 同じ位置に留まるよう、再構築後にスクロール量を補正する。
+			# #265再10: 補正が反映されるまでの数フレーム、古いスクロール位置のまま
+			# 新しい(ずれた)レイアウトが一瞬描画され、それが高速な上下スクロールに
+			# 見えていた。補正が終わるまでスクロール領域自体を透明にして隠す。
 			var viewport_y := row.position.y - _scroll.scroll_vertical
 			GameState.select_badge(aid)
 			show_achievements()
+			# show_achievements() 冒頭の _clear() で不透明に戻るため、透明化は
+			# 再構築が終わった後(このタイミング)で行う必要がある
+			_scroll.modulate.a = 0.0
 			_restore_ach_scroll.call_deferred(aid, viewport_y))
 		# #265再7: 「選択」「選択を解除」どちらでも同じ幅にする(選択時に右へ伸びない)
 		b.custom_minimum_size = Vector2(ACH_BTN_W, 0)
@@ -584,13 +595,14 @@ func _restore_ach_scroll(aid: String, viewport_y: float) -> void:
 	# 設定すると古い範囲でクランプされてしまうため、数フレーム待ってから適用する。
 	for i in 3:
 		await get_tree().process_frame
-	if not is_instance_valid(_scroll) or not _ach_rows.has(aid):
-		return
-	var r: Control = _ach_rows[aid]
-	if not is_instance_valid(r) or r.get_parent() != content:
-		return
-	var max_v: float = maxf(0.0, content.get_combined_minimum_size().y - _scroll.size.y)
-	_scroll.scroll_vertical = int(clampf(r.position.y - viewport_y, 0.0, max_v))
+	if is_instance_valid(_scroll) and _ach_rows.has(aid):
+		var r: Control = _ach_rows[aid]
+		if is_instance_valid(r) and r.get_parent() == content:
+			var max_v: float = maxf(0.0, content.get_combined_minimum_size().y - _scroll.size.y)
+			_scroll.scroll_vertical = int(clampf(r.position.y - viewport_y, 0.0, max_v))
+	# #265再10: どの分岐でも(行が消えていた場合も含め)必ず見た目を戻す
+	if is_instance_valid(_scroll):
+		_scroll.modulate.a = 1.0
 
 # ---------------- 討伐記録(#177) ----------------
 func show_bestiary() -> void:
@@ -1161,7 +1173,7 @@ func _item_image_path(id: String) -> String:
 	return ""
 
 # 生成画像をUI挿絵として表示(なければ空き枠)。立体モデルとは別に図鑑的に見せる。
-func _portrait(id: String, h: float) -> Control:
+func _portrait(id: String, h: float, defeated: bool = false) -> Control:
 	var holder := PanelContainer.new()
 	holder.custom_minimum_size = Vector2(h * 1.7, h)
 	var sb := StyleBoxFlat.new()
@@ -1186,6 +1198,20 @@ func _portrait(id: String, h: float) -> Control:
 		holder.gui_input.connect(func(ev: InputEvent):
 			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
 				_show_image_popup(tex_path))
+	# #287: 討伐済みの近海の主には「Defeated」スタンプを前面に重ねる。
+	# クリックで拡大表示するときはこのスタンプ自体を出したくないので、
+	# 拡大ポップアップは上の tex_path(本体の絵)だけを読むようにしてあり、
+	# ここで追加するのはあくまで一覧側の見た目だけ。
+	if defeated:
+		var stamp_path := "res://assets/images/ui_defeated_stamp.png"
+		if ResourceLoader.exists(stamp_path):
+			var stamp := TextureRect.new()
+			stamp.texture = load(stamp_path)
+			stamp.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			stamp.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			stamp.custom_minimum_size = Vector2(h * 1.7, h)
+			stamp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			holder.add_child(stamp)
 	holder.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	return holder
 
