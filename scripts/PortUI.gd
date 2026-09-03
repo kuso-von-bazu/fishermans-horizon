@@ -12,6 +12,7 @@ var _toast_box: VBoxContainer   # #160: トーストを縦に積んで重なら�
 
 var _fleet_tab: Button   # #196: 編成タブ(潮鳴りの島以降だけ表示)
 var _scroll: ScrollContainer   # #211: 画面サイズに追従させる
+var _ach_rows: Dictionary = {}   # #265再9: 実績id→行Control(選択/解除後のスクロール補正用)
 var _img_popup: Control        # #211再2: 挿絵の拡大表示
 var _fuel_estimate: Label      # #232: ガイド先までの推定燃料消費
 var _tavern_section: String = "bounty"   # #231: 賞金・換金が既定
@@ -491,6 +492,7 @@ func _unknown_badge(h: float) -> Control:
 func show_achievements() -> void:
 	_refresh_header()
 	_clear()
+	_ach_rows.clear()   # #265再9: 行の再構築後にスクロール位置を補正するための参照
 	content.add_child(_h("実績", 22))
 	var done := 0
 	for a0 in Database.achievements:
@@ -557,14 +559,38 @@ func _add_achievement_row(a: Dictionary) -> void:
 	if got:
 		var picked: bool = GameState.badge_id == aid
 		var b := _btn("選択を解除" if picked else "選択", func():
+			# #265再9: 「真の海の王者」等、複数ステータスのバフを選択/解除すると
+			# 上の「選択中のバフ」行の折り返し行数が変わり、それより下の行がすべて
+			# ずれて上下スクロールしたように見えていた。押した行がビューポート内で
+			# 同じ位置に留まるよう、再構築後にスクロール量を補正する。
+			var viewport_y := row.position.y - _scroll.scroll_vertical
 			GameState.select_badge(aid)
-			show_achievements())
+			show_achievements()
+			_restore_ach_scroll.call_deferred(aid, viewport_y))
 		# #265再7: 「選択」「選択を解除」どちらでも同じ幅にする(選択時に右へ伸びない)
 		b.custom_minimum_size = Vector2(ACH_BTN_W, 0)
 		if picked:
 			b.add_theme_color_override("font_color", Color(1.0, 0.92, 0.45))
 		row.add_child(b)
 	content.add_child(row)
+	_ach_rows[aid] = row
+
+# #265再9: 選択/解除の直後に、押した行がビューポート内の同じ位置に来るよう
+# スクロール量を補正する(show_achievements() の再構築で content の高さが変わるため)
+func _restore_ach_scroll(aid: String, viewport_y: float) -> void:
+	# ScrollContainer が自分のスクロール範囲(v_scroll の max_value)を content の
+	# 新しい高さに合わせて更新するのに、content(VBoxContainer)の再ソートより
+	# さらに1フレーム余分にかかることがある。範囲更新前に scroll_vertical を
+	# 設定すると古い範囲でクランプされてしまうため、数フレーム待ってから適用する。
+	for i in 3:
+		await get_tree().process_frame
+	if not is_instance_valid(_scroll) or not _ach_rows.has(aid):
+		return
+	var r: Control = _ach_rows[aid]
+	if not is_instance_valid(r) or r.get_parent() != content:
+		return
+	var max_v: float = maxf(0.0, content.get_combined_minimum_size().y - _scroll.size.y)
+	_scroll.scroll_vertical = int(clampf(r.position.y - viewport_y, 0.0, max_v))
 
 # ---------------- 討伐記録(#177) ----------------
 func show_bestiary() -> void:
