@@ -950,7 +950,7 @@ func _achievement_met(a: Dictionary) -> bool:
 		"wealth":
 			if str(a.id) == "fame_max":
 				return fame >= FAME_MAX
-			return money >= 500000
+			return money >= 1000000
 		"crew":
 			return _crew_achievement(str(a.id))
 		"fleet":

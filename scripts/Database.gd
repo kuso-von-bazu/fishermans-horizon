@@ -371,7 +371,7 @@ var achievements := [
 	{"id": "master_one", "group": "crew", "name": "極めし者", "desc": "いずれかのパラメータがカンストしたクルーがいる", "check": "crew", "target": "", "need": 0, "buff": {"shot_speed": 1.0130}, "icon": "res://assets/images/pixel/badge_master1.png"},
 	{"id": "master_all", "group": "crew", "name": "極めし者達", "desc": "カンストしたクルーが5隻すべてに乗っている", "check": "crew", "target": "", "need": 0, "buff": {"reload": 0.9800}, "icon": "res://assets/images/pixel/badge_master5.png"},
 	{"id": "fame_max", "group": "wealth", "name": "名声赫赫", "desc": "名声999に到達", "check": "wealth", "target": "", "need": 0, "buff": {"shot_dmg": 1.0300}, "icon": "res://assets/images/pixel/badge_fame.png"},
-	{"id": "rich", "group": "wealth", "name": "錦衣玉食", "desc": "資金500000に到達", "check": "wealth", "target": "", "need": 0, "buff": {"flag_dmg_taken": 0.9800}, "icon": "res://assets/images/pixel/badge_rich.png"},
+	{"id": "rich", "group": "wealth", "name": "錦衣玉食", "desc": "資金1000000に到達", "check": "wealth", "target": "", "need": 0, "buff": {"flag_dmg_taken": 0.9800}, "icon": "res://assets/images/pixel/badge_rich.png"},
 	{"id": "all_fish", "group": "fish", "name": "渭川漁父", "desc": "すべての種類の魚を漁獲", "check": "fish", "target": "", "need": 0, "buff": {"speed": 1.0060}, "icon": "res://assets/images/pixel/badge_fish.png"},
 	{"id": "relic100", "group": "relic", "name": "考古学者", "desc": "旧文明の遺産を100個入手", "check": "relic", "target": "", "need": 100, "buff": {"reload": 0.9960}, "icon": "res://assets/images/pixel/badge_relic.png"},
 	# #265再5: ボスラッシュ制覇と全実績制覇。「その他」の見出しで一番下に配置
