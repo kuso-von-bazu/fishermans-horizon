@@ -27,15 +27,16 @@ def _canvas():
 
 
 def _distress(mask: Image.Image, text_box) -> Image.Image:
-    """かすれたゴム印っぽく見えるよう、枠線の一部にだけ小さな穴を開ける(文字部分は避ける)。"""
+    """かすれたゴム印っぽく見えるよう、枠線と文字の両方に小さな穴を開ける(文字は密度を抑えて可読性を保つ)。"""
     d = ImageDraw.Draw(mask)
     w, h = mask.size
     tx0, ty0, tx1, ty1 = text_box
     for _ in range(int(w * h * 0.0015)):
         x = random.randint(0, w - 1)
         y = random.randint(0, h - 1)
-        if tx0 <= x <= tx1 and ty0 <= y <= ty1:
-            continue  # 文字の可読性を優先し、文字の領域は荒らさない
+        in_text = tx0 <= x <= tx1 and ty0 <= y <= ty1
+        if in_text and random.random() > 0.25:
+            continue  # 文字部分は穴あけ頻度を下げて可読性を優先
         r = random.randint(1, 2) * SS // 2 + 1
         d.ellipse([x - r, y - r, x + r, y + r], fill=0)
     return mask
@@ -53,8 +54,8 @@ def build() -> None:
     d.rounded_rectangle([pad2, pad2, W * SS - pad2, H * SS - pad2], radius=12 * SS, outline=RED, width=int(2.2 * SS))
 
     # 中央のテキスト。stroke_width で太らせて視認性を確保する
-    font = ImageFont.truetype(FONT_PATH, int(56 * SS))
-    text = "DEFEATED"
+    font = ImageFont.truetype(FONT_PATH, int(62 * SS))
+    text = "Defeated"
     bbox = d.textbbox((0, 0), text, font=font, stroke_width=int(3 * SS))
     tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
     text_x = cx - tw / 2.0 - bbox[0]
