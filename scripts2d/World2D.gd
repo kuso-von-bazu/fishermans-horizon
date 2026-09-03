@@ -688,12 +688,15 @@ func _physics_process(delta: float) -> void:
 	elif GameState.run_food <= 0.0:
 		_forced_return("燃料が尽きた! 直近の島へ強制帰還")
 	elif GameState.run_food <= GameState.max_food() * 0.5:
-		if _can_voyage_onward() and _has_onward_island():
-			if not _food_choice_shown and not _food_dialog_open:
-				_food_choice_shown = true
-				_show_food_choice()
-		else:
-			_forced_return("燃料が半分を切った。直近の島へ強制帰還")
+		# #285: 果ての島(最終島)には「次の島」の概念が無いため、
+		#   その島から出港した航海では燃料半分の通知/強制帰還を出さない。
+		if Database.island(GameState.current_island).name != "果ての島":
+			if _can_voyage_onward() and _has_onward_island():
+				if not _food_choice_shown and not _food_dialog_open:
+					_food_choice_shown = true
+					_show_food_choice()
+			else:
+				_forced_return("燃料が半分を切った。直近の島へ強制帰還")
 
 func _on_stats_changed() -> void:
 	if hud and hud.visible:
@@ -2250,7 +2253,9 @@ func _maybe_screenshot() -> void:
 			if not want_ach3:
 				for a2 in Database.achievements:
 					GameState.achieved[str(a2.id)] = true
-			GameState.badge_id = "fame_max"
+			# #265再8: 複数ステータスにまたがるバフ(最も文字数が長いケース)を選んだ状態で撮る。
+			# 単一ステータスの"fame_max"だけだと横スクロール回帰(#265)を見逃すため。
+			GameState.badge_id = "true_sea_ruler"
 			port_ui.show_achievements()
 			# #265: ach2 指定時は下(専用バッヂの並ぶ(3)〜(7))までスクロールする
 			if want_ach2 or want_ach4 or want_ach5:

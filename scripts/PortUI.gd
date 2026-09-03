@@ -503,7 +503,12 @@ func show_achievements() -> void:
 		var ca := Database.achievement(GameState.badge_id)
 		if not ca.is_empty():
 			cur = "%s(%s)" % [str(ca.name), badge_text(ca)]
-	content.add_child(_p("選択中のバフ: %s" % ("なし" if cur == "" else cur)))
+	# #265再8: 複数ステータスにまたがるバフ(「真の海の王者」等)は1行が長くなり、
+	# 折り返し無しのLabelだと横幅いっぱいまで伸びて実績メニューに横スクロールが出ていた。
+	# 折り返しを有効にして、選んだバフの内容に関わらず横幅を広げないようにする。
+	var cur_label := _p("選択中のバフ: %s" % ("なし" if cur == "" else cur))
+	cur_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	content.add_child(cur_label)
 	var shown := {}
 	for g in ACH_GROUP_NAMES:
 		var first := true

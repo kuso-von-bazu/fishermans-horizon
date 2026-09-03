@@ -468,21 +468,22 @@ var rams := {
 # 船 food=食料積載, hold=魚倉, armor=装甲, slots=武器スロット, range=航行可能な最遠島index
 # ---------------------------------------------------------------------------
 var ships := {
-	"raft":     {"name": "粗末な漁船",     "food": 100, "hold": 12,  "armor": 60,   "slots": 1, "range": 0, "speed": 11.0, "price": 0,     "trade": 0},
-	"skiff":    {"name": "武装スキフ",     "food": 140, "hold": 22,  "armor": 140,  "slots": 2, "range": 0, "speed": 11.5, "price": 1500,  "trade": 1000},
+	# #266再2: 魚倉を共有者指定値に再調整(大型運搬艦は据え置き)
+	"raft":     {"name": "粗末な漁船",     "food": 100, "hold": 14,  "armor": 60,   "slots": 1, "range": 0, "speed": 11.0, "price": 0,     "trade": 0},
+	"skiff":    {"name": "武装スキフ",     "food": 140, "hold": 24,  "armor": 140,  "slots": 2, "range": 0, "speed": 11.5, "price": 1500,  "trade": 1000},
 	# #157再々: 燃料(food)を共有者指定値に再調整
-	"cutter":   {"name": "外洋カッター",   "food": 140, "hold": 30,  "armor": 260,  "slots": 3, "range": 1, "speed": 12.0, "price": 9000,   "trade": 3500},
+	"cutter":   {"name": "外洋カッター",   "food": 140, "hold": 26,  "armor": 260,  "slots": 3, "range": 1, "speed": 12.0, "price": 9000,   "trade": 3500},
 	# #190: rangeは「販売が解禁される島index」。月下の島(2)の追加でコルベット以降を1つずつ後ろへずらす
-	"corvette": {"name": "コルベット",     "food": 160, "hold": 40,  "armor": 480,  "slots": 4, "range": 2, "speed": 12.5, "price": 32000,  "trade": 12000},   # #190: 月下の島で追加
+	"corvette": {"name": "コルベット",     "food": 160, "hold": 28,  "armor": 480,  "slots": 4, "range": 2, "speed": 12.5, "price": 32000,  "trade": 12000},   # #190: 月下の島で追加
 	# #228: 猟特化フリゲートを駆逐艦へ改称。快速艦は後退時の減速が緩やか(reverse=0.9)
-	"hunter_h": {"name": "駆逐艦",         "food": 150, "hold": 32,  "armor": 600,  "slots": 4, "range": 3, "speed": 15.0, "price": 60000,  "trade": 18000, "reverse": 0.9},
+	"hunter_h": {"name": "駆逐艦",         "food": 150, "hold": 30,  "armor": 600,  "slots": 4, "range": 3, "speed": 15.0, "price": 60000,  "trade": 18000, "reverse": 0.9},
 	"hauler":   {"name": "大型運搬艦",     "food": 170, "hold": 70,  "armor": 720,  "slots": 4, "range": 3, "speed": 12.0, "price": 50000,  "trade": 18000},
 	# #228: 果ての島での追加順は軽→重→快速→巨大。visualは既存のフリゲート/快速艦の船影を共用する
-	"frigate_l":{"name": "軽フリゲート",   "food": 180, "hold": 35,  "armor": 800,  "slots": 4, "range": 4, "speed": 16.0, "price": 70000,  "trade": 25000, "reverse": 0.9, "visual": "hunter_h"},
-	"frigate_h":{"name": "重フリゲート",   "food": 190, "hold": 40,  "armor": 900,  "slots": 4, "range": 4, "speed": 15.0, "price": 90000,  "trade": 32000, "reverse": 0.9, "visual": "cruiser"},
+	"frigate_l":{"name": "軽フリゲート",   "food": 180, "hold": 30,  "armor": 800,  "slots": 4, "range": 4, "speed": 16.0, "price": 70000,  "trade": 25000, "reverse": 0.9, "visual": "hunter_h"},
+	"frigate_h":{"name": "重フリゲート",   "food": 190, "hold": 30,  "armor": 900,  "slots": 4, "range": 4, "speed": 15.0, "price": 90000,  "trade": 32000, "reverse": 0.9, "visual": "cruiser"},
 	# #151/#228: 巡洋戦艦を快速戦艦へ改称。低装甲・高速・中型・後退が得意
-	"cruiser":  {"name": "快速戦艦",       "food": 200, "hold": 45,  "armor": 1000, "slots": 4, "range": 4, "speed": 14.5, "price": 110000, "trade": 40000, "reverse": 0.9},
-	"dread":    {"name": "巨大戦艦",       "food": 220, "hold": 55,  "armor": 1300, "slots": 4, "range": 4, "speed": 13.0, "price": 110000, "trade": 40000},
+	"cruiser":  {"name": "快速戦艦",       "food": 200, "hold": 30,  "armor": 1000, "slots": 4, "range": 4, "speed": 14.5, "price": 110000, "trade": 40000, "reverse": 0.9},
+	"dread":    {"name": "巨大戦艦",       "food": 220, "hold": 30,  "armor": 1300, "slots": 4, "range": 4, "speed": 13.0, "price": 120000, "trade": 40000},
 }
 
 # ---------------------------------------------------------------------------
