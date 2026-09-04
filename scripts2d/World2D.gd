@@ -1162,7 +1162,7 @@ func _spawn_flotsam() -> void:
 # ---------------- ボスラッシュ(#209) ----------------
 # 出現順: 主を順に、7番目に海賊王(取り巻きは海賊(大)1+海賊(中)1で固定)
 # #209再9: 新しい主(#239)を加え、出現順もレビュアー指定へ入れ替え。
-# ①〜⑩を倒すと最大装甲の5%、⑪〜⑯を倒すと10%回復する(BR_HEAL_BIG_FROM)。
+# #288: ①〜④を倒すと最大装甲の5%、⑤〜⑩を倒すと10%、⑪〜⑯を倒すと15%回復する。
 const BOSS_RUSH_ORDER := [
 	{"kind": "lord", "id": "sawshark"},        # ①
 	{"kind": "lord", "id": "dumbo"},           # ②
@@ -1182,8 +1182,9 @@ const BOSS_RUSH_ORDER := [
 	{"kind": "lord", "id": "ghost"},           # ⑯
 	{"kind": "lord", "id": "leviathan"},       # ⑰
 ]
-# ⑪(index 10)以降は回復量が10%になる
-const BR_HEAL_BIG_FROM := 10
+# #288: ⑤体目撃破以降は10%、⑪体目撃破以降は15%になる(_br_indexは撃破数=1始まり)
+const BR_HEAL_MID_FROM := 5
+const BR_HEAL_BIG_FROM := 11
 # 島から遠く離れた海域(島の存在しないステージ)
 const BR_ARENA := Vector2(0.0, 120000.0)
 
@@ -1307,10 +1308,16 @@ func _br_update(delta: float) -> void:
 		enemies.clear()
 		_br_index += 1
 		_br_wait = 1.6
-		# #209再2: ボスを1体倒すごとに船団の全艦が最大装甲の5%回復する
+		# #209再2: ボスを1体倒すごとに船団の全艦が最大装甲の一定割合回復する
 		if _br_index < BOSS_RUSH_ORDER.size():
-			# #209再6: ⑦〜⑩のボスは10%、①〜⑥は5%回復(_br_index=倒したボスの通し番号)
-			var heal_pct: float = 0.10 if _br_index >= BR_HEAL_BIG_FROM else 0.05   # #209再9
+			# #288: ①〜④は5%、⑤〜⑩は10%、⑪〜⑯は15%回復(_br_index=倒したボスの通し番号)
+			var heal_pct: float
+			if _br_index >= BR_HEAL_BIG_FROM:
+				heal_pct = 0.15
+			elif _br_index >= BR_HEAL_MID_FROM:
+				heal_pct = 0.10
+			else:
+				heal_pct = 0.05
 			GameState.heal_fleet_percent(heal_pct)
 			GameState.notice.emit("船団の装甲が回復した(最大値の%d%%)" % int(heal_pct * 100.0))
 		else:

@@ -200,8 +200,9 @@ func _ready() -> void:
 		if str(spec2.id) == "king":
 			check((spec2.get("escorts", []) as Array) == ["dread", "dread", "corsair"],
 				"海賊王の取り巻きが 大×2・中×1 でない")
-	# ⑩まで5%、⑪から10%
-	check(World2.BR_HEAL_BIG_FROM == 10, "回復量が10%%に切り替わる位置が⑪でない(index %d)" % World2.BR_HEAL_BIG_FROM)
+	# #288: ①〜④=5%、⑤〜⑩=10%、⑪〜⑯=15%
+	check(World2.BR_HEAL_MID_FROM == 5, "回復量が10%%に切り替わる位置が⑤でない(index %d)" % World2.BR_HEAL_MID_FROM)
+	check(World2.BR_HEAL_BIG_FROM == 11, "回復量が15%%に切り替わる位置が⑪でない(index %d)" % World2.BR_HEAL_BIG_FROM)
 	# 登場する主・海賊がすべて定義済みであること(タイプミスで出現しなくなる)
 	for spec3 in World2.BOSS_RUSH_ORDER:
 		if str(spec3.kind) == "lord":
