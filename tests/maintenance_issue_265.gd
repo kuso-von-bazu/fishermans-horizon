@@ -46,8 +46,42 @@ func _ready() -> void:
 	GameState.achieved = old_achieved
 	GameState.badge_id = old_badge
 
+
+	# ---------------- #265再12: ウェポンマスターは「装備したことがある」で達成 ----------------
+	# 従来は「船団が同時に全種類を装備している」必要があり、
+	# スロット数の都合で満たしにくかった。装備歴で達成するように変更した。
+	GameState.reset_all()
+	GameState.achieved = {}
+	GameState.weapons_ever = {}
+	check(not GameState._fleet_achievement("weapon_master"), "何も装備していないのに達成している")
+	# 1種類ずつ「装備したことがある」を積み上げる(同時装備はしない)
+	var all_w: Array = Database.weapons.keys()
+	for i in all_w.size() - 1:
+		GameState.note_weapon_equipped(str(all_w[i]))
+	check(not GameState._fleet_achievement("weapon_master"),
+		"最後の1種類が未装備なのに達成している(%d/%d)" % [GameState.weapons_ever.size(), all_w.size()])
+	GameState.note_weapon_equipped(str(all_w[all_w.size() - 1]))
+	check(GameState._fleet_achievement("weapon_master"),
+		"全種類を装備したことがあるのに達成しない(%d/%d)" % [GameState.weapons_ever.size(), all_w.size()])
+
+	# 外した後も達成が取り消されないこと(「したことがある」なので)
+	for e in GameState.fleet:
+		for i2 in e.weapons.size():
+			e.weapons[i2] = ""
+	check(GameState._fleet_achievement("weapon_master"), "武器を外したら達成が取り消された")
+
+	# セーブに持ち越されること(持ち越さないと再開で達成が消える)
+	var gsrc := FileAccess.get_file_as_string("res://scripts/GameState.gd")
+	check(gsrc.contains('"weapons_ever": weapons_ever'), "装備歴がセーブに含まれていない")
+	check(gsrc.contains('data.get("weapons_ever"'), "装備歴がセーブから読み戻されていない")
+
+	# 説明文も新しい条件になっていること
+	var wm: Dictionary = Database.achievement("weapon_master")
+	check(str(wm.get("desc", "")).contains("したことがある"),
+		"ウェポンマスターの説明が古い条件のまま(%s)" % str(wm.get("desc", "")))
+
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK issue_265_multi_buff_no_hscroll")
+		print("MAINTENANCE_TEST_OK issue_265_multi_buff_no_hscroll/weapon_master_ever")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)

@@ -701,7 +701,7 @@ func _damage_victim(amount: float, victim: Node2D) -> void:
 	# 多段近接(multi_melee)の2段目以降はタイマーで遅れて発火するため、
 	# 発火時点で寄港していると被弾音だけが鳴っていた(「たまに鳴る」の正体)。
 	# 入口ではなくダメージ処理そのものを塞ぐ。
-	if GameState.docking_locked or _dead:
+	if not GameState.combat_active() or _dead:
 		return
 	if victim == null:
 		_damage_player(amount)
@@ -716,7 +716,7 @@ func _attack(delta: float, dist: float) -> void:
 	# #237: 寄港確定後は近接攻撃もしない。
 	# 従来は _ranged_attack にしかガードが無く、近接圏の敵はダメージこそ
 	# GameState.damage_player 側で無効化されるものの、被弾音だけが鳴っていた。
-	if GameState.docking_locked:
+	if not GameState.combat_active():
 		return
 	_atk_timer -= delta
 	if _atk_timer > 0:
@@ -801,7 +801,7 @@ func _attack(delta: float, dist: float) -> void:
 
 # #65/#66: way=扇状同時弾, homing=追跡弾を追加, wpn=gatling(3連小弾)/torpedo(追尾)/cannon
 func _ranged_attack(is_fire: bool) -> void:
-	if GameState.docking_locked:
+	if not GameState.combat_active():
 		return   # #121: 寄港確定/寄港中は敵は遠隔攻撃をしない(紛らわしさ解消)
 	if _cover_blocked:
 		return   # #193再3: 島・障害物で射線が遮られている間は撃たない(回り込んでから撃つ)
@@ -968,7 +968,7 @@ func _tick_burst(delta: float) -> void:
 	if _burst_t > 0.0:
 		return
 	_burst_t = randf_range(float(b.every[0]), float(b.every[1]))
-	if not _aggro or GameState.docking_locked or not is_instance_valid(player):
+	if not _aggro or not GameState.combat_active() or not is_instance_valid(player):
 		return
 	if player.global_position.distance_to(global_position) > attack_range * 1.15:
 		return
@@ -1001,7 +1001,7 @@ func _fire_spray(b: Dictionary, base_dir: Vector2) -> void:
 # #190再2/#71再: 撃墜された瞬間の「打ち返し弾」。
 # def.death_shot = {count, mode:"radial"|"aim"|"shotgun", spread, speeds[], dmg_mult, shape, color}
 func _fire_death_shot() -> void:
-	if not def.has("death_shot") or GameState.docking_locked or not is_instance_valid(player):
+	if not def.has("death_shot") or not GameState.combat_active() or not is_instance_valid(player):
 		return
 	var d: Dictionary = def.death_shot
 	var to_p := (player.global_position - global_position).normalized()
@@ -1157,7 +1157,7 @@ func _escorts_cleared() -> bool:
 	return true
 
 func _damage_player(amount: float) -> void:
-	if GameState.docking_locked or _dead:
+	if not GameState.combat_active() or _dead:
 		return   # #237再2: 遅延して発火した攻撃で音・演出が出ないように
 	GameState.damage_player(amount)   # 敏捷カット込み(クルー#39)
 	# #69/#72: 触腕に絡めとられる(討伐まで鈍足) / 毒液スリップ

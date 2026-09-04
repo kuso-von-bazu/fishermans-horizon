@@ -365,7 +365,7 @@ var achievements := [
 	{"id": "lord_ghost", "group": "lord", "name": "幽霊船狩り", "desc": "幽霊船 を討伐", "check": "lord", "target": "ghost", "need": 1, "buff": {"reload": 0.9885}, "icon": "res://assets/images/pixel/lord_ghost.png"},
 	{"id": "lord_leviathan", "group": "lord", "name": "レヴィアタン狩り", "desc": "レヴィアタン を討伐", "check": "lord", "target": "leviathan", "need": 1, "buff": {"speed": 1.0120}, "icon": "res://assets/images/pixel/lord_leviathan.png"},
 	{"id": "charge_all", "group": "fleet", "name": "突撃!", "desc": "5隻すべてに超硬タングステン衝角を装備して「突撃」を発動", "check": "fleet", "target": "", "need": 0, "buff": {"ram": 1.0150}, "icon": "res://assets/images/pixel/badge_charge.png"},
-	{"id": "weapon_master", "group": "fleet", "name": "ウェポンマスター", "desc": "船団全体で全種類の武器を装備", "check": "fleet", "target": "", "need": 0, "buff": {"shot_dmg": 1.0140}, "icon": "res://assets/images/pixel/badge_weapon.png"},
+	{"id": "weapon_master", "group": "fleet", "name": "ウェポンマスター", "desc": "全種類の武器を装備したことがある", "check": "fleet", "target": "", "need": 0, "buff": {"shot_dmg": 1.0140}, "icon": "res://assets/images/pixel/badge_weapon.png"},
 	{"id": "mixed_fleet", "group": "fleet", "name": "混合船団", "desc": "駆逐艦・軽/重フリゲート・快速戦艦・巨大戦艦で船団を編成", "check": "fleet", "target": "", "need": 0, "buff": {"speed": 1.0130}, "icon": "res://assets/images/pixel/badge_mixed.png"},
 	{"id": "battle_fleet", "group": "fleet", "name": "堂々たる戦艦部隊", "desc": "5隻すべてが快速戦艦か巨大戦艦", "check": "fleet", "target": "", "need": 0, "buff": {"fleet_dmg_taken": 0.9880}, "icon": "res://assets/images/pixel/badge_battle.png"},
 	{"id": "master_one", "group": "crew", "name": "極めし者", "desc": "いずれかのパラメータがカンストしたクルーがいる", "check": "crew", "target": "", "need": 0, "buff": {"shot_speed": 1.0130}, "icon": "res://assets/images/pixel/badge_master1.png"},

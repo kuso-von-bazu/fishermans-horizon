@@ -53,8 +53,10 @@ def build() -> None:
     d.rounded_rectangle([pad1, pad1, W * SS - pad1, H * SS - pad1], radius=18 * SS, outline=RED, width=int(4.5 * SS))
     d.rounded_rectangle([pad2, pad2, W * SS - pad2, H * SS - pad2], radius=12 * SS, outline=RED, width=int(2.2 * SS))
 
-    # 中央のテキスト。stroke_width で太らせて視認性を確保する
-    font = ImageFont.truetype(FONT_PATH, int(62 * SS))
+    # 中央のテキスト。stroke_width で太らせて視認性を確保する。
+    # #287再3: 「もう少し大きく」とのご要望で 70 -> 78pt。これ以上大きくすると
+    #   14度傾けたときに D と d の端が内枠の線に触れてしまう。
+    font = ImageFont.truetype(FONT_PATH, int(78 * SS))
     text = "Defeated"
     bbox = d.textbbox((0, 0), text, font=font, stroke_width=int(3 * SS))
     tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]

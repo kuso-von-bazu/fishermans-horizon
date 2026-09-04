@@ -402,13 +402,17 @@ func _ready() -> void:
 		var clear_actors_at := dock_body.find("_clear_sea_actors()")
 		var transition_at := dock_body.find("port_transition(")
 		check(lock_true_at != -1, "_enter_dock が docking_locked を true にしていない(任意寄港が無防備)")
-		check(lock_false_at != -1, "_enter_dock が docking_locked を false に戻していない")
+		# #237再4: 寄港完了で false に戻すと、港にいる間は敵のガードが効かず、
+		#   居残った敵が近接攻撃を続けて被弾音だけが鳴っていた。
+		#   解除は出港(GameState.set_sail)に任せ、_enter_dock では戻さない。
+		check(lock_false_at == -1, "_enter_dock が docking_locked を false に戻している(港でガードが切れる)")
 		if lock_true_at != -1 and clear_actors_at != -1:
 			check(lock_true_at < clear_actors_at, "docking_locked=true が敵/弾のクリアより後(被弾音が漏れる)")
 		if lock_true_at != -1 and transition_at != -1:
 			check(lock_true_at < transition_at, "docking_locked=true が入港演出より後(その間の被弾で音が鳴る)")
-		if lock_true_at != -1 and lock_false_at != -1:
-			check(lock_true_at < lock_false_at, "docking_locked の true/false の順序が逆")
+		var sail_src := _src("res://scripts/GameState.gd")
+		check(sail_src.contains("docking_locked = false"),
+			"出港側にも解除が無い(ロックが永久に残る)")
 
 	if failures.is_empty():
 		print("MAINTENANCE_TEST_OK crit_sfx/melee_direction/dock_silence/fishing_band/pause/icons/title_click/enemy_wpn_sfx/formation/voluntary_dock_lock/bonus_catch_deplete")

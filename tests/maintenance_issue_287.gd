@@ -84,8 +84,61 @@ func _ready() -> void:
 	GameState.defeated_lords = old_defeated
 	GameState.claimed_lords = old_claimed
 
+
+	# ---------------- #237再4: 港にいる間は敵が攻撃せず、居残りもしない ----------------
+	# 従来の docking_locked は「寄港が確定してから完了するまで」しか true にならず、
+	# 港にいる間は false に戻っていた。そのため居残った敵が港で近接攻撃を続け、
+	# ダメージは入らないのに被弾音だけが鳴っていた(カーラボスで報告)。
+	GameState.docking_locked = true      # 寄港確定〜港にいる間
+	check(not GameState.combat_active(), "港にいるのに敵が攻撃してよい判定になっている")
+	GameState.docking_locked = false     # 出港で解除
+	check(GameState.combat_active(), "航海中なのに敵が攻撃できない判定になっている")
+
+	# 敵側が docking_locked を直接見ていないこと(港で素通りする原因だった)
+	var esrc := FileAccess.get_file_as_string("res://scripts2d/Enemy2D.gd")
+	check(not esrc.contains("GameState.docking_locked"),
+		"敵が docking_locked を直接見ている(港にいる間はガードが効かない)")
+
+	# 実際に港の状態で近接ダメージ処理を叩いても、何も起きないこと
+	var EnemyS2 = preload("res://scripts2d/Enemy2D.gd")
+	var foe := CharacterBody2D.new()
+	foe.set_script(EnemyS2)
+	foe.setup("mob", "carabos")
+	add_child(foe)
+	await get_tree().process_frame
+	GameState.docking_locked = true
+	var armor_before: float = GameState.run_armor
+	foe._damage_victim(50.0, null)
+	check(is_equal_approx(GameState.run_armor, armor_before),
+		"港にいるのに敵の近接攻撃が通っている")
+	GameState.docking_locked = false
+	foe.queue_free()
+
+	# 寄港完了でロックを解除していないこと(解除すると港でガードが切れる)
+	var w2s := FileAccess.get_file_as_string("res://scripts2d/World2D.gd")
+	var dh := w2s.find("func _enter_dock(")
+	if dh != -1:
+		var dt := w2s.find("\nfunc ", dh)
+		var db: String = w2s.substr(dh, (dt - dh) if dt != -1 else 2000)
+		check(not db.contains("docking_locked = false"),
+			"_enter_dock がロックを解除している(港で敵のガードが切れる)")
+
+	# 掃除が enemies 配列頼みでないこと(配列から漏れた個体が居残るのを防ぐ)
+	var wsrc := FileAccess.get_file_as_string("res://scripts2d/World2D.gd")
+	var ci := wsrc.find("func _clear_sea_actors")
+	check(ci != -1, "_clear_sea_actors が見つからない")
+	if ci != -1:
+		var ce := wsrc.find("\nfunc ", ci)
+		var body: String = wsrc.substr(ci, (ce - ci) if ce != -1 else 1200)
+		check(body.contains("get_children()") and body.contains("EnemyScript"),
+			"敵の掃除が enemies 配列頼みのまま(配列から漏れた敵が港に残る)")
+
+	# ---------------- #287再3: Defeatedスタンプの文字を大きく ----------------
+	var stamp_src := FileAccess.get_file_as_string("res://画像生成/討伐済みスタンプ生成.py")
+	check(stamp_src.contains("int(78 * SS)"), "スタンプの文字が78ptになっていない")
+
 	if failures.is_empty():
-		print("MAINTENANCE_TEST_OK issue_287_defeated_stamp")
+		print("MAINTENANCE_TEST_OK issue_287_defeated_stamp/stamp_size/port_no_attack/enemy_cleanup")
 		get_tree().quit(0)
 	else:
 		print("MAINTENANCE_TEST_FAILED ", failures)

@@ -451,8 +451,12 @@ func _enter_dock(island_id: int, do_reset := true) -> void:
 	# #237再3: 自主的な寄港(Eキー)は _forced_return と違い docking_locked を
 	# 立てていなかったため、寄港確定の瞬間に飛来していた弾・近接攻撃の被弾音が
 	# 素通りしていた(「たまに鳴る」の残り原因)。寄港処理の先頭で必ず立てる。
-	GameState.docking_locked = true
+	# #237再4: ただし海から戻ったときだけ。起動直後やタイトルからの初期化でも
+	#   ここを通るが、そこには止めるべき攻撃も敵もいないので立てない
+	#   (立てたままだと出港するまでロックが残り、判定に紛れ込む)。
 	var was_at_sea := GameState.at_sea
+	if was_at_sea:
+		GameState.docking_locked = true
 	if was_at_sea:
 		port_transition(false)   # #278再4: 入港時は汽笛を鳴らさない(出港時のみ)
 	if was_at_sea and not GameState.crew.is_empty():
@@ -479,7 +483,9 @@ func _enter_dock(island_id: int, do_reset := true) -> void:
 	Audio.play_bgm("bgm_port")
 	Audio.ambient_enabled = true   # #253: 寄港中も波の音は鳴らす
 	_boss_bgm_on = ""
-	GameState.docking_locked = false   # 寄港完了でロック解除(次の航海はset_sailでも解除)
+	# #237再4: ここで解除すると、港にいる間は敵のガードが効かなくなる。
+	#   居残った敵が港で近接攻撃を続け、被弾音だけが鳴っていた原因。
+	#   出港(GameState.set_sail)で解除されるので、ここでは解除しない。
 	# #93: 航海から寄港(強制帰還/大破含む)するたびオートセーブ。勝利時は保存しない
 	if was_at_sea and not _victory_shown:
 		GameState.save_game()
@@ -2007,6 +2013,11 @@ func _clear_sea_actors() -> void:
 	for a in fish_schools + enemies + relics_world + obstacles + flotsam_world:
 		if is_instance_valid(a):
 			a.queue_free()
+	# #237再4: enemies 配列から漏れた個体が居残ると、港でも近接攻撃を続けて
+	#   被弾音だけが鳴る。配列を信用せず、子から敵を直接探して確実に消す。
+	for c in get_children():
+		if c.get_script() == EnemyScript and is_instance_valid(c):
+			c.queue_free()
 	fish_schools.clear()
 	enemies.clear()
 	relics_world.clear()
@@ -2242,6 +2253,12 @@ func _maybe_screenshot() -> void:
 		port_ui.open()
 		if want_tavern:
 			# #231再2: --shot:port:tavern:lords で「主の情報」タブを撮影する
+			# #287再3: :defeated を足すとその島の主を討伐済みにする(スタンプの確認用)
+			for a3 in args:
+				if a3.find("defeated") != -1:
+					for lid in Database.island(GameState.current_island).get("lords", []):
+						if not GameState.defeated_lords.has(str(lid)):
+							GameState.defeated_lords.append(str(lid))
 			for a2 in args:
 				if a2.find("lords") != -1:
 					port_ui._tavern_section = "lords"

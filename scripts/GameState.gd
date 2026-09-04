@@ -505,6 +505,10 @@ var unlocked_islands: Array[int] = [0]   # 名声で入港可能になった島
 var visited_islands: Array[int] = [0]    # 実際に寄港して到達した島(ファストトラベル可・Issue #19)
 var defeated_lords: Array[String] = []   # 討伐済みで賞金未受領
 var claimed_lords: Array[String] = []    # 賞金受領済み
+# #265再12: これまでに一度でも装備した武器のID。実績「ウェポンマスター」は
+#   「同時に全種類」ではなく「全種類を装備したことがある」で達成するため、
+#   船団の現在の装備ではなくこちらを見る(セーブに持ち越す)。
+var weapons_ever: Dictionary = {}
 var kills: Dictionary = {}                # #177: 討伐記録 "kind:id" -> 討伐数(999カンスト)
 var guide_target: Dictionary = {}        # #60/#61: ソナーガイド {"kind":"island"|"lord","id":...}
 var has_departed: bool = false            # #168: 一度でも出港したか(初回出港のみ燃料費無料)
@@ -645,6 +649,7 @@ func save_game() -> void:
 		"unlocked_islands": unlocked_islands, "visited_islands": visited_islands,
 		"defeated_lords": defeated_lords, "claimed_lords": claimed_lords,
 		"kills": kills, "relic_count": relic_count, "caught_fish": caught_fish,   # #265
+		"weapons_ever": weapons_ever,   # #265再12
 		"guide_target": guide_target, "has_departed": has_departed,
 		"world": WORLD_VERSION,   # #190: 島構成のバージョン(島を挿入したらセーブの島indexを移行する)
 	}
@@ -732,6 +737,7 @@ func load_game() -> bool:
 	heads = _to_int_dict(data.get("heads", {}))
 	kills = _to_int_dict(data.get("kills", {}))   # #177: 討伐記録
 	relic_count = int(data.get("relic_count", 0))   # #265
+	weapons_ever = data.get("weapons_ever", {})   # #265再12
 	caught_fish = data.get("caught_fish", {})
 	dock_reset()
 	stats_changed.emit()
@@ -828,6 +834,14 @@ func _cap_of(id: String) -> int:
 
 func free_hold() -> int:
 	return max_hold() - used_hold()
+
+# #237再4: 敵が攻撃してよい状態か。
+#   従来 docking_locked は「寄港が確定してから完了するまで」しか true でなく、
+#   港にいる間は false に戻っていた。そのため居残った敵が港で攻撃を続け、
+#   ダメージは入らないのに被弾音だけが鳴っていた(カーラボスで報告)。
+#   いまは出港(set_sail)まで解除しないので、港にいる間は常に false を返す。
+func combat_active() -> bool:
+	return not docking_locked
 
 # 帰港中(港にいる)状態に初期化
 func dock_reset() -> void:
@@ -999,12 +1013,10 @@ func _fleet_achievement(aid: String) -> bool:
 		"charge_all":
 			return charge_all_tungsten
 		"weapon_master":
-			var have := {}
-			for e in fleet:
-				for w in e.weapons:
-					if str(w) != "":
-						have[str(w)] = true
-			return have.size() >= Database.weapons.size()
+			# #265再12: 「同時に全種類」ではなく「全種類を装備したことがある」。
+			#   船団の現在の装備も取り込んだうえで数える。
+			_absorb_current_weapons()
+			return weapons_ever.size() >= Database.weapons.size()
 		"mixed_fleet":
 			var want := {"hunter_h": false, "frigate_l": false, "frigate_h": false, "cruiser": false, "dread": false}
 			for e2 in fleet:
@@ -1141,6 +1153,26 @@ func claim_bounties() -> int:
 	return total
 
 # #196: 指定した艦のスロットへ装備
+# #265再12: 装備したことのある武器として覚える。
+#   セーブデータが古くて weapons_ever が無い場合に備え、読み込み時に
+#   その時点の装備を取り込む(_absorb_current_weapons)。
+func note_weapon_equipped(wid: String) -> void:
+	if wid == "" or not Database.weapons.has(wid):
+		return
+	if not weapons_ever.has(wid):
+		weapons_ever[wid] = true
+		check_achievements()
+
+# 現在の船団・旗艦の装備を「装備したことがある」に取り込む
+func _absorb_current_weapons() -> void:
+	for e in fleet:
+		for w in e.weapons:
+			if str(w) != "" and Database.weapons.has(str(w)):
+				weapons_ever[str(w)] = true
+	for w2 in weapons:
+		if str(w2) != "" and Database.weapons.has(str(w2)):
+			weapons_ever[str(w2)] = true
+
 func equip_weapon_on(idx: int, slot: int, wid: String) -> void:
 	if idx < 0 or idx >= fleet.size():
 		return
@@ -1151,6 +1183,7 @@ func equip_weapon_on(idx: int, slot: int, wid: String) -> void:
 		w.append("")
 	if slot >= 0 and slot < slots:
 		w[slot] = wid
+		note_weapon_equipped(wid)   # #265再12
 		stats_changed.emit()
 
 func equip_weapon(slot: int, wid: String) -> void:
@@ -1158,6 +1191,7 @@ func equip_weapon(slot: int, wid: String) -> void:
 		weapons.append("")
 	if slot >= 0 and slot < int(ship().slots):
 		weapons[slot] = wid
+		note_weapon_equipped(wid)   # #265再12
 		stats_changed.emit()
 
 func ship_trade_in() -> int:
