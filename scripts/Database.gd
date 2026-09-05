@@ -74,6 +74,8 @@ var mob_weights := [
 	{"merman": 0.194, "charybdis": 0.194, "dagon": 0.258, "amphiptere": 0.154, "killer_shell": 0.100, "carabos": 0.100},   # #75再: キラーシェル/カーラボスを追加
 	# #251: 南の孤島(tier2)。月下・星霜・常闇の3島の出現表を平均したもの
 	{"starfish": 0.169, "zaratan": 0.147, "mermaid": 0.179, "lamia": 0.158, "zombie_fish": 0.189, "moon_jelly": 0.158},   # #75再: クラーケン/ワイバーンを外す
+	# #290: 雪夜の島(tier4)。マーメイド/ラミア/ムーンジェリー/キラーシェル/アンフィプテレのみで構成
+	{"mermaid": 0.22, "lamia": 0.22, "moon_jelly": 0.20, "killer_shell": 0.18, "amphiptere": 0.18},
 ]
 
 func pick_mob(tier: int) -> String:
@@ -132,6 +134,11 @@ var lords := {
 	"ghost":     {"name": "幽霊船",                   "hp": 10082, "dmg": 43, "cap": 20, "price": 7000, "bounty": 68000, "fame": 45, "island": 4, "ranged": true,  "aerial": false, "pair": false, "speed": 13.0, "atk_cd": 0.9, "volley_pool": ["gatling", "cannon", "torpedo"], "volley_pick": 2, "kite": true, "kite_hp": 0.667, "kite_face_move": true, "no_debuff": true, "no_escort": true, "dodge": 0.15, "dodge_pass": true, "size_mult": 0.72, "no_cargo": true, "dir": 239, "spawn_dist_mult": 1.6, "face_left": true, "side_only": true, "color": Color(0.55,0.75,0.8), "lore": "レヴィアタンに轟沈させられた過去の勇士の魂が、いつしか幽霊船の形をとり辺りを彷徨うようになった。"},
 	# #155: 出現方角を果ての島の東(dir=90)。#65: 追跡弾速0.5。#110再: 速度10.5。#163: range_mult=1.6でより遠距離から。#65再: 照準3wayを緑の楕円弾に、追跡弾は扇状に広がってから急加速(spread_homing)。#112再: 説明文(バイオテクノロジー→テクノロジー)
 	"leviathan": {"name": "レヴィアタン",             "hp": 13442, "dmg": 47, "cap": 25, "price": 9999, "bounty": 100000, "fame": 60, "island": 4, "ranged": true,  "aerial": false, "pair": false, "speed": 10.5, "range_mult": 1.6, "spawn_dist_mult": 1.75, "radial": true, "radial_count": 24, "way": 3, "aim_tight": true, "aim_shape": "ellipse", "aim_color": Color(0.35,0.95,0.4), "shot_speed_mult": 0.8, "homing_speed_mult": 0.5, "shot_dmg_mult": 0.7, "homing_count": 4, "spread_homing": true, "dir": 90, "face_left": true, "lore": "旧人類が創り出した神。神の領域に達した旧人類のテクノロジーは神をも創造したが、皮肉にもそれは人類種の天敵となり、残されたわずかな陸地を除いて人類の生存可能領域はなくなった。"},
+	# #290: 雪夜の島(island 10)。ジェミニ=小柄な双子(2体同時出現・両方倒して討伐)+全方位20way弾+打ち返し弾。近接なし
+	"gemini":    {"name": "ジェミニ",                 "hp": 6000, "hp_exact": 24000, "dmg": 38, "cap": 10, "price": 6000, "bounty": 28000, "fame": 34, "island": 10, "ranged": true, "aerial": true, "pair": true, "speed": 11.0, "atk_cd": 0.9, "radial": true, "radial_count": 20, "way": 0, "small_shot": true, "shot_dmg_mult": 0.32, "shot_speed_mult": 0.75, "aim_color": Color(0.95,0.92,0.35), "counter_shot": 1.0, "no_melee": true, "size_mult": 0.65, "spawn_dist_mult": 1.3, "dir": 30, "face_left": true, "color": Color(0.72,0.72,0.78), "lore": "堕天した双子の天使。"},
+	# #290: 死神=レイスと同じ瞬間移動だが、移動先は必ず近接攻撃の範囲内。通常の遠隔攻撃はなく(melee_only)、
+	# 大鎌の薙ぎ払い(斬撃内の10か所から弾を発射しつつ自機弾を払い落とす)のみで攻撃する
+	"reaper":    {"name": "死神",                     "hp": 8000, "hp_exact": 34000, "dmg": 48, "cap": 18, "price": 8000, "bounty": 55000, "fame": 40, "island": 10, "ranged": true, "aerial": false, "pair": false, "speed": 12.0, "melee_only": true, "blink": {"every": [2.6, 4.0], "dist": [120.0, 190.0]}, "size_mult": 0.9, "spawn_dist_mult": 1.3, "dir": 200, "face_left": true, "color": Color(0.15,0.15,0.18), "lore": "船乗りに死を運ぶ使者。"},
 }
 
 
@@ -265,6 +272,17 @@ var departure_hints := {
 		"random": [
 			"この島の近海に主はいないようだ。",
 			"この島では珍しい武器が売っている。",
+		],
+	},
+	# #290: 雪夜の島。嵐越え/海嘯の次に挑む島で、果ての島の一歩手前
+	10: {
+		"fixed": {1: "雪夜の近海は夜と荒波が重なる。視界が悪いぶん、ソナーをよく見よう。",
+			2: "この島では強力なクルーを雇用できる。クルーをロストしたら試してみよう。"},
+		"random": [
+			"ジェミニは2体で現れる。片方だけ倒しても討伐にはならないぞ。",
+			"死神は近くへ瞬間移動してくる。大鎌の薙ぎ払いはこちらの弾も払い落とす。",
+			"この島の造船所ではフリゲートまで揃う。果ての島へ向かう前に船団を整えよう。",
+			"果ての島へ進むにはさらに名声が要る。この近海の主が近道になるぞ。",
 		],
 	},
 }
@@ -503,16 +521,21 @@ var islands := [
 	{"id": 2, "name": "月下の島",     "tier": 2, "fame_req": 70,  "price_mult": 3.0, "pos": Vector3(1700, 0, 200),  "spawn": ["squid","octopus","bonito","anglerfish"], "lords": ["aspidochelone","legion"], "weather": "night"},
 	# #190: 月下の島の追加に伴い、嵐越え・果ては従来よりさらに遠方へ。#191/#192: 近海の天候演出
 	{"id": 3, "name": "嵐越えの島",   "tier": 3, "fame_req": 175,  "price_mult": 4.8, "pos": Vector3(2600, 0, 900),  "spawn": ["octopus","squid","bonito","conger"], "lords": ["hydra","quetzal"], "weather": "storm"},
-	{"id": 4, "name": "果ての島",     "tier": 4, "fame_req": 400,  "price_mult": 10.8, "pos": Vector3(3600, 0, 300), "spawn": ["octopus","squid","bonito","anglerfish","conger","lobster","turtle","marlin"], "lords": ["ghost","leviathan"], "weather": "blizzard"},   # #187: 幽霊船はレヴィアタンの上(先に戦う想定)
+	# #290: 雪夜の島の追加に伴い北東へ移動。到達に必要な名声も引き上げ(400→480)
+	{"id": 4, "name": "果ての島",     "tier": 4, "fame_req": 480,  "price_mult": 10.8, "pos": Vector3(4400, 0, -400), "spawn": ["octopus","squid","bonito","anglerfish","conger","lobster","turtle","marlin"], "lords": ["ghost","leviathan"], "weather": "blizzard"},   # #187: 幽霊船はレヴィアタンの上(先に戦う想定)
 	# #239: 月下の島と同格(tier 2)。星霜=月下の北、常闇=月下の南
 	{"id": 5, "name": "星霜の島",     "tier": 2, "fame_req": 70,  "price_mult": 3.0, "pos": Vector3(1700, 0, -700), "spawn": ["squid","octopus","bonito","anglerfish"], "lords": ["undine","siren"], "weather": "starry"},
 	{"id": 6, "name": "常闇の島",     "tier": 2, "fame_req": 70,  "price_mult": 3.0, "pos": Vector3(1700, 0, 1100), "spawn": ["squid","octopus","bonito","anglerfish"], "lords": ["night_emperor","wraith"], "weather": "dark"},
 	# #239: 嵐越えの島と同格(tier 3)。海嘯=嵐越えの南
 	{"id": 7, "name": "海嘯の島",     "tier": 3, "fame_req": 175, "price_mult": 4.8, "pos": Vector3(2600, 0, 1900), "spawn": ["octopus","squid","bonito","conger"], "lords": ["kraken_lord","griffon"], "weather": "surge"},
 	# #248: 終盤の寄り道。果ての島の北にある小さな雪原の島。近海の主はいない(酒場の主の情報も出ない)
-	{"id": 8, "name": "北の孤島",   "tier": 4, "fame_req": 400, "price_mult": 10.8, "pos": Vector3(3600, 0, -600), "spawn": ["marlin"], "lords": [], "weather": "flurry"},
+	# #290: 雪夜の島の追加に伴い果ての島と共に北東へ移動。到達に必要な名声は据え置き
+	{"id": 8, "name": "北の孤島",   "tier": 4, "fame_req": 400, "price_mult": 10.8, "pos": Vector3(4400, 0, -1300), "spawn": ["marlin"], "lords": [], "weather": "flurry"},
 	# #251: 中盤の寄り道。常闇の島の南にある小さな草原の島。近海の主はいない
 	{"id": 9, "name": "南の孤島",     "tier": 2, "fame_req": 70,  "price_mult": 3.0, "pos": Vector3(1700, 0, 2000), "spawn": ["turtle"], "lords": [], "weather": "sunny"},
+	# #290: 嵐越えの島の北東、果ての島の手前に追加する島。緑地に少々の積雪。
+	# 常闇の演出をベースに北の孤島の弱い雪+海嘯の荒波を加えた近海(weather="snownight")
+	{"id": 10, "name": "雪夜の島",   "tier": 4, "fame_req": 400, "price_mult": 10.8, "pos": Vector3(3600, 0, -100), "spawn": ["squid","anglerfish","conger"], "lords": ["gemini","reaper"], "weather": "snownight"},
 ]
 
 # #202: 出現海域ごとの敵HP倍率(始まり=等倍 / 潮鳴り1.5 / 月下1.9 / 嵐越え2.7 / 果て3.3)。
@@ -557,7 +580,7 @@ func island(idx: int) -> Dictionary:
 # #239再: 航路メニューなどで見せる並び順(進行順)。
 # islands の並びは「index を動かさない」都合で追加順になっているため、
 # 表示は tier 順 → 同じ tier 内は本来の攻略順(月下→星霜→常闇 / 嵐越え→海嘯)にする。
-const ISLAND_ORDER := [0, 1, 2, 5, 6, 9, 7, 3, 4, 8]   # #239再2: 海嘯 → 嵐越え の順。#248/#251: 寄り道の島は同格の島の後ろ
+const ISLAND_ORDER := [0, 1, 2, 5, 6, 9, 7, 3, 10, 8, 4]   # #239再2: 海嘯 → 嵐越え の順。#248/#251: 寄り道の島は同格の島の後ろ。#290: 雪夜の島は嵐越え/海嘯の直後、果ての島は名声引き上げで最後尾へ
 
 func islands_in_order() -> Array:
 	var out: Array = []
@@ -587,6 +610,10 @@ const SHOP_EXCLUDE := {
 		"ships": ["raft", "skiff", "cutter"],
 		"weapons": ["gatling", "cannon", "harpoon", "torpedo"],
 	},
+	# #290: 雪夜の島。武器ラインナップは果ての島と同じにする(船は下のSHOP_ONLYで指定)
+	10: {
+		"weapons": ["gatling", "cannon", "harpoon", "torpedo"],
+	},
 }
 
 # #248: 逆に「これしか売らない」島。載っていないものは並べない
@@ -597,6 +624,8 @@ const SHOP_ONLY := {
 	},
 	# #251: 南の孤島。船は同格の島と同じなので制限せず、武器だけ専用の2種に絞る
 	9: {"weapons": ["flamer", "chiller"]},
+	# #290: 雪夜の島。船はコルベット・駆逐艦・大型運搬艦・軽/重フリゲートのみ(北の孤島と同じ)
+	10: {"ships": ["corvette", "hunter_h", "hauler", "frigate_l", "frigate_h"]},
 }
 
 # #247: その島でその船/武器を売っているか

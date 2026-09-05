@@ -1424,7 +1424,7 @@ func _ready() -> void:
 	var want_islands := {
 		"kraken": ["潮鳴りの島", "月下の島", "星霜の島", "常闇の島"],
 		"wyvern": ["潮鳴りの島", "月下の島", "星霜の島", "常闇の島"],
-		"killer_shell": ["海嘯の島", "果ての島", "北の孤島"],
+		"killer_shell": ["海嘯の島", "果ての島", "北の孤島", "雪夜の島"],
 		"carabos": ["海嘯の島", "果ての島", "北の孤島"],
 	}
 	for sp_id in want_islands:

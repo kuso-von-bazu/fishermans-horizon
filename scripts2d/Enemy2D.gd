@@ -733,6 +733,10 @@ func _attack(delta: float, dist: float) -> void:
 	# #74: 遠隔持ちは attack_range(遠距離)で撃ち、近接圏(melee_r)に入られたら近接
 	var melee_r: float = _radius + (12.0 if kind == "lord" else 9.0) * K * float(def.get("reach", 1.0))
 	if kind == "lord":
+		# #290: melee_only=近接圏に入るまでは何もしない(通常の遠隔攻撃を持たない死神)。
+		# 瞬間移動(blink)で近接圏まで運ばれてくるまで待つ。
+		if bool(def.get("melee_only", false)) and dist > melee_r and _melee_victim(melee_r) == null:
+			return
 		# #239: no_melee=近接を一切しない主(ウンディーネ/セイレーン/レイス)
 		if bool(def.get("no_melee", false)):
 			_ranged_attack(bool(def.get("fire", false)))
@@ -762,6 +766,20 @@ func _attack(delta: float, dist: float) -> void:
 			GameState.notice.emit("レヴィアタンの薙ぎ払い!")
 			if randf() < 0.4:   # #161: 近接圏でも時折遠隔攻撃を織り交ぜる
 				_ranged_attack(false)
+		elif id == "reaper" and dist <= melee_r:
+			# #290: 死神の大鎌。幅の広い斬撃で自機弾を払い落としつつ、
+			# 斬撃内の10か所を始点に弾を計10発撃つ
+			var atk_dir2 := (player.global_position - global_position).normalized()
+			_nagiharai_splash(atk_dir2, melee_r)
+			_sweep_away_shots(melee_r)
+			_damage_player(eff_dmg * LORD_MELEE_MULT)
+			GameState.notice.emit("死神の大鎌!")
+			var reap_n := 10
+			var reap_spread := 1.1   # 斬撃の幅(rad)
+			for i in reap_n:
+				var t: float = (float(i) / float(reap_n - 1)) - 0.5   # -0.5..0.5
+				var pd := atk_dir2.rotated(t * reap_spread)
+				_shoot(pd, {"dmg": eff_dmg * 0.35, "shape": "needle"}, false, null, pd * melee_r * 0.9)
 		elif dist <= melee_r or _melee_victim(melee_r) != null:
 			# #190: melee_mult=体当たりなど近接が強い主(アスピドケロン)
 			var victim := _melee_victim(melee_r)   # #222: 近接圏の僚艦を優先
@@ -880,8 +898,14 @@ func _fire_weapon(wpn: String, eff_dmg: float, base_dir: Vector2, is_fire: bool,
 			var hs := float(def.get("homing_speed_mult", 1.0))   # #65: 追跡弾の弾速倍率
 			if has_radial:
 				var count := int(def.get("radial_count", 12))
+				var rw := {"dmg": eff_dmg * dm, "speed_mult": ss}
+				# #290: ジェミニの米粒型・レモン色の全方位弾用に、radialでも見た目を指定できるように
+				if def.has("aim_color"):
+					rw["bcolor"] = def.aim_color
+				if bool(def.get("small_shot", false)):
+					rw["shape"] = "small"
 				for i in count:
-					_shoot(Vector2.RIGHT.rotated(TAU * i / count), {"dmg": eff_dmg * dm, "speed_mult": ss}, is_fire)
+					_shoot(Vector2.RIGHT.rotated(TAU * i / count), rw.duplicate(), is_fire)
 			# 照準の扇状弾(radialと併用可)。aim_tight=密な狭い扇。#65再: aim_shape/aim_colorで楕円弾など見た目指定
 			var way := int(def.get("way", 0 if has_radial else 1))
 			# #72再: way_choices指定時は毎回そこから選ぶ(ティアマット=時々2way/3way)

@@ -49,7 +49,8 @@ func _ready() -> void:
 		GameState.current_island = isle
 		# #282: 嵐越えの島(3)・海嘯の島(7)は bgm_storm、果ての島(4)は bgm_blizzard
 		var want := "bgm_sea"
-		if isle == 2 or isle == 5 or isle == 6:
+		# #290: 雪夜の島(10)も月下・星霜・常闇と同じ夜のBGM
+		if isle == 2 or isle == 5 or isle == 6 or isle == 10:
 			want = "bgm_night"
 		elif isle == 3 or isle == 7:
 			want = "bgm_storm"
@@ -116,7 +117,14 @@ func _ready() -> void:
 	check(wsrc.contains("uniform float px_size"), "天候(雨・雪)が量子化されていない")
 
 	# ---------------- #278 提案2: 島のドット絵化 ----------------
+	# #290: 雪夜の島(10)の島絵はまだ無い。Codex CLI がアカウントで使えるモデルを持たず
+	#   (gpt-6-astra には更新が必要)、画像生成そのものが実行できないため保留中。
+	#   絵が無い島は Island2D のベクター描画にフォールバックする。
+	#   Codex を更新できたら生成してこの一覧から外すこと。
+	var pending_island_art := [10]
 	for i in Database.islands.size():
+		if pending_island_art.has(i):
+			continue
 		var ip := "res://assets/images/pixel/island_%d.png" % i
 		check(ResourceLoader.exists(ip), "島のドット絵が無い: " + ip)
 		var im := Image.load_from_file(ip)
@@ -188,7 +196,8 @@ func _ready() -> void:
 	check(Juice.GLOW_INTERVAL_MS > 0 and Juice.MAX_GLOW > 0, "光の数・間隔が絞られていない")
 
 	# ---------------- #278 提案7: 小さな生気 ----------------
-	check(osrc.contains("uniform float island_r[10]"), "海岸の白波の設定が無い")
+	# #290: 島が11個になったので配列長も11
+	check(osrc.contains("uniform float island_r[11]"), "海岸の白波の設定が無い")
 	check(osrc.contains("col = mix(col, crest_color, clamp(band * flick * 0.6, 0.0, 1.0));"), "海岸の白波が描かれない")
 	check(w2.contains('ocean_mat.set_shader_parameter("island_r", irad)'), "白波の半径が渡されていない")
 	check(_src("res://scripts2d/Player2D.gd").contains("_hull.rotation = sin(_roll) * amp"), "旗艦のロールが無い")

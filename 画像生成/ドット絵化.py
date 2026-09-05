@@ -43,10 +43,14 @@ LONG_OVERRIDE = {"lord_leviathan.png": 200, "lord_leviathan_front.png": 200, "lo
                  "mob_carabos.png": 180,
                  # #239再7: レイス(ぼろ布のほつれが細かい)
                  "lord_wraith.png": 180, "lord_wraith_front.png": 180, "lord_wraith_back.png": 180,
+                 # #290: 雪夜の島の主
+                 "lord_gemini.png": 180, "lord_gemini_front.png": 180, "lord_gemini_back.png": 180,
+                 "lord_reaper.png": 180, "lord_reaper_front.png": 180, "lord_reaper_back.png": 180,
                  # #193再5: 障害物(岩礁・流氷)は最大200px近くまで拡大表示されるので高精細に
                  "obs_reef.png": 120, "obs_ice.png": 120}
 # #278(提案2): 島は画面のランドマークなので大きめ(256px/64色)
-for _i in range(10):
+# #290: 雪夜の島(index10)を追加
+for _i in range(11):
     LONG_OVERRIDE["island_%d.png" % _i] = 256
 # #81: レヴィアタンは色数も増やしてより詳細に。#173: ケツァルも増色。#81再: ヒュドラ増色・ケツァル64色
 COLORS_OVERRIDE = {"lord_leviathan.png": 64, "lord_leviathan_front.png": 64, "lord_leviathan_back.png": 64, "lord_hydra.png": 64, "lord_hydra_front.png": 64, "lord_hydra_back.png": 64, "lord_quetzal.png": 64, "lord_quetzal_front.png": 64, "lord_quetzal_back.png": 64,
@@ -71,9 +75,12 @@ COLORS_OVERRIDE = {"lord_leviathan.png": 64, "lord_leviathan_front.png": 64, "lo
                    "mob_carabos.png": 64,
                    # #239再7: レイス
                    "lord_wraith.png": 64, "lord_wraith_front.png": 64, "lord_wraith_back.png": 64,
+                   # #290: 雪夜の島の主(ジェミニ・死神)も他の主と同じ高精細に
+                   "lord_gemini.png": 64, "lord_gemini_front.png": 64, "lord_gemini_back.png": 64,
+                   "lord_reaper.png": 64, "lord_reaper_front.png": 64, "lord_reaper_back.png": 64,
                    # #193再5: 障害物
                    "obs_reef.png": 48, "obs_ice.png": 48}
-for _i in range(10):
+for _i in range(11):
     COLORS_OVERRIDE["island_%d.png" % _i] = 64
 
 for f in sorted(os.listdir(SRC)):

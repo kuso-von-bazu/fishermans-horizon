@@ -11,7 +11,7 @@ uniform vec3 crest_color : source_color = vec3(0.80, 0.92, 0.97);
 uniform float wave_scale = 0.028;
 uniform float wave_speed = 0.9;
 // #135: 島の位置(ワールド座標)。島周りは淡い青にする
-uniform vec2 islands[10];   // #239: 島8つ → #248/#251: 寄り道の島2つで10
+uniform vec2 islands[11];   // #239: 島8つ → #248/#251: 寄り道の島2つで10 → #290: 雪夜の島で11
 uniform int island_count = 0;
 uniform float island_light_radius = 900.0;
 // #190/#191/#192: 近海の天候。night=夜(月下の島), rough=高波/荒波(嵐越え・果て)
@@ -35,9 +35,9 @@ uniform float color_levels = 9.0;
 //   island_r    … 浅瀬の外縁の半径(ワールド単位。0以下でその島は白波なし)
 //   island_wob  … 海岸線のゆらぎ(PALETTES.wob)
 //   island_seed … ゆらぎの位相(Island2D の s1 と同じ値)
-uniform float island_r[10];
-uniform float island_wob[10];
-uniform float island_seed[10];
+uniform float island_r[11];
+uniform float island_wob[11];
+uniform float island_seed[11];
 
 // 2D擬似ノイズ
 float hash(vec2 p) {

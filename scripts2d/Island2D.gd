@@ -89,6 +89,8 @@ const PALETTES := [
 	{"shallow": Color(0.62,0.76,0.86,0.45), "sand": Color(0.90,0.92,0.95), "grass": Color(0.84,0.88,0.93), "grass2": Color(0.74,0.80,0.87), "mtn": Color(0.58,0.62,0.68), "peak": Color(0.96,0.98,1.00), "tree": Color(0.22,0.38,0.30), "trunk": Color(0.32,0.25,0.17), "trees": 2, "wob": 0.16, "conifer": true, "small": 0.66},
 	# #251: 南の孤島。草原に覆われた小さな島(木はまばら)
 	{"shallow": Color(0.52,0.80,0.84,0.45), "sand": Color(0.90,0.86,0.66), "grass": Color(0.50,0.72,0.40), "grass2": Color(0.38,0.60,0.34), "mtn": Color(0.52,0.52,0.46), "peak": Color(0.76,0.76,0.70), "tree": Color(0.26,0.54,0.28), "trunk": Color(0.44,0.32,0.20), "trees": 2, "wob": 0.17, "small": 0.66},
+	# #290: 雪夜の島。緑地に少々の積雪(山頂が白い/針葉樹で薄く雪化粧)
+	{"shallow": Color(0.55,0.78,0.85,0.45), "sand": Color(0.86,0.88,0.86), "grass": Color(0.40,0.62,0.38), "grass2": Color(0.28,0.50,0.32), "mtn": Color(0.55,0.58,0.60), "peak": Color(0.92,0.95,0.98), "tree": Color(0.20,0.46,0.26), "trunk": Color(0.40,0.30,0.20), "trees": 5, "wob": 0.17, "conifer": true},
 ]
 
 func _draw() -> void:

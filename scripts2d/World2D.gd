@@ -128,16 +128,16 @@ func _build_ocean() -> void:
 	var ipos := PackedVector2Array()
 	for i in Database.islands.size():
 		ipos.append(island_pos(i))
-	while ipos.size() < 10:   # #248/#251: シェーダ側の配列長(島10)に合わせる
+	while ipos.size() < 11:   # #248/#251/#290: シェーダ側の配列長(島11)に合わせる
 		ipos.append(Vector2(1e9, 1e9))
 	ocean_mat.set_shader_parameter("islands", ipos)
-	ocean_mat.set_shader_parameter("island_count", mini(Database.islands.size(), 10))
+	ocean_mat.set_shader_parameter("island_count", mini(Database.islands.size(), 11))
 	# #278(提案7-1): 海岸の白波。浅瀬の縁は Island2D._coast(132*small, wob, seed_off=1)。
 	# シェーダ側で同じ式を再現できるよう、半径・ゆらぎ・位相を渡す。
 	var irad := PackedFloat32Array()
 	var iwob := PackedFloat32Array()
 	var iseed := PackedFloat32Array()
-	for i in 10:
+	for i in 11:
 		if i < Database.islands.size() and i < IslandScript.PALETTES.size():
 			var pal: Dictionary = IslandScript.PALETTES[i]
 			irad.append(132.0 * float(pal.get("small", 1.0)))
@@ -195,7 +195,7 @@ func _build_weather() -> void:
 # #191再: 天候は current_island でなく「実際にいる海域(最寄りの島)」に追従させる。
 # 別の島を目指して航行中でも、近づいた海域の天候になる。
 # #279: 夜の海域(月下=night / 星霜=starry / 常闇=dark)は専用の航海BGM「夜」を鳴らす
-const NIGHT_SEA_WEATHERS := ["night", "starry", "dark"]
+const NIGHT_SEA_WEATHERS := ["night", "starry", "dark", "snownight"]   # #290: 雪夜の島も同じ航海BGM「夜」
 # #282: 嵐越えの島(storm)・海嘯の島(surge)は共有の専用曲、果ての島(blizzard)は単独の専用曲
 const STORM_SEA_WEATHERS := ["storm", "surge"]
 const BLIZZARD_SEA_WEATHERS := ["blizzard"]
@@ -261,6 +261,12 @@ func _weather_params(w: String) -> Dictionary:
 			moon = 0.0
 		"surge":     # #239: 海嘯の島。嵐越えから雨を除いた荒波
 			tint = Color(0.10, 0.12, 0.18, 0.24)
+			rough = 1.0
+		"snownight": # #290: 雪夜の島。常闇の演出に北の孤島の弱い雪+海嘯の荒波を加えたもの
+			tint = Color(0.04, 0.06, 0.16, 0.46)
+			night = 1.0
+			moon = 0.0
+			snow = 0.40
 			rough = 1.0
 	return {"tint": tint, "rain": rain, "snow": snow, "night": night, "rough": rough, "moon": moon, "stars": stars, "sunlight": sunlight}
 
@@ -1000,6 +1006,10 @@ func _spawn_escorts(center: Vector2, lord_id: String = "", tier: int = -1) -> Ar
 		ids = ["mermaid", "mermaid"]   # #246: ウンディーネはマーメイド2体で固定
 	elif lord_id == "siren":
 		ids = ["lamia", "lamia"]       # #246: セイレーンはラミア2体で固定
+	elif lord_id == "gemini":
+		ids = ["tiamat", "dagon"]      # #290: ジェミニの取り巻きはティアマット1体+ダゴン1体
+	elif lord_id == "reaper":
+		ids = ["zahhak", "dagon"]      # #290: 死神の取り巻きはザッハーク1体+ダゴン1体
 	else:
 		for i in 2:
 			var mid: String = Database.pick_mob(tier)
@@ -1071,7 +1081,8 @@ func _obstacle_kind() -> String:
 
 # 始まりの島の近海は岩礁を少なめに
 func _obstacle_max() -> int:
-	return [3, 8, 8, 9, 7, 8, 8, 9, 7, 8][clampi(GameState.current_island, 0, 9)]   # #239: 島8つぶん。#248/#251: 寄り道の島2つで10
+	# #290: 雪夜の島(index10)を追加。果ての島と同じ流氷の多さにする
+	return [3, 8, 8, 9, 7, 8, 8, 9, 7, 8, 7][clampi(GameState.current_island, 0, 10)]   # #239: 島8つぶん。#248/#251: 寄り道の島2つで10。#290: 雪夜の島で11
 
 func _spawn_obstacle() -> void:
 	var pos := _ring_pos(85, 200)
@@ -2102,7 +2113,10 @@ func _maybe_screenshot() -> void:
 			# #190: isle<N> で撮影する海域(島index)を指定(天候・障害物の確認用)
 			var ip := a.find("isle")
 			if ip != -1 and ip + 4 < a.length():
-				var n := a.substr(ip + 4, 1)
+				# #290: 島が11個になったので2桁(isle10)も読めるようにする
+				var n := a.substr(ip + 4, 2)
+				if not n.is_valid_int():
+					n = a.substr(ip + 4, 1)
 				if n.is_valid_int():
 					want_isle = clampi(int(n), 0, Database.islands.size() - 1)
 	if not want_shot:
