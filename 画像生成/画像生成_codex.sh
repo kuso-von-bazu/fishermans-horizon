@@ -61,8 +61,10 @@ tail -n +2 "$CSV" | while IFS=, read -r fname content; do
   #   ・呼び出し直前の時刻(stamp)より新しいか
   #   ・元ファイルより新しいか
   # で「今回生成されたもの」だけを採用し、失敗時は元のまま据え置く。
+  # 重要(#290): config.toml のデフォルトモデル(gpt-6-astra)はこのCLIバージョンでは
+  # 使えない(「requires a newer version of Codex」で全滅する)ため、-m で明示指定する。
   stamp="$(mktemp)"
-  "$CODEX" exec --dangerously-bypass-approvals-and-sandbox --cd "$OUTDIR" "$prompt" </dev/null >/dev/null 2>&1
+  "$CODEX" exec -m "gpt-5.6-sol" --dangerously-bypass-approvals-and-sandbox --cd "$OUTDIR" "$prompt" </dev/null >/dev/null 2>&1
   if [ -f "$target" ] && [ "$target" -nt "$stamp" ]; then
     echo "       -> OK"; ok=$((ok+1)); fresh=1
   else

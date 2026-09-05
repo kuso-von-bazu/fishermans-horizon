@@ -59,7 +59,9 @@ for row in "${ISLANDS[@]}"; do
   if [ -f "$target" ] && [ "$FORCE" -eq 0 ]; then echo "[skip] $fname (既存)"; continue; fi
   echo "[gen ] $fname : $content"
   stamp="$(mktemp)"
-  "$CODEX" exec --dangerously-bypass-approvals-and-sandbox --cd "$OUTDIR" \
+  # 重要(#290): config.toml のデフォルトモデル(gpt-6-astra)はこのCLIバージョンでは
+  # 使えない(「requires a newer version of Codex」で全滅する)ため、-m で明示指定する。
+  "$CODEX" exec -m "gpt-5.6-sol" --dangerously-bypass-approvals-and-sandbox --cd "$OUTDIR" \
     "${STYLE}${content} 生成した画像を $target に保存してください。" </dev/null >/dev/null 2>&1
   fresh=0
   if [ -f "$target" ] && [ "$target" -nt "$stamp" ]; then

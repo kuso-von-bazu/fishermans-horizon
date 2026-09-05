@@ -120,8 +120,8 @@ func _ready() -> void:
 	check(wsrc.contains('elif lord_id == "reaper":') and wsrc.contains('["zahhak", "dagon"]'),
 		"死神の取り巻きが指定と違う")
 
-	# 絵(横向きは未生成のため保留。正面/背面はできていること)
-	for suf in ["_front", "_back"]:
+	# 絵(横向き・正面・背面がすべて揃っていること)
+	for suf in ["", "_front", "_back"]:
 		check(ResourceLoader.exists("res://assets/images/pixel/lord_gemini%s.png" % suf),
 			"ジェミニの%sの絵が無い" % suf)
 	for suf2 in ["", "_front", "_back"]:
