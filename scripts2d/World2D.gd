@@ -1174,7 +1174,7 @@ const BOSS_RUSH_ORDER := [
 	{"kind": "lord", "id": "legion"},          # ⑧
 	{"kind": "lord", "id": "siren"},           # ⑨
 	{"kind": "lord", "id": "wraith"},          # ⑩
-	{"kind": "pirate", "id": "king", "escorts": ["dread", "dread", "corsair"]},   # ⑪ #209再10: 大×2・中×1
+	{"kind": "pirate", "id": "king", "escorts": ["dread", "corsair"]},   # ⑪ #288: 大×1・中×1で固定
 	{"kind": "lord", "id": "kraken_lord"},     # ⑫
 	{"kind": "lord", "id": "hydra"},           # ⑬
 	{"kind": "lord", "id": "griffon"},         # ⑭
@@ -1182,9 +1182,21 @@ const BOSS_RUSH_ORDER := [
 	{"kind": "lord", "id": "ghost"},           # ⑯
 	{"kind": "lord", "id": "leviathan"},       # ⑰
 ]
-# #288: ⑤体目撃破以降は10%、⑪体目撃破以降は15%になる(_br_indexは撃破数=1始まり)
-const BR_HEAL_MID_FROM := 5
-const BR_HEAL_BIG_FROM := 11
+# #288再: ボスを倒すごとの装甲回復量(船団全艦の最大装甲に対する割合)。
+#   段階固定をやめ、ボスごとの個別指定になった。添字は「倒したボスの通し番号-1」。
+#   ①〜④=5% / ⑤〜⑦=6% / ⑧〜⑩=8% / ⑪=10% / ⑫=12% / ⑬=14% / ⑭=16% / ⑮=18% / ⑯=20%
+#   ⑰レヴィアタンは撃破でクリアなので回復しない(この表にも入れない)。
+const BR_HEAL_PCT := [
+	0.05, 0.05, 0.05, 0.05,   # ①電動ノコギリザメ ②ウミダンボ ③ヒゲマッコウ ④ギガントセイウチ
+	0.06, 0.06, 0.06,         # ⑤アスピドケロン ⑥ウンディーネ ⑦夜の帝王
+	0.08, 0.08, 0.08,         # ⑧レギオン ⑨セイレーン ⑩レイス
+	0.10,                     # ⑪海賊王
+	0.12,                     # ⑫オクトパス
+	0.14,                     # ⑬ヒュドラ
+	0.16,                     # ⑭グリフォン
+	0.18,                     # ⑮ケツァルコアトル
+	0.20,                     # ⑯幽霊船
+]
 # 島から遠く離れた海域(島の存在しないステージ)
 const BR_ARENA := Vector2(0.0, 120000.0)
 
@@ -1310,16 +1322,10 @@ func _br_update(delta: float) -> void:
 		_br_wait = 1.6
 		# #209再2: ボスを1体倒すごとに船団の全艦が最大装甲の一定割合回復する
 		if _br_index < BOSS_RUSH_ORDER.size():
-			# #288: ①〜④は5%、⑤〜⑩は10%、⑪〜⑯は15%回復(_br_index=倒したボスの通し番号)
-			var heal_pct: float
-			if _br_index >= BR_HEAL_BIG_FROM:
-				heal_pct = 0.15
-			elif _br_index >= BR_HEAL_MID_FROM:
-				heal_pct = 0.10
-			else:
-				heal_pct = 0.05
+			# #288再: 倒したボスごとの個別の回復量(_br_index=倒したボスの通し番号)
+			var heal_pct: float = float(BR_HEAL_PCT[clampi(_br_index - 1, 0, BR_HEAL_PCT.size() - 1)])
 			GameState.heal_fleet_percent(heal_pct)
-			GameState.notice.emit("船団の装甲が回復した(最大値の%d%%)" % int(heal_pct * 100.0))
+			GameState.notice.emit("船団の装甲が回復した(最大値の%d%%)" % int(round(heal_pct * 100.0)))
 		else:
 			# #284: レヴィアタン討伐の瞬間から旗艦を無敵にする(制覇画面へ進むまでの間、大破扱いにしない)
 			_br_won = true

@@ -195,14 +195,16 @@ func _ready() -> void:
 		got_order.append(str(spec.id))
 	check(got_order == want_order, "ボスラッシュの出現順が指定と違う: %s" % str(got_order))
 	check(World2.BOSS_RUSH_ORDER.size() == 17, "ボスラッシュのボス数が17でない(%d)" % World2.BOSS_RUSH_ORDER.size())
-	# #209再10: 海賊王の取り巻きは 大×2・中×1 で固定
+	# #288: 海賊王の取り巻きは 大×1・中×1 で固定(#209再10の 大×2・中×1 から変更)
 	for spec2 in World2.BOSS_RUSH_ORDER:
 		if str(spec2.id) == "king":
-			check((spec2.get("escorts", []) as Array) == ["dread", "dread", "corsair"],
-				"海賊王の取り巻きが 大×2・中×1 でない")
+			check((spec2.get("escorts", []) as Array) == ["dread", "corsair"],
+				"海賊王の取り巻きが 大×1・中×1 でない")
 	# #288: ①〜④=5%、⑤〜⑩=10%、⑪〜⑯=15%
-	check(World2.BR_HEAL_MID_FROM == 5, "回復量が10%%に切り替わる位置が⑤でない(index %d)" % World2.BR_HEAL_MID_FROM)
-	check(World2.BR_HEAL_BIG_FROM == 11, "回復量が15%%に切り替わる位置が⑪でない(index %d)" % World2.BR_HEAL_BIG_FROM)
+	# #288再: 段階固定をやめ、ボスごとの個別指定になった(詳しくは maintenance_issue_288)。
+	#   ここでは表がボスの数と噛み合っていることだけ見る。
+	check(World2.BR_HEAL_PCT.size() == World2.BOSS_RUSH_ORDER.size() - 1,
+		"回復量の表がボスの数と合っていない(表%d / ボス%d)" % [World2.BR_HEAL_PCT.size(), World2.BOSS_RUSH_ORDER.size()])
 	# 登場する主・海賊がすべて定義済みであること(タイプミスで出現しなくなる)
 	for spec3 in World2.BOSS_RUSH_ORDER:
 		if str(spec3.kind) == "lord":

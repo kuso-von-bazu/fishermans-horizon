@@ -592,7 +592,7 @@ const SHOP_EXCLUDE := {
 # #248: 逆に「これしか売らない」島。載っていないものは並べない
 const SHOP_ONLY := {
 	8: {   # 北の孤島
-		"ships": ["corvette", "hunter_h", "hauler"],
+		"ships": ["corvette", "hunter_h", "hauler", "frigate_l", "frigate_h"],   # #248再: 軽/重フリゲートを追加
 		"weapons": ["spray", "lance", "cluster"],
 	},
 	# #251: 南の孤島。船は同格の島と同じなので制限せず、武器だけ専用の2種に絞る

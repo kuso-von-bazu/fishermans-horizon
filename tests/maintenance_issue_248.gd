@@ -211,7 +211,8 @@ func _ready() -> void:
 	await get_tree().process_frame
 	port.open()
 	var got: Dictionary = await _listed(port, OUTER)
-	var want_ships := ["corvette", "hunter_h", "hauler"]
+	# #248再: 軽フリゲート・重フリゲートを追加
+	var want_ships := ["corvette", "hunter_h", "hauler", "frigate_l", "frigate_h"]
 	for sid in Database.ships:
 		var sold: bool = (got.ships as Array).has(sid)
 		if want_ships.has(sid):
@@ -331,8 +332,9 @@ func _ready() -> void:
 	# ---------------- #209再10: ボスラッシュ ----------------
 	for spec in World2.BOSS_RUSH_ORDER:
 		if str(spec.id) == "king":
-			check((spec.get("escorts", []) as Array) == ["dread", "dread", "corsair"],
-				"ボスラッシュの海賊王の取り巻きが 大×2・中×1 でない")
+			# #288: 大×2・中×1 から 大×1・中×1 へ変更
+			check((spec.get("escorts", []) as Array) == ["dread", "corsair"],
+				"ボスラッシュの海賊王の取り巻きが 大×1・中×1 でない")
 	# 分裂する主は、分裂体が残っている間は撃破扱いにしない
 	check(Database.lords["night_emperor"].has("split"), "夜の帝王が分裂しない")
 	world._br_split_root = "night_emperor"
