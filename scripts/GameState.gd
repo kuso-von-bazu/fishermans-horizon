@@ -1052,6 +1052,28 @@ func select_badge(aid: String) -> void:
 	_save_achievements()
 	stats_changed.emit()
 
+# #292: 「始めから」を選んだときは、近海の主の討伐が条件の実績を未達成に戻す。
+#   実績はセーブデータとは別ファイルに持っているため、新しく始めても
+#   前のデータで討伐した主の実績が達成済みのまま残っていた。
+#   主をもう一度倒せば達成し直せる。バッヂに選んでいた場合はその選択も外す。
+#   他のすべての実績が条件の「アルティメットプレーヤー」も、条件を満たさなくなるので外す。
+func reset_lord_achievements() -> void:
+	var removed := false
+	for a in Database.achievements:
+		var aid := str(a.id)
+		if str(a.get("check", "")) != "lord":
+			continue
+		if achieved.erase(aid):
+			removed = true
+			if badge_id == aid:
+				badge_id = ""
+	if removed:
+		for a2 in Database.achievements:
+			if str(a2.get("check", "")) == "all":
+				if achieved.erase(str(a2.id)) and badge_id == str(a2.id):
+					badge_id = ""
+		_save_achievements()
+
 # 実績はセーブデータとは別に保存する(レヴィアタン討伐→即エンディングでも残す)
 const ACHIEVE_PATH := "user://achievements.dat"
 

@@ -436,11 +436,17 @@ func _process(_d: float) -> void:
 func _on_title_start() -> void:
 	_boss_rush = false          # #209
 	GameState.boss_rush = false
+	# #292: 新しく始めるので、近海の主の討伐が条件の実績を未達成へ戻す。
+	#   実績はセーブと別ファイルなので、何もしないと前のデータの分が残ってしまう。
+	GameState.reset_lord_achievements()
 	if _victory_shown:
 		_victory_shown = false
 		GameState.reset_all()
 		get_tree().reload_current_scene()
 		return
+	# #292: 航海の途中でタイトルへ戻ってから始めた場合に前の周回の状態が残らないよう、
+	#   勝利していなくても初期化する(従来は勝利時しか呼んでいなかった)。
+	GameState.reset_all()
 	title.visible = false
 	phase = "dock"
 	port_ui.open()
@@ -1190,13 +1196,17 @@ const BOSS_RUSH_ORDER := [
 	{"kind": "lord", "id": "hydra"},           # ⑬
 	{"kind": "lord", "id": "griffon"},         # ⑭
 	{"kind": "lord", "id": "quetzal"},         # ⑮
-	{"kind": "lord", "id": "ghost"},           # ⑯
-	{"kind": "lord", "id": "leviathan"},       # ⑰
+	# #288再2: 雪夜の島の主を追加(⑯⑰)。以降の番号が1つずつ後ろへずれる
+	{"kind": "lord", "id": "gemini"},          # ⑯(番い2体)
+	{"kind": "lord", "id": "reaper"},          # ⑰
+	{"kind": "lord", "id": "ghost"},           # ⑱
+	{"kind": "lord", "id": "leviathan"},       # ⑲
 ]
 # #288再: ボスを倒すごとの装甲回復量(船団全艦の最大装甲に対する割合)。
 #   段階固定をやめ、ボスごとの個別指定になった。添字は「倒したボスの通し番号-1」。
-#   ①〜④=5% / ⑤〜⑦=6% / ⑧〜⑩=8% / ⑪=10% / ⑫=12% / ⑬=14% / ⑭=16% / ⑮=18% / ⑯=20%
-#   ⑰レヴィアタンは撃破でクリアなので回復しない(この表にも入れない)。
+#   ①〜④=5% / ⑤〜⑦=6% / ⑧〜⑩=8% / ⑪=10% / ⑫=12% / ⑬=14% / ⑭=16% /
+#   ⑮=17% / ⑯=18% / ⑰=19% / ⑱=20%
+#   ⑲レヴィアタンは撃破でクリアなので回復しない(この表にも入れない)。
 const BR_HEAL_PCT := [
 	0.05, 0.05, 0.05, 0.05,   # ①電動ノコギリザメ ②ウミダンボ ③ヒゲマッコウ ④ギガントセイウチ
 	0.06, 0.06, 0.06,         # ⑤アスピドケロン ⑥ウンディーネ ⑦夜の帝王
@@ -1205,8 +1215,10 @@ const BR_HEAL_PCT := [
 	0.12,                     # ⑫オクトパス
 	0.14,                     # ⑬ヒュドラ
 	0.16,                     # ⑭グリフォン
-	0.18,                     # ⑮ケツァルコアトル
-	0.20,                     # ⑯幽霊船
+	0.17,                     # ⑮ケツァルコアトル
+	0.18,                     # ⑯ジェミニ
+	0.19,                     # ⑰死神
+	0.20,                     # ⑱幽霊船
 ]
 # 島から遠く離れた海域(島の存在しないステージ)
 const BR_ARENA := Vector2(0.0, 120000.0)
@@ -2061,6 +2073,7 @@ func _maybe_screenshot() -> void:
 	var want_tavern := false
 	var want_bestiary := false
 	var want_yard := false     # #211再: 造船所の撮影
+	var want_route := false    # #291: 航路メニューの撮影
 	var want_guide := false
 	var want_bullets := false
 	var want_charge := false   # #224再: 突撃のしぶきを撮影
@@ -2091,6 +2104,7 @@ func _maybe_screenshot() -> void:
 			want_tavern = a.find("tavern") != -1
 			want_bestiary = a.find("bestiary") != -1
 			want_yard = a.find("yard") != -1
+			want_route = a.find("route") != -1   # #291
 			want_guide = a.find("guide") != -1
 			want_bullets = a.find("bullets") != -1
 			want_charge = a.find("charge") != -1   # #224再
@@ -2310,7 +2324,12 @@ func _maybe_screenshot() -> void:
 				if sc0 is ScrollContainer:
 					# #265再2: ach4 は「近海の主の討伐」のあたり(中ほど)で止める
 					# #265再4: ach5 は先頭(説明文と「討伐」の見出し)を写す
-					(sc0 as ScrollContainer).scroll_vertical = 0 if want_ach5 else (2450 if want_ach4 else 100000)
+					(sc0 as ScrollContainer).scroll_vertical = 0 if want_ach5 else (3050 if want_ach4 else 100000)
+		if want_route:
+			# #291: 航路メニュー。並びと文言の確認用に全島を到達済みにする
+			GameState.unlocked_islands.assign(range(Database.islands.size()))
+			GameState.visited_islands.assign(range(Database.islands.size()))
+			port_ui.show_travel()
 		if want_yard:
 			port_ui._shipyard_weapon_slot = 0   # #248: 武器一覧も写るようスロット1を開いておく
 			port_ui.show_shipyard()

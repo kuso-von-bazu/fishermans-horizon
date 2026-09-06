@@ -380,6 +380,11 @@ var achievements := [
 	{"id": "lord_griffon", "group": "lord", "name": "グリフォン狩り", "desc": "グリフォン を討伐", "check": "lord", "target": "griffon", "need": 1, "buff": {"shot_speed": 1.0099}, "icon": "res://assets/images/pixel/lord_griffon.png"},
 	{"id": "lord_hydra", "group": "lord", "name": "ヒュドラ狩り", "desc": "ヒュドラ を討伐", "check": "lord", "target": "hydra", "need": 1, "buff": {"flag_dmg_taken": 0.9896}, "icon": "res://assets/images/pixel/lord_hydra.png"},
 	{"id": "lord_quetzal", "group": "lord", "name": "ケツァルコアトル狩り", "desc": "ケツァルコアトル を討伐", "check": "lord", "target": "quetzal", "need": 1, "buff": {"fleet_dmg_taken": 0.9891}, "icon": "res://assets/images/pixel/lord_quetzal.png"},
+	# #265再13: 雪夜の島の主。並びはケツァルコアトルと幽霊船の間。
+	#   バフは既存の値を動かさず、その2つの間に収まる強さにしてある
+	#   (reload は 0.9923→0.9885、speed は 1.0083→1.0120 の並びの途中)。
+	{"id": "lord_gemini", "group": "lord", "name": "ジェミニ狩り", "desc": "ジェミニ を討伐", "check": "lord", "target": "gemini", "need": 1, "buff": {"reload": 0.9889}, "icon": "res://assets/images/pixel/lord_gemini.png"},
+	{"id": "lord_reaper", "group": "lord", "name": "死神狩り", "desc": "死神 を討伐", "check": "lord", "target": "reaper", "need": 1, "buff": {"speed": 1.0110}, "icon": "res://assets/images/pixel/lord_reaper.png"},
 	{"id": "lord_ghost", "group": "lord", "name": "幽霊船狩り", "desc": "幽霊船 を討伐", "check": "lord", "target": "ghost", "need": 1, "buff": {"reload": 0.9885}, "icon": "res://assets/images/pixel/lord_ghost.png"},
 	{"id": "lord_leviathan", "group": "lord", "name": "レヴィアタン狩り", "desc": "レヴィアタン を討伐", "check": "lord", "target": "leviathan", "need": 1, "buff": {"speed": 1.0120}, "icon": "res://assets/images/pixel/lord_leviathan.png"},
 	{"id": "charge_all", "group": "fleet", "name": "突撃!", "desc": "5隻すべてに超硬タングステン衝角を装備して「突撃」を発動", "check": "fleet", "target": "", "need": 0, "buff": {"ram": 1.0150}, "icon": "res://assets/images/pixel/badge_charge.png"},

@@ -1,8 +1,9 @@
 extends Node
 ## #288: ボスラッシュの装甲回復量。
 ## #288再: 段階固定(5/10/15%)をやめ、ボスごとの個別指定になった。
-##   ①〜④=5% / ⑤〜⑦=6% / ⑧〜⑩=8% / ⑪=10% / ⑫=12% / ⑬=14% / ⑭=16% / ⑮=18% / ⑯=20%
-##   ⑰レヴィアタンは撃破でクリアなので回復しない。
+##   ①〜④=5% / ⑤〜⑦=6% / ⑧〜⑩=8% / ⑪=10% / ⑫=12% / ⑬=14% / ⑭=16% /
+##   ⑮=17% / ⑯=18% / ⑰=19% / ⑱=20%
+##   ⑲レヴィアタンは撃破でクリアなので回復しない。
 ##
 ## 以前のテストは判定式をテスト側に写して確かめており、実装を見ていなかった。
 ## ここでは World2D の表そのものを読む。
@@ -20,11 +21,13 @@ func _ready() -> void:
 	await get_tree().process_frame
 
 	# 倒したボスの通し番号 -> 回復率(ご指定の値)
+	# #288再2: 雪夜の主(⑯ジェミニ・⑰死神)の追加で⑮以降が変わった
 	var want := {
 		1: 0.05, 2: 0.05, 3: 0.05, 4: 0.05,
 		5: 0.06, 6: 0.06, 7: 0.06,
 		8: 0.08, 9: 0.08, 10: 0.08,
-		11: 0.10, 12: 0.12, 13: 0.14, 14: 0.16, 15: 0.18, 16: 0.20,
+		11: 0.10, 12: 0.12, 13: 0.14, 14: 0.16,
+		15: 0.17, 16: 0.18, 17: 0.19, 18: 0.20,
 	}
 	check(World2.BR_HEAL_PCT.size() == want.size(),
 		"回復量の表の件数が%dでない(%d)" % [want.size(), World2.BR_HEAL_PCT.size()])
@@ -42,9 +45,10 @@ func _ready() -> void:
 		"レヴィアタンの分まで回復量の表に入っている")
 
 	# ボスの並びがご指定どおりであること(回復率は通し番号で引くので、並びが崩れると全部ずれる)
+	# #288再2: ⑯ジェミニ・⑰死神を追加(幽霊船・レヴィアタンは1つずつ後ろへ)
 	var order := ["sawshark", "dumbo", "whale", "walrus", "aspidochelone", "undine",
 		"night_emperor", "legion", "siren", "wraith", "king", "kraken_lord",
-		"hydra", "griffon", "quetzal", "ghost", "leviathan"]
+		"hydra", "griffon", "quetzal", "gemini", "reaper", "ghost", "leviathan"]
 	check(World2.BOSS_RUSH_ORDER.size() == order.size(),
 		"ボスの数が%dでない(%d)" % [order.size(), World2.BOSS_RUSH_ORDER.size()])
 	for i in mini(order.size(), World2.BOSS_RUSH_ORDER.size()):

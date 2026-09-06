@@ -805,7 +805,8 @@ func show_travel() -> void:
 	_refresh_header()
 	_clear()
 	content.add_child(_h("航路 — 既知の島へファストトラベル", 22))
-	content.add_child(_p("到達済みの島へ移動できます。未到達の島へは方角を頼りに自力で航行してください。"))
+	# #291: 名声の稼ぎ方の案内は末尾で改行して出すのではなく、この1行目に続けて出す
+	content.add_child(_p("到達済みの島へ移動できます。未到達の島へは方角を頼りに自力で航行してください。名声は近海の主を討伐したり、海賊を撃退することで稼ぐことができます。"))
 	var here: Vector3 = Database.island(GameState.current_island).pos
 	for isle in Database.islands_in_order():   # #239再: 進行順に並べる
 		if isle.id == GameState.current_island:
@@ -838,9 +839,7 @@ func show_travel() -> void:
 			content.add_child(row)
 		else:
 			content.add_child(_p("・%s  [未開放 / 必要名声 %d]  方角:【%s】" % [isle.name, isle.fame_req, compass]))
-	# #219: 名声の稼ぎ方を最後に案内する
-	content.add_child(_p(""))
-	content.add_child(_p("名声は近海の主を討伐したり、海賊を撃退することで稼ぐことができます。"))
+	# #219/#291: 名声の稼ぎ方の案内は先頭の説明文に統合した
 
 # #140再: パラメータ表記。上限到達で黄色に
 # ---------------- 編成(#196) ----------------

@@ -196,14 +196,15 @@ func _ready() -> void:
 
 	# --- #209再9: ボスラッシュの構成 ---
 	var World2 = preload("res://scripts2d/World2D.gd")
+	# #288再2: ⑯ジェミニ・⑰死神を追加(幽霊船・レヴィアタンは1つずつ後ろへ)
 	var want_order := ["sawshark", "dumbo", "whale", "walrus", "aspidochelone", "undine",
 		"night_emperor", "legion", "siren", "wraith", "king", "kraken_lord",
-		"hydra", "griffon", "quetzal", "ghost", "leviathan"]
+		"hydra", "griffon", "quetzal", "gemini", "reaper", "ghost", "leviathan"]
 	var got_order: Array = []
 	for spec in World2.BOSS_RUSH_ORDER:
 		got_order.append(str(spec.id))
 	check(got_order == want_order, "ボスラッシュの出現順が指定と違う: %s" % str(got_order))
-	check(World2.BOSS_RUSH_ORDER.size() == 17, "ボスラッシュのボス数が17でない(%d)" % World2.BOSS_RUSH_ORDER.size())
+	check(World2.BOSS_RUSH_ORDER.size() == 19, "ボスラッシュのボス数が19でない(%d)" % World2.BOSS_RUSH_ORDER.size())
 	# #288: 海賊王の取り巻きは 大×1・中×1 で固定(#209再10の 大×2・中×1 から変更)
 	for spec2 in World2.BOSS_RUSH_ORDER:
 		if str(spec2.id) == "king":

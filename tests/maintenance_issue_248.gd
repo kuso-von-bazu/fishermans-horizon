@@ -1502,7 +1502,8 @@ func _ready() -> void:
 	check(GameState.used_hold() <= GameState.max_hold(), "漂流貨物で魚倉があふれた")
 
 	# #265: 実績(#265再6で「真の海の王者」「アルティメットプレーヤー」の2件を追加し49件)
-	check(Database.achievements.size() == 49, "実績の数が49でない(%d)" % Database.achievements.size())
+	# #265再13: 雪夜の島の主2体(ジェミニ狩り・死神狩り)を追加し51件
+	check(Database.achievements.size() == 51, "実績の数が51でない(%d)" % Database.achievements.size())
 	check(GameState.FAME_MAX == 999, "名声のカンストが999でない")
 	GameState.reset_all()
 	GameState.add_fame(99999)
