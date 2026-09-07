@@ -521,26 +521,26 @@ var ships := {
 var islands := [
 	{"id": 0, "name": "始まりの島",   "tier": 0, "fame_req": 0,   "price_mult": 1.0, "pos": Vector3(0, 0, 0),       "spawn": ["sardine","mackerel"], "lords": ["sawshark","dumbo"]},
 	# #174/#200: 次の島到達に必要な名声を全体的に引き上げ(その島の主だけでは足りず、海賊狩りが要る水準)
-	{"id": 1, "name": "潮鳴りの島",   "tier": 1, "fame_req": 22,   "price_mult": 2.08, "pos": Vector3(900, 0, -300),  "spawn": ["bonito","squid","mackerel"], "lords": ["whale","walrus"], "weather": "sunny"},   # #57再: 元の距離に戻す。#250: 強い日射し
+	{"id": 1, "name": "潮鳴りの島",   "tier": 1, "fame_req": 22,   "price_mult": 1.7, "pos": Vector3(900, 0, -300),  "spawn": ["bonito","squid","mackerel"], "lords": ["whale","walrus"], "weather": "sunny"},   # #57再: 元の距離に戻す。#250: 強い日射し。#96再3: 倍率2.08→1.7
 	# #190: 3つ目の島。砂漠とわずかな緑地。近海は常に夜(weather="night")
-	{"id": 2, "name": "月下の島",     "tier": 2, "fame_req": 70,  "price_mult": 3.0, "pos": Vector3(1700, 0, 200),  "spawn": ["squid","octopus","bonito","anglerfish"], "lords": ["aspidochelone","legion"], "weather": "night"},
+	{"id": 2, "name": "月下の島",     "tier": 2, "fame_req": 70,  "price_mult": 2.5, "pos": Vector3(1700, 0, 200),  "spawn": ["squid","octopus","bonito","anglerfish"], "lords": ["aspidochelone","legion"], "weather": "night"},
 	# #190: 月下の島の追加に伴い、嵐越え・果ては従来よりさらに遠方へ。#191/#192: 近海の天候演出
-	{"id": 3, "name": "嵐越えの島",   "tier": 3, "fame_req": 175,  "price_mult": 4.8, "pos": Vector3(2600, 0, 900),  "spawn": ["octopus","squid","bonito","conger"], "lords": ["hydra","quetzal"], "weather": "storm"},
+	{"id": 3, "name": "嵐越えの島",   "tier": 3, "fame_req": 175,  "price_mult": 3.9, "pos": Vector3(2600, 0, 900),  "spawn": ["octopus","squid","bonito","conger"], "lords": ["hydra","quetzal"], "weather": "storm"},
 	# #290: 雪夜の島の追加に伴い北東へ移動。到達に必要な名声も引き上げ(400→480)
-	{"id": 4, "name": "果ての島",     "tier": 4, "fame_req": 480,  "price_mult": 10.8, "pos": Vector3(4400, 0, -400), "spawn": ["octopus","squid","bonito","anglerfish","conger","lobster","turtle","marlin"], "lords": ["ghost","leviathan"], "weather": "blizzard"},   # #187: 幽霊船はレヴィアタンの上(先に戦う想定)
+	{"id": 4, "name": "果ての島",     "tier": 4, "fame_req": 480,  "price_mult": 5.4, "pos": Vector3(4400, 0, -400), "spawn": ["octopus","squid","bonito","anglerfish","conger","lobster","turtle","marlin"], "lords": ["ghost","leviathan"], "weather": "blizzard"},   # #187: 幽霊船はレヴィアタンの上(先に戦う想定)
 	# #239: 月下の島と同格(tier 2)。星霜=月下の北、常闇=月下の南
-	{"id": 5, "name": "星霜の島",     "tier": 2, "fame_req": 70,  "price_mult": 3.0, "pos": Vector3(1700, 0, -700), "spawn": ["squid","octopus","bonito","anglerfish"], "lords": ["undine","siren"], "weather": "starry"},
-	{"id": 6, "name": "常闇の島",     "tier": 2, "fame_req": 70,  "price_mult": 3.0, "pos": Vector3(1700, 0, 1100), "spawn": ["squid","octopus","bonito","anglerfish"], "lords": ["night_emperor","wraith"], "weather": "dark"},
+	{"id": 5, "name": "星霜の島",     "tier": 2, "fame_req": 70,  "price_mult": 2.5, "pos": Vector3(1700, 0, -700), "spawn": ["squid","octopus","bonito","anglerfish"], "lords": ["undine","siren"], "weather": "starry"},
+	{"id": 6, "name": "常闇の島",     "tier": 2, "fame_req": 70,  "price_mult": 2.5, "pos": Vector3(1700, 0, 1100), "spawn": ["squid","octopus","bonito","anglerfish"], "lords": ["night_emperor","wraith"], "weather": "dark"},
 	# #239: 嵐越えの島と同格(tier 3)。海嘯=嵐越えの南
-	{"id": 7, "name": "海嘯の島",     "tier": 3, "fame_req": 175, "price_mult": 4.8, "pos": Vector3(2600, 0, 1900), "spawn": ["octopus","squid","bonito","conger"], "lords": ["kraken_lord","griffon"], "weather": "surge"},
+	{"id": 7, "name": "海嘯の島",     "tier": 3, "fame_req": 175, "price_mult": 3.9, "pos": Vector3(2600, 0, 1900), "spawn": ["octopus","squid","bonito","conger"], "lords": ["kraken_lord","griffon"], "weather": "surge"},
 	# #248: 終盤の寄り道。果ての島の北にある小さな雪原の島。近海の主はいない(酒場の主の情報も出ない)
 	# #290: 雪夜の島の追加に伴い果ての島と共に北東へ移動。到達に必要な名声は据え置き
-	{"id": 8, "name": "北の孤島",   "tier": 4, "fame_req": 400, "price_mult": 10.8, "pos": Vector3(4400, 0, -1300), "spawn": ["marlin"], "lords": [], "weather": "flurry"},
+	{"id": 8, "name": "北の孤島",   "tier": 4, "fame_req": 400, "price_mult": 5.4, "pos": Vector3(4400, 0, -1300), "spawn": ["marlin"], "lords": [], "weather": "flurry"},
 	# #251: 中盤の寄り道。常闇の島の南にある小さな草原の島。近海の主はいない
-	{"id": 9, "name": "南の孤島",     "tier": 2, "fame_req": 70,  "price_mult": 3.0, "pos": Vector3(1700, 0, 2000), "spawn": ["turtle"], "lords": [], "weather": "sunny"},
+	{"id": 9, "name": "南の孤島",     "tier": 2, "fame_req": 70,  "price_mult": 2.5, "pos": Vector3(1700, 0, 2000), "spawn": ["turtle"], "lords": [], "weather": "sunny"},
 	# #290: 嵐越えの島の北東、果ての島の手前に追加する島。緑地に少々の積雪。
 	# 常闇の演出をベースに北の孤島の弱い雪+海嘯の荒波を加えた近海(weather="snownight")
-	{"id": 10, "name": "雪夜の島",   "tier": 4, "fame_req": 400, "price_mult": 10.8, "pos": Vector3(3600, 0, -100), "spawn": ["squid","anglerfish","conger"], "lords": ["gemini","reaper"], "weather": "snownight"},
+	{"id": 10, "name": "雪夜の島",   "tier": 4, "fame_req": 400, "price_mult": 5.4, "pos": Vector3(3600, 0, -100), "spawn": ["squid","anglerfish","conger"], "lords": ["gemini","reaper"], "weather": "snownight"},
 ]
 
 # #202: 出現海域ごとの敵HP倍率(始まり=等倍 / 潮鳴り1.5 / 月下1.9 / 嵐越え2.7 / 果て3.3)。
