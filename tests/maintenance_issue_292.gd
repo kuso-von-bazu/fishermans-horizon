@@ -82,10 +82,17 @@ func _ready() -> void:
 		check(ResourceLoader.exists(str(ad.get("icon", ""))), "%s のバッヂ絵が無い" % aid2)
 		# バフはケツァル(0.9891 / 幽霊船0.9885)の間に収まり、既存の値を動かしていないこと
 		check((ad.buff as Dictionary).size() == 1, "%s のバフが1種類でない" % aid2)
-	check(is_equal_approx(float(Database.achievement("lord_quetzal").buff.fleet_dmg_taken), 0.9891),
-		"ケツァルコアトル狩りのバフが変わっている")
-	check(is_equal_approx(float(Database.achievement("lord_ghost").buff.reload), 0.9885),
-		"幽霊船狩りのバフが変わっている")
+	# #265再16でバフを一律2倍にしたように、全体の底上げは今後もありうる。
+	# そこで固定値ではなく「後の主ほど効果が大きい」という並びで見る。
+	# reload は 1.0 から下へ、speed は上へ離れるほど強い。
+	var q_r := float(Database.achievement("lord_quetzal").buff.fleet_dmg_taken)
+	var g_r := float(Database.achievement("lord_gemini").buff.reload)
+	var gh_r := float(Database.achievement("lord_ghost").buff.reload)
+	check(g_r < 1.0 and gh_r < 1.0 and q_r < 1.0, "軽減系のバフが1.0以上になっている")
+	check(g_r > gh_r, "ジェミニ狩りが幽霊船狩りより強い(並びが逆)")
+	var rp_s := float(Database.achievement("lord_reaper").buff.speed)
+	var lv_s := float(Database.achievement("lord_leviathan").buff.speed)
+	check(rp_s > 1.0 and rp_s < lv_s, "死神狩りがレヴィアタン狩りより強い(並びが逆)")
 	# アルティメットプレーヤーは「他のすべて」なので、追加分も自動で条件に入る
 	GameState.achieved = {}
 	for a5 in Database.achievements:

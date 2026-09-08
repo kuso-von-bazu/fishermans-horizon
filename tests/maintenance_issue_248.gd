@@ -1513,8 +1513,10 @@ func _ready() -> void:
 	for a9 in Database.achievements:
 		for k9 in (a9.buff as Dictionary):
 			max_pct = maxf(max_pct, absf(float(a9.buff[k9]) - 1.0) * 100.0)
-	check(max_pct <= 3.0 + 0.001, "バッヂのバフが3%%を超えている(%.1f%%)" % max_pct)
-	check(max_pct * 2.0 < 15.0, "バッヂのバフが陣形(最大15%)に近すぎる")
+	# #265再16: レビュアー指定で全実績のバフを一律2倍にしたため上限も倍(3%→6%)。
+	# 「陣形より小さいおまけ」という位置づけは保つ(陣形は最大15% = 鋒矢陣の衝角+15%)。
+	check(max_pct <= 6.0 + 0.001, "バッヂのバフが6%%を超えている(%.1f%%)" % max_pct)
+	check(max_pct < 15.0, "バッヂのバフが陣形の最大(15%)に達している")
 	# グループごとの最大値の並び (5)>=(1)>=(4)>=(3)>=(2)>=(6)>=(7)
 	var gmax := {}
 	for a10 in Database.achievements:
@@ -1594,10 +1596,10 @@ func _ready() -> void:
 	check(esrc5.contains("face_dir = to.normalized()"), "引き撃ち中に船団の側を向いていない")
 	check(not esrc5.contains("face_dir = -to.normalized()"), "引き撃ち中に背を向ける記述が残っている")
 
-	# #265再: バフの弱体化と達成条件の緩和
-	check(is_equal_approx(float(Database.achievement("rich").buff["flag_dmg_taken"]), 0.98), "錦衣玉食が-2.0%でない")
-	check(is_equal_approx(float(Database.achievement("master_one").buff["shot_speed"]), 1.013), "極めし者が+1.3%でない")
-	check(is_equal_approx(float(Database.achievement("master_all").buff["reload"]), 0.98), "極めし者達が-2.0%でない")
+	# #265再: バフの弱体化と達成条件の緩和。#265再16: 全実績のバフを一律2倍にした後の値
+	check(is_equal_approx(float(Database.achievement("rich").buff["flag_dmg_taken"]), 0.96), "錦衣玉食が-4.0%でない")
+	check(is_equal_approx(float(Database.achievement("master_one").buff["shot_speed"]), 1.026), "極めし者が+2.6%でない")
+	check(is_equal_approx(float(Database.achievement("master_all").buff["reload"]), 0.96), "極めし者達が-4.0%でない")
 	check(int(Database.achievement("bounty_hunter").need) == 100, "バウンティハンターの条件が100隻でない")
 	var gsrc5 := FileAccess.get_file_as_string("res://scripts/GameState.gd")
 	check(gsrc5.contains('kill_count("pirate", "king") >= 2'), "海賊王の条件が2隻に緩和されていない")
