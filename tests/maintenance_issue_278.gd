@@ -271,16 +271,16 @@ func _ready() -> void:
 		check(int(Database.lords[lid2].dmg) == int(spec2[1]),
 			"%s の攻撃力が%dでない(%d)" % [lid2, int(spec2[1]), int(Database.lords[lid2].dmg)])
 	# HP(自分の島での値)
-	for spec3 in [["walrus", 1700], ["undine", 12000], ["siren", 11000], ["aspidochelone", 11000], ["legion", 14000], ["night_emperor", 9000], ["night_bat_medium", 2556], ["night_bat_small", 960], ["wraith", 10000], ["kraken_lord", 20000], ["griffon", 18000], ["ghost", 36000], ["leviathan", 48000]]:
+	for spec3 in [["walrus", 1700], ["undine", 13000], ["siren", 12000], ["aspidochelone", 12000], ["legion", 15000], ["night_emperor", 10000], ["night_bat_medium", 2840], ["night_bat_small", 1067], ["wraith", 11000], ["kraken_lord", 20000], ["griffon", 18000], ["ghost", 36000], ["leviathan", 48000]]:
 		var lid3: String = str(spec3[0])
 		var isle3: int = int(Database.lords[lid3].island)
 		var hp3: int = Database.lord_hp(lid3, isle3)
 		check(hp3 == int(spec3[1]), "%s のHPが%dでない(%d)" % [lid3, int(spec3[1]), hp3])
 
-	# 基礎HPをそのまま星霜の島で倍率計算すると 11000 にはならない(hp_exact なしでは作れない値)。
+	# 基礎HPをそのまま星霜の島で倍率計算すると 13000 にはならない(hp_exact なしでは作れない値)。
 	# hp_exact がその island でだけ効き、他の海域(ボスラッシュ=果ての島)では倍率で決まること。
-	check(Database.lord_hp("night_bat_medium", 6) == 2556,
-		"分裂後(中)のHPが2556でない。丸めでは作れない値なので hp_exact が効いているかの検査")
+	check(Database.lord_hp("night_bat_medium", 6) == 2840,
+		"分裂後(中)のHPが2840でない。丸めでは作れない値なので hp_exact が効いているかの検査")
 	check(Database.lord_hp("undine", 4) == Database.scaled_hp(float(Database.lords["undine"].hp), 4),
 		"別の海域でも hp_exact が使われている(ボスラッシュのHPが固定になる)")
 	check(Database.lord_hp("griffon", 7) == Database.scaled_hp(float(Database.lords["griffon"].hp), 7),
@@ -288,7 +288,7 @@ func _ready() -> void:
 
 	# 実際に敵を出したときのHPも指定どおりであること(表示だけ直っていても意味がない)
 	var EnemyS = preload("res://scripts2d/Enemy2D.gd")
-	for spec4 in [["undine", 5, 12000], ["siren", 5, 11000], ["walrus", 1, 1700], ["aspidochelone", 2, 11000], ["legion", 2, 14000], ["night_emperor", 6, 9000], ["night_bat_medium", 6, 2556], ["night_bat_small", 6, 960], ["wraith", 6, 10000], ["kraken_lord", 7, 20000], ["griffon", 7, 18000], ["ghost", 4, 36000], ["leviathan", 4, 48000]]:
+	for spec4 in [["undine", 5, 13000], ["siren", 5, 12000], ["walrus", 1, 1700], ["aspidochelone", 2, 12000], ["legion", 2, 15000], ["night_emperor", 6, 10000], ["night_bat_medium", 6, 2840], ["night_bat_small", 6, 1067], ["wraith", 6, 11000], ["kraken_lord", 7, 20000], ["griffon", 7, 18000], ["ghost", 4, 36000], ["leviathan", 4, 48000]]:
 		GameState.current_island = int(spec4[1])
 		var en := CharacterBody2D.new()
 		en.set_script(EnemyS)
