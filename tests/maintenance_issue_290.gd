@@ -99,6 +99,8 @@ func _ready() -> void:
 	check(float(gm.get("counter_shot", 0.0)) > 0.0, "ジェミニが打ち返し弾を撃たない")
 	check(bool(gm.get("no_melee", false)), "ジェミニが近接攻撃をしてしまう")
 	check(str(gm.lore) == "堕天した双子の天使。", "ジェミニの説明文が指定と違う")
+	# #290再: 横向き絵(pixel/lord_gemini.png)は右向きに描かれているため face_left は false でなければならない
+	check(bool(gm.get("face_left", false)) == false, "ジェミニの face_left が true のままで向きが反転している")
 
 	# 死神: 瞬間移動先が近接圏 / 通常の遠隔攻撃を持たない
 	var rp: Dictionary = Database.lords["reaper"]
