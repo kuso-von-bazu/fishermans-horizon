@@ -572,16 +572,27 @@ func reset_all() -> void:
 # ---------------------------------------------------------------------------
 const DISPLAY_SETTINGS_PATH := "user://display_settings.cfg"
 var screen_shake: bool = true
+var pad_mode: bool = false   # #293: ゲーム進行とは別に保存する操作方式
 
 func load_display_settings() -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(DISPLAY_SETTINGS_PATH) == OK:
 		screen_shake = bool(cfg.get_value("display", "screen_shake", true))
+		pad_mode = bool(cfg.get_value("input", "pad_mode", false))
 
 func set_screen_shake(on: bool) -> void:
 	screen_shake = on
+	_save_display_settings()
+
+func set_pad_mode(on: bool) -> void:
+	pad_mode = on
+	_save_display_settings()
+
+func _save_display_settings() -> void:
 	var cfg := ConfigFile.new()
+	cfg.load(DISPLAY_SETTINGS_PATH)
 	cfg.set_value("display", "screen_shake", screen_shake)
+	cfg.set_value("input", "pad_mode", pad_mode)
 	cfg.save(DISPLAY_SETTINGS_PATH)
 
 const SAVE_PATH := "user://save.json"

@@ -18,8 +18,20 @@ export GH_TOKEN=$(cat .gh_token)      # 必ず絶対パスか、このフォル�
 bash 意見確認.sh                       # 未対応の意見issueが出る
 ```
 
-いま **#293「パッド操作の実装について」が未対応で残っている**。これが最初の仕事。
-（ゲームパッド対応。航海中と島メニューの2系統、割り当ては issue 本文に全部書いてある）
+**#293「パッド操作の実装について」は2026-09-11に実装・検証済み。**
+歯車の設定で「キーボード・マウス／パッド」を切り替える。操作方式は進行セーブと別に自動保存する。
+着手するissueはGitHubの最新一覧・本文・全コメントを再取得して決める。
+
+### #293 の追加構成と検証
+
+- `scripts/ControlInput.gd`: `pad_*` InputMap、操作方式の切替、画面切替・フォーカス喪失時の入力持越し防止。
+- `scripts/GamepadController.gd`: World2Dの子。ポーズ中も動くメニュー操作、全決定ボタン、スクロール追従、右スティック照準、ロック・陣形・スキル。
+- 航海中はissue指定の割当。島・タイトル・確認画面は左スティック／十字キーで選択し、×○□△L1R1L2R2で決定。右スティック上下で長文をスクロール。音量は左右で調整する。
+- 照準は既存の `LosOverlay2D` へ渡すため、射線が塞がった場合の赤表示も保つ。画面外には出さない。
+- `tests/maintenance_issue_293.tscn`: 実InputEventによる操作検査。`-- --visual` で実描画し設定・港・航海のPNGを `user://issue293-*.png` に保存する。`-- --negative` ではR2割当をテスト実行中だけ削除し、射撃の検査1件が失敗することを確認できる。
+- 既存24＋新規1の計25スイート成功。実描画での統合テストも成功。物理パッド実機での操作と機種ごとの差異は未検証。
+- テストはセーブや実績を書き込むため、通常のユーザーデータで実行しない。今回の隔離プロジェクトは `C:/Users/aoe10/tmp_img/fishing293-tests`、設定は `config/use_custom_user_dir=true` / `config/custom_user_dir_name="FishermansHorizon-tests-293"`。実装・素材は元プロジェクトを参照する。`画像生成/` も参照に含めないと #287 のスタンプ生成コード検査が失敗する。
+- 今回の実行ログ: `C:/Users/aoe10/tmp_img/fishing293-logs/`。通常環境でのGodot起動が必要だった（サンドボックス内ではエンジンがクラッシュ）。
 
 ---
 
@@ -42,13 +54,13 @@ bash 意見確認.sh                       # 未対応の意見issueが出る
 | 船 | 10 |
 | 武器 | 13（＋衝角3） |
 | 実績 | 51 |
-| 自動テスト | 24スイート |
+| 自動テスト | 25スイート |
 | issue | #293 まで（ほぼ全件クローズ済み） |
 
 ### 構成
 
 ```
-project.godot     autoload: Database / GameState / Audio / PortUI / TitleScreen
+project.godot     autoload: Database / GameState / Audio / AchievementToast
                   レンダラは gl_compatibility（Web必須）。custom_font に NotoSansJP
 scenes/           World2D.tscn がメインシーン（中身は薄く、コードで全構築）
 scripts/          ビュー非依存の中核。Database(静的データ) GameState(状態) PortUI(港UI)
@@ -92,7 +104,7 @@ GODOT="/c/Users/aoe10/Downloads/Godot_v4.6.1-stable_win64.exe/Godot_v4.6.1-stabl
 # → MAINTENANCE_TEST_OK ... と出れば成功
 ```
 
-24スイートあり、**全部まとめて回すと10分を超えて Bash がタイムアウトする**。
+25スイートある。過去には**全部まとめて回すと10分を超えて Bash がタイムアウトした**。
 6〜7本ずつに分けて回すこと。1本あたり最長200〜280秒を見ておく。
 
 テストは「issue番号ごとのファイル」という作りで、過去の要望が壊れていないかを守っている。

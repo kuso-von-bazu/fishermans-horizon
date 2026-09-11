@@ -559,7 +559,7 @@ func set_skill_state(skill_name: String, progress: float, ready_now: bool) -> vo
 		return
 	if skill_name != "":
 		# #224再: キーボードでも撃てることが分かるようキー名を併記
-		_skill_btn.text = "スキル(5キー): %s" % skill_name
+		_skill_btn.text = "スキル(%s): %s" % ["L1" if GameState.pad_mode else "5キー", skill_name]
 	if _skill_cover:
 		var w: float = _skill_holder.size.x if _skill_holder else 196.0
 		# 左から解除=覆いの左端を右へずらす
@@ -764,7 +764,7 @@ func set_return_progress(t: float) -> void:
 	if lbl_return == null:
 		return
 	if t <= 0.0:
-		lbl_return.text = "[R]長押し(3秒)で直近の島へ帰還"
+		lbl_return.text = "[%s]長押し(3秒)で直近の島へ帰還" % ("△" if GameState.pad_mode else "R")
 		lbl_return.add_theme_color_override("font_color", Color.WHITE)
 	else:
 		var secs: float = ceil((1.0 - clampf(t, 0.0, 1.0)) * 3.0)

@@ -16,6 +16,10 @@ const PortUIScript = preload("res://scripts/PortUI.gd")
 const TitleScript = preload("res://scripts/TitleScreen.gd")
 const OverlayMenusScript = preload("res://scripts/OverlayMenus.gd")   # #235/#236: 撮影フック用
 
+const Controls := preload("res://scripts/ControlInput.gd")
+const GamepadScript := preload("res://scripts/GamepadController.gd")
+var gamepad: Node
+
 const K := 6.0          # 3D数値→2D px 換算
 var player: CharacterBody2D
 var camera: Camera2D
@@ -111,6 +115,9 @@ func _ready() -> void:
 	port_ui.close()
 	phase = "title"
 	title.show_title()
+	gamepad = GamepadScript.new()
+	gamepad.world = self
+	add_child(gamepad)
 	_maybe_screenshot()
 
 # ---------------- 構築 ----------------
@@ -336,7 +343,7 @@ func _build_player() -> void:
 	camera.global_position = player.global_position
 
 func _input(event: InputEvent) -> void:
-	if phase != "sea":
+	if phase != "sea" or GameState.pad_mode or _food_dialog_open:
 		return
 	# #16: マウスホイールでロックオン対象を切替(航海中のみ)
 	if event is InputEventMouseButton and event.pressed:
@@ -590,8 +597,8 @@ func _on_dock_left(island_id: int) -> void:
 func _update_docking() -> bool:
 	if _dock_target < 0 or _dock_grace > 0.0:
 		return false
-	hud.set_prompt("[E] %s に寄港する" % Database.island(_dock_target).name)
-	if Input.is_action_just_pressed("interact"):
+	hud.set_prompt("[%s] %s に寄港する" % ["□" if GameState.pad_mode else "E", Database.island(_dock_target).name])
+	if Controls.just_pressed("interact"):
 		GameState.notice.emit("%s に帰港" % Database.island(_dock_target).name)
 		_enter_dock(_dock_target, true)
 	return true
@@ -676,7 +683,7 @@ func _physics_process(delta: float) -> void:
 	var _rate: float = IDLE_FUEL_RATE + (1.0 - IDLE_FUEL_RATE) * (_moved / _solo_px) / maxf(delta, 0.0001)
 	GameState.run_food = maxf(GameState.run_food - delta * _rate * 1.5 * GameState.food_drain_mult() * _weather_mult, 0.0)
 	# #68: Rキーを5秒長押しで直近の島へ帰還。長押し中に装甲0なら大破(後段の装甲チェックで処理)
-	if Input.is_action_pressed("fast_return") and not _returning and not _food_dialog_open:
+	if Controls.pressed("fast_return") and not _returning and not _food_dialog_open:
 		_return_hold += delta
 		hud.set_return_progress(_return_hold / 3.0)
 		if _return_hold >= 3.0:
@@ -752,19 +759,19 @@ func _update_fishing(delta: float) -> void:
 		hud.set_fishing_meter(0.0, false)
 		_fishing_target = null
 		return
-	hud.set_prompt("[E]長押し→黄色い帯で離す  (%s)" % Database.fish_def(nearest.fish_id).name)
-	if Input.is_action_just_pressed("interact"):
+	hud.set_prompt("[%s]長押し→黄色い帯で離す  (%s)" % ["□" if GameState.pad_mode else "E", Database.fish_def(nearest.fish_id).name])
+	if Controls.just_pressed("interact"):
 		_fishing_target = nearest
 		_fishing_phase = 0.0
 		_fishing_value = 0.0
 		# #232再: 当たりの位置が固定だと作業になるので、漁のたびに帯の位置を抽選する。
 		# 端すぎると狙えないので、帯全体が 0.06〜0.94 に収まる範囲で左寄り〜右寄りを取る。
 		_fishing_band = randf_range(0.06, 0.94 - FISHING_BAND_W)
-	if Input.is_action_pressed("interact") and is_instance_valid(_fishing_target):
+	if Controls.pressed("interact") and is_instance_valid(_fishing_target):
 		_fishing_phase += delta * 1.2   # #232再3: 往復速度を1.2へ
 		_fishing_value = (sin(_fishing_phase * TAU - PI * 0.5) + 1.0) * 0.5
 		hud.set_fishing_meter(_fishing_value, true, _fishing_band)
-	elif Input.is_action_just_released("interact") and is_instance_valid(_fishing_target):
+	elif Controls.just_released("interact") and is_instance_valid(_fishing_target):
 		var bonus := _fishing_in_band()
 		# #232再8: 大漁(帯当たり)は獲得2尾でも群れの残り数は1尾しか減らさない
 		var caught: Array = _fishing_target.catch_fish(2 if bonus else 1, 1)
@@ -1609,9 +1616,9 @@ func _update_los_overlay() -> void:
 		if str(w.kind) == "aim":
 			reach = maxf(reach, float(w.range) * K * 1.2)
 	if reach <= 0.0:
-		_los_overlay.set_state(null, player.global_position, get_global_mouse_position(), true)
+		_los_overlay.set_state(null, player.global_position, aim_position(), true)
 		return   # #256再: エイム武器が無くても照準そのものは出す
-	var m := get_global_mouse_position()
+	var m := aim_position()
 	var dir := (m - player.global_position).normalized()
 	var blocker: Node2D = null
 	if _clear_muzzle(dir, reach) == null:
@@ -1653,10 +1660,15 @@ func _consume_ammo(i: int, w: Dictionary) -> void:
 		slot_cooldowns[i] = float(w.cooldown)
 
 # #196再: 画面のUI(陣形ボタンなど)の上にカーソルがあるか
+func aim_position() -> Vector2:
+	if GameState.pad_mode and is_instance_valid(gamepad):
+		return gamepad.aim_position()
+	return get_global_mouse_position()
+
 func _pointer_on_ui() -> bool:
 	if hud == null:
 		return false
-	if hud.get("pointer_on_ui") == true:
+	if not GameState.pad_mode and hud.get("pointer_on_ui") == true:
 		return true
 	var ui_root = hud.get("_ui_root")
 	return ui_root != null and ui_root.get_node_or_null("SharedOverlay") != null
@@ -1687,7 +1699,7 @@ func _update_weapons(delta: float) -> void:
 		Audio.stop_loop_sfx()   # #251再: 撃てない状態では放射音も止める
 		return   # #101: 大破/寄港確定後は攻撃不可 / #24再: 食料選択中も撃たない
 	var slots := int(GameState.ship().slots)
-	if Input.is_action_pressed("fire_primary") and not _pointer_on_ui():   # #196再: 陣形ボタン上では撃たない
+	if Controls.pressed("fire_primary") and not _pointer_on_ui():   # #196再: 陣形ボタン上では撃たない
 		for i in slots:
 			var wid: String = GameState.weapons[i] if i < GameState.weapons.size() else ""
 			if wid == "" or not Database.weapons.has(wid):
@@ -1696,7 +1708,7 @@ func _update_weapons(delta: float) -> void:
 			if w.kind == "aim" and slot_cooldowns[i] <= 0:
 				if _fire_aim(w):
 					_consume_ammo(i, w)   # #264: 撃てたときだけ弾を減らす
-	if Input.is_action_just_pressed("fire_torpedo"):
+	if Controls.just_pressed("fire_torpedo"):
 		for i in slots:
 			var wid: String = GameState.weapons[i] if i < GameState.weapons.size() else ""
 			if wid == "" or not Database.weapons.has(wid):
@@ -1712,7 +1724,7 @@ func _update_weapons(delta: float) -> void:
 	# #251再2: 放射音の反映。発射したフレームだけで判断すると、連射の合間
 	#   (毎フレームのうち大半)で止めてしまい、実質鳴らなくなる。
 	#   「押している間ずっと」で判断する。
-	var want_loop := _loop_sfx_wanted(Input.is_action_pressed("fire_primary") and not _pointer_on_ui())
+	var want_loop := _loop_sfx_wanted(Controls.pressed("fire_primary") and not _pointer_on_ui())
 	if want_loop != "":
 		Audio.play_loop_sfx(want_loop)
 	elif Audio.loop_sfx_name() != "":
@@ -1744,7 +1756,7 @@ func _crewed(w: Dictionary) -> Dictionary:
 
 # #264: 実際に発射できたかを返す(撃てなかったときに弾を減らさないため)
 func _fire_aim(w: Dictionary) -> bool:
-	var dir := (get_global_mouse_position() - player.global_position).normalized()
+	var dir := (aim_position() - player.global_position).normalized()
 	# #196: 味方に射線が重なるときは撃たない(フレンドリーファイア無し)。魚雷は射線を無視できる
 	# #257: 中心が塞がっていても、左右の舷から射線が通ればそこから撃つ
 	var muzzle = _clear_muzzle(dir, float(w.range) * K * 1.2)

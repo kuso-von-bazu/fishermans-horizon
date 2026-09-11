@@ -23,6 +23,21 @@ R　長押しで直近の島へ帰還
 魚雷　ロック対象を追尾。味方をすり抜けるが空中の敵には無効。
 衝角　体当たりで攻撃。空中の敵には無効。"""
 
+const PAD_HELP_TEXT := """【パッド操作】
+左スティック上下　前進・後退 ／ 左右　旋回
+右スティック　照準カーソル移動
+R2　射撃 ／ L2　魚雷
+□　漁・寄港（漁は長押しして離す）
+△　長押しで直近の島へ帰還
+×　次のロック対象 ／ ○　前のロック対象
+十字キー 上・右・下・左　陣形1・2・3・4
+L1　スキル ／ R1　照準に最も近い敵へロックオン
+島・タイトル・確認画面: 左スティック／十字キーで選択
+×・○・□・△・L1・R1・L2・R2　決定
+音量: 上下で項目を選び、左右で調整
+長い説明・一覧: 右スティック上下でスクロール
+※ Xbox表記では ×=A、○=B、□=X、△=Y。"""
+
 # #235再/#236再: 「⚙」「?」はフォントに字形が無い環境で豆腐(文字化け)になるため、
 # 生成した画像(画像生成\UIアイコン生成.py)をボタンのアイコンとして使う。
 # タイトル・港・航海HUDの3か所で同じ見た目にそろえる。
@@ -147,8 +162,24 @@ static func _close_button(ui: Dictionary, overlay: Control) -> void:
 static func show_settings(parent: Control) -> void:
 	# #235再: 中身が2行しかないので、パネルは低めにして間延びを防ぐ
 	# #278(提案4): 画面シェイクのON/OFFを足したので少し高くする
-	var ui := _base(parent, "設定", 400.0)
+	var ui := _base(parent, "設定", 500.0)
 	var box: VBoxContainer = ui.box
+	var input_button := Button.new()
+	input_button.name = "InputMode"
+	input_button.custom_minimum_size = Vector2(0, 46)
+	input_button.add_theme_font_size_override("font_size", 22)
+	var update_input_label := func():
+		input_button.text = "操作方式: %s　（決定で切替）" % ("パッド" if GameState.pad_mode else "キーボード・マウス")
+	update_input_label.call()
+	input_button.pressed.connect(func():
+		GameState.set_pad_mode(not GameState.pad_mode)
+		update_input_label.call())
+	box.add_child(input_button)
+	var pad_note := Label.new()
+	pad_note.text = "パッド: 左スティック／十字キーで選択、各ボタンで決定。\n操作一覧は「?」から確認できます。マウスで設定を戻すこともできます。"
+	pad_note.add_theme_font_size_override("font_size", 17)
+	pad_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(pad_note)
 	for setting in [["BGM", Audio.bgm_volume(), Audio.set_bgm_volume], ["効果音", Audio.sfx_volume(), Audio.set_sfx_volume]]:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 18)
@@ -211,7 +242,7 @@ static func show_help(parent: Control) -> void:
 	help.bbcode_enabled = false
 	help.fit_content = true
 	help.scroll_active = false
-	help.text = HELP_TEXT
+	help.text = (PAD_HELP_TEXT + "\n\n" if GameState.pad_mode else "") + HELP_TEXT
 	help.add_theme_font_size_override("normal_font_size", 19)
 	help.add_theme_color_override("default_color", Color(0.88, 0.93, 0.98))
 	help.size_flags_horizontal = Control.SIZE_EXPAND_FILL

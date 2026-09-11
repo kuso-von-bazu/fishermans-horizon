@@ -1,4 +1,5 @@
 extends CharacterBody2D
+const Controls := preload("res://scripts/ControlInput.gd")
 ## Player2D — 見下ろし2Dのプレイヤー船。戦車的操作(W/S前後・A/D旋回)。
 ## rotation=0 で船首は上(-Y)。forward = Vector2.UP.rotated(rotation)。
 ## 照準はマウスカーソル位置(World2D側で取得)。
@@ -679,16 +680,8 @@ func _physics_process(delta: float) -> void:
 			_label.rotation = -rotation
 			_label.position = Vector2(-_label.size.x * 0.5, -_half_h - 34).rotated(-rotation)
 		return
-	var throttle := 0.0
-	var steer := 0.0
-	if Input.is_action_pressed("throttle_up"):
-		throttle += 1.0
-	if Input.is_action_pressed("throttle_down"):
-		throttle -= float(GameState.ship().get("reverse", 0.6))   # #151: 後退が得意な船(巡洋戦艦)は倍率大
-	if Input.is_action_pressed("turn_left"):
-		steer -= 1.0
-	if Input.is_action_pressed("turn_right"):
-		steer += 1.0
+	var throttle := Controls.strength("throttle_up") - Controls.strength("throttle_down") * float(GameState.ship().get("reverse", 0.6))
+	var steer := Controls.strength("turn_right") - Controls.strength("turn_left")
 	# #69/#72: 触腕に絡めとられている間は最高速度が下がる(相手の討伐で解除)
 	entanglers = entanglers.filter(func(e): return is_instance_valid(e))
 	var eff_max: float = max_speed * (0.55 if not entanglers.is_empty() else 1.0)
